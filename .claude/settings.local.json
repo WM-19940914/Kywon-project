@@ -1,0 +1,33 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(if not exist \".claude\" mkdir \".claude\")",
+      "Bash(node --version)",
+      "Bash(npm --version:*)",
+      "Bash(npx create-next-app@14 . --typescript --tailwind --app --no-src-dir --import-alias \"@/*\")",
+      "Bash(npx create-next-app@14:*)",
+      "Bash(xcopy:*)",
+      "Bash(robocopy:*)",
+      "Bash(npm install:*)",
+      "Bash(npx shadcn@latest init:*)",
+      "Bash(npx shadcn@latest add button:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npx shadcn@latest add:*)",
+      "Bash(tasklist:*)",
+      "Bash(findstr:*)",
+      "WebSearch",
+      "WebFetch(domain:ui.shadcn.com)",
+      "Bash(tree:*)",
+      "Bash(dir:*)",
+      "Bash(timeout 10 tail:*)",
+      "Bash(ls:*)",
+      "Bash(taskkill:*)",
+      "Bash(netstat:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 13200 -Force\")",
+      "Bash(powershell -Command \"Stop-Process -Id 26520 -Force\")",
+      "Bash(code:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
+    ]
+  }
+}

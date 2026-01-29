@@ -1,0 +1,85 @@
+/**
+ * 정산완료 과거내역 카드 컴포넌트
+ *
+ * 기존 OrderCard보다 작고 간단하게!
+ * 과거 정산내역을 컴팩트하게 보여줘요:
+ * 1. 계열사 (작게)
+ * 2. 사업자명 (강조)
+ * 3. 정산일 (초록색)
+ * 4. 발주요약 (예: "신규설치 2대 외 1건")
+ */
+
+'use client'
+
+import { Card, CardContent } from '@/components/ui/card'
+import type { Order } from '@/types/order'
+
+/**
+ * 컴포넌트가 받을 Props
+ */
+interface SettledHistoryCardProps {
+  order: Order                           // 발주 정보
+  onClick?: (order: Order) => void       // 카드 클릭 시 (상세보기 모달 열기)
+}
+
+/**
+ * 발주내역 요약 자동 생성
+ * 예: "신규설치 2대 외 1건" (요청건 제외!)
+ */
+function generateOrderSummary(order: Order): string {
+  if (order.items.length === 0) return '작업내역 없음'
+
+  const firstItem = order.items[0]
+  const firstItemText = `${firstItem.workType} ${firstItem.quantity}대`
+
+  if (order.items.length === 1) {
+    // 항목이 1개만 있으면: "신규설치 2대"
+    return firstItemText
+  } else {
+    // 여러 항목이 있으면: "신규설치 2대 외 1건"
+    return `${firstItemText} 외 ${order.items.length - 1}건`
+  }
+}
+
+/**
+ * 정산완료 과거내역 카드 컴포넌트
+ */
+export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) {
+  // 날짜 포맷팅 (2024-01-25 → 24년 1월)
+  const formatDate = (dateString: string) => {
+    const [year, month] = dateString.split('-')
+    const shortYear = year.slice(2) // 2024 → 24
+    return `${shortYear}년 ${parseInt(month)}월`
+  }
+
+  return (
+    <Card
+      className="hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer border-gray-200 font-mono"
+      onClick={() => onClick?.(order)}
+    >
+      <CardContent className="p-3 space-y-1">
+        {/* 계열사 (작게 위에 표시) */}
+        <p className="text-xs text-gray-500 tracking-tight">
+          {order.affiliate}
+        </p>
+
+        {/* 사업자명 (강조) - 1줄로 자르고 ... 표시 */}
+        <h4 className="font-semibold text-xs text-gray-900 truncate tracking-tight">
+          {order.businessName}
+        </h4>
+
+        {/* 마감일 (회색 톤다운) */}
+        <p className="text-xs text-gray-600">
+          {order.settlementDate
+            ? `${formatDate(order.settlementDate)} 마감완료`
+            : '마감일 미등록'}
+        </p>
+
+        {/* 발주요약 */}
+        <p className="text-xs text-gray-500">
+          {generateOrderSummary(order)}
+        </p>
+      </CardContent>
+    </Card>
+  )
+}
