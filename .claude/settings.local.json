@@ -27,7 +27,21 @@
       "Bash(powershell -Command \"Stop-Process -Id 26520 -Force\")",
       "Bash(code:*)",
       "Bash(git remote add:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(npm install)",
+      "Bash(Test-Path \"C:\\\\Users\\\\User\\\\workspace\\\\first\\\\node_modules\")",
+      "Bash(if [ -d \"node_modules\" ])",
+      "Bash(then echo \"존재함\")",
+      "Bash(else echo \"없음\")",
+      "Bash(fi:*)",
+      "Bash(if [ -f \".env.local\" ])",
+      "Bash(npx next build:*)",
+      "Bash(powershell -Command \"Stop-Process -Id 11624 -Force\")",
+      "Bash(timeout:*)",
+      "Bash(node scripts/parse-excel.js:*)",
+      "Bash(node scripts/analyze-excel.js:*)",
+      "Bash(node scripts/parse-excel-v2.js:*)",
+      "Bash(node scripts/analyze-detail.js:*)"
     ]
   }
 }

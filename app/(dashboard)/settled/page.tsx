@@ -87,8 +87,8 @@ export default function SettledPage() {
     <div className="container mx-auto py-8 px-4">
       {/* 페이지 헤더 */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">정산 완료 내역</h1>
-        <p className="text-gray-600">정산이 완료된 발주 내역입니다</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1">정산 완료 내역</h1>
+        <p className="text-muted-foreground">정산이 완료된 발주 내역입니다</p>
       </div>
 
       {/* 통계 카드 */}

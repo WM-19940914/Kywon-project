@@ -61,7 +61,40 @@ export const mockOrders: Order[] = [
       }
     ],
     notes: '층고 3.5m, 사다리차 필요',
-    createdAt: '2024-01-16T10:30:00Z'
+    createdAt: '2024-01-16T10:30:00Z',
+    equipmentItems: [
+      {
+        id: 'eq-2-1',
+        componentName: '실외기',
+        orderNumber: 'ORD-20240116-001',
+        orderDate: '2024-01-16',
+        requestedDeliveryDate: '2024-01-20',
+        confirmedDeliveryDate: '2024-01-22',
+        quantity: 1,
+        unitPrice: 1200000,
+        totalPrice: 1200000
+      },
+      {
+        id: 'eq-2-2',
+        componentName: '실내기',
+        orderNumber: 'ORD-20240116-001',
+        orderDate: '2024-01-16',
+        requestedDeliveryDate: '2024-01-20',
+        confirmedDeliveryDate: '2024-01-22',
+        quantity: 3,
+        unitPrice: 350000,
+        totalPrice: 1050000
+      },
+      {
+        id: 'eq-2-3',
+        componentName: '리모컨',
+        orderNumber: 'ORD-20240116-001',
+        orderDate: '2024-01-16',
+        quantity: 3,
+        unitPrice: 15000,
+        totalPrice: 45000
+      }
+    ]
   },
 
   // 3. 진행중 - 교육플랫폼 본사

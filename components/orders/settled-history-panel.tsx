@@ -13,6 +13,7 @@ import { useState, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SettledHistoryCard } from './settled-history-card'
+import { Archive } from 'lucide-react'
 import type { Order } from '@/types/order'
 
 /**
@@ -93,11 +94,11 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
   }, [orders, searchTerm, selectedYear, selectedMonth])
 
   return (
-    <div className="flex-shrink-0 w-96 bg-gray-50 rounded-lg p-4 border border-gray-200 font-mono">
+    <div className="flex-shrink-0 w-96 bg-muted/50 rounded-xl p-4 border border-border/60">
       {/* 헤더 */}
       <div className="mb-4">
-        <h2 className="font-bold text-base text-gray-600 tracking-tight">
-          📋 과거내역
+        <h2 className="font-semibold text-base text-muted-foreground tracking-tight flex items-center gap-2">
+          <Archive className="h-4 w-4" /> 과거내역
         </h2>
       </div>
 

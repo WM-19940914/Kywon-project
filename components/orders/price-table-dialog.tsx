@@ -18,10 +18,11 @@ import {
 } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { priceTable, formatPrice, type PriceTableRow } from '@/lib/price-table'
+import { ClipboardList, Lightbulb } from 'lucide-react'
+import { priceTable, formatPrice, type PriceTableRow, type ComponentDetail } from '@/lib/price-table'
 
 interface PriceTableSheetProps {
-  onSelect: (model: string, size: string, category: string) => void
+  onSelect: (model: string, size: string, category: string, components?: ComponentDetail[]) => void
 }
 
 export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
@@ -37,7 +38,7 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
 
   // 행 클릭 핸들러
   const handleRowClick = (row: PriceTableRow) => {
-    onSelect(row.model, row.size, row.category)
+    onSelect(row.model, row.size, row.category, row.components)
     setIsOpen(false)
     setSearchTerm('')
   }
@@ -46,7 +47,7 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
     <Sheet open={isOpen} onOpenChange={setIsOpen}>
       <SheetTrigger asChild>
         <Button variant="outline" size="sm" className="gap-2">
-          <span>📋</span>
+          <ClipboardList className="h-4 w-4" />
           단가표로 입력하기
         </Button>
       </SheetTrigger>
@@ -97,13 +98,13 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
           {/* 안내문구 */}
           <div className="bg-blue-50 p-4 rounded-lg">
             <p className="text-xs text-blue-800 leading-relaxed">
-              <strong>💡 사용 방법</strong>
+              <strong className="flex items-center gap-1"><Lightbulb className="h-3 w-3" /> 사용 방법</strong>
               <br />
               • 원하는 항목을 클릭하면 자동으로 입력됩니다
               <br />
               • 단가는 참고용이며, 실제 견적은 현장 확인 후 결정됩니다
               <br />
-              • 모델명이나 평형을 모를 경우 직접 "미확인"으로 입력하세요
+              • 모델명이나 평형을 모를 경우 직접 &quot;미확인&quot;으로 입력하세요
             </p>
           </div>
         </div>

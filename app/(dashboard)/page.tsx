@@ -5,8 +5,6 @@
  * - 통계 카드: 전체/대기중/진행중/완료 건수
  * - 최근 발주: 최신 5개 발주 목록
  * - 업체별 현황: 각 업체별 발주 건수
- *
- * 💡 이 파일이 (dashboard) 폴더 안에 있어서 자동으로 사이드바가 붙어요!
  */
 
 'use client'  // ← 중요! mockOrders를 사용하려면 필수
@@ -15,6 +13,7 @@ import { mockOrders } from '@/lib/mock-data'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
+import { ClipboardList, Clock, Loader2, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
@@ -24,7 +23,7 @@ export default function DashboardPage() {
   // 전체, 대기중, 진행중, 완료 각각 몇 건인지 세어요
   const stats = {
     total: mockOrders.length,  // 전체 개수
-    pending: mockOrders.filter(o => o.status === 'pending').length,  // 대기중 개수
+    pending: mockOrders.filter(o => o.status === 'received').length,  // 접수중 개수
     'in-progress': mockOrders.filter(o => o.status === 'in-progress').length,  // 진행중 개수
     completed: mockOrders.filter(o => o.status === 'completed').length,  // 완료 개수
   }
@@ -46,7 +45,7 @@ export default function DashboardPage() {
   // 예: { '삼성설비': 4, '한일공조': 3, '대한냉난방': 3 }
   const contractorStats = mockOrders.reduce((acc, order) => {
     // 현재 업체의 개수에 1을 더해요 (없으면 0에서 시작)
-    acc[order.contractor] = (acc[order.contractor] || 0) + 1
+    acc[order.affiliate] = (acc[order.affiliate] || 0) + 1
     return acc
   }, {} as Record<string, number>)
 
@@ -60,8 +59,8 @@ export default function DashboardPage() {
       {/* 페이지 제목 */}
       {/* ================================ */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">대시보드</h1>
-        <p className="text-gray-600">발주 현황을 한눈에 확인하세요</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1">대시보드</h1>
+        <p className="text-muted-foreground">발주 현황을 한눈에 확인하세요</p>
       </div>
 
       {/* ================================ */}
@@ -69,9 +68,10 @@ export default function DashboardPage() {
       {/* ================================ */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
         {/* 전체 발주 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">전체 발주</CardTitle>
+        <Card className="border-t-4 border-t-slate-400">
+          <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">전체 발주</CardTitle>
+            <ClipboardList className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">{stats.total}건</div>
@@ -79,19 +79,21 @@ export default function DashboardPage() {
         </Card>
 
         {/* 대기중 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">대기중</CardTitle>
+        <Card className="border-t-4 border-t-amber-400">
+          <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">대기중</CardTitle>
+            <Clock className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-yellow-600">{stats.pending}건</div>
+            <div className="text-3xl font-bold text-amber-600">{stats.pending}건</div>
           </CardContent>
         </Card>
 
         {/* 진행중 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">진행중</CardTitle>
+        <Card className="border-t-4 border-t-blue-400">
+          <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">진행중</CardTitle>
+            <Loader2 className="h-4 w-4 text-blue-500" />
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold text-blue-600">{stats['in-progress']}건</div>
@@ -99,12 +101,13 @@ export default function DashboardPage() {
         </Card>
 
         {/* 완료 */}
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-medium text-gray-600">완료</CardTitle>
+        <Card className="border-t-4 border-t-emerald-400">
+          <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+            <CardTitle className="text-sm font-medium text-muted-foreground">완료</CardTitle>
+            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold text-green-600">{stats.completed}건</div>
+            <div className="text-3xl font-bold text-emerald-600">{stats.completed}건</div>
           </CardContent>
         </Card>
       </div>
@@ -122,31 +125,31 @@ export default function DashboardPage() {
             <table className="w-full">
               <thead>
                 <tr className="border-b">
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">문서번호</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">주소</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">업체</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">상태</th>
-                  <th className="text-left py-3 px-4 font-medium text-gray-600">등록일</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider font-medium text-muted-foreground">문서번호</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider font-medium text-muted-foreground">주소</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider font-medium text-muted-foreground">업체</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider font-medium text-muted-foreground">상태</th>
+                  <th className="text-left py-3 px-4 text-xs uppercase tracking-wider font-medium text-muted-foreground">등록일</th>
                 </tr>
               </thead>
               <tbody>
                 {recentOrders.map((order) => (
-                  <tr key={order.id} className="border-b hover:bg-gray-50">
+                  <tr key={order.id} className="border-b hover:bg-muted/50 transition-colors">
                     <td className="py-3 px-4 font-medium">{order.documentNumber}</td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
+                    <td className="py-3 px-4 text-sm text-muted-foreground">
                       {/* 주소가 너무 길면 50자까지만 표시 */}
                       {order.address.length > 50
                         ? order.address.substring(0, 50) + '...'
                         : order.address}
                     </td>
-                    <td className="py-3 px-4">{order.contractor}</td>
+                    <td className="py-3 px-4">{order.affiliate}</td>
                     <td className="py-3 px-4">
                       {/* 상태 배지 (색상 자동 적용) */}
                       <Badge className={ORDER_STATUS_COLORS[order.status]}>
                         {ORDER_STATUS_LABELS[order.status]}
                       </Badge>
                     </td>
-                    <td className="py-3 px-4 text-sm text-gray-600">
+                    <td className="py-3 px-4 text-sm text-muted-foreground">
                       {/* 날짜만 표시 (시간은 생략) */}
                       {order.orderDate}
                     </td>
@@ -160,7 +163,7 @@ export default function DashboardPage() {
           <div className="mt-4 text-center">
             <Link
               href="/orders"
-              className="text-blue-600 hover:text-blue-800 font-medium"
+              className="text-primary hover:text-primary/80 font-medium transition-colors"
             >
               전체 발주 보기 →
             </Link>
@@ -185,10 +188,10 @@ export default function DashboardPage() {
 
                 {/* 진행률 바 */}
                 <div className="flex items-center gap-4 flex-1 ml-8">
-                  <div className="flex-1 bg-gray-200 rounded-full h-2">
+                  <div className="flex-1 bg-muted rounded-full h-1.5">
                     {/* 전체 대비 비율만큼 파란색으로 채워요 */}
                     <div
-                      className="bg-blue-600 h-2 rounded-full"
+                      className="bg-primary h-1.5 rounded-full transition-all"
                       style={{ width: `${(count / stats.total) * 100}%` }}
                     />
                   </div>

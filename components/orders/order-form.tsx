@@ -23,12 +23,13 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, ChevronLeft, ChevronRight, MapPin } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck } from 'lucide-react'
 import {
   AFFILIATE_OPTIONS,
   CATEGORY_OPTIONS,
   WORK_TYPE_OPTIONS,
-  type OrderItem
+  type OrderItem,
+  parseAddress
 } from '@/types/order'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import { SIZE_OPTIONS } from '@/lib/price-table'
@@ -49,6 +50,7 @@ export interface OrderFormData {
   requestedInstallDate?: string // 설치요청일
   items: OrderItem[]
   notes?: string                // 설치기사님 전달사항
+  isPreliminaryQuote?: boolean  // 사전견적 요청 여부
 }
 
 /**
@@ -60,17 +62,6 @@ interface OrderFormProps {
   initialData?: Partial<OrderFormData>
   submitLabel?: string
   isSubmitting?: boolean
-}
-
-/**
- * 계열사별 문서번호 코드
- */
-const AFFILIATE_CODES: Record<string, string> = {
-  '구몬': 'KUMON',
-  'Wells 영업': 'WELLSSALES',
-  'Wells 서비스': 'WELLSSERVICE',
-  '교육플랫폼': 'EDU',
-  '기타': 'ETC'
 }
 
 /**
@@ -88,25 +79,11 @@ function createEmptyItem(): OrderItem {
 }
 
 /**
- * 문서번호 자동 생성
- * 형식: KUMON-20260129-01
- */
-function generateDocumentNumber(affiliate: string): string {
-  const code = AFFILIATE_CODES[affiliate] || 'ETC'
-  const today = new Date()
-  const dateStr = today.toISOString().split('T')[0].replace(/-/g, '') // 20260129
-
-  // 일련번호는 임시로 01 (실제로는 DB에서 조회해야 함)
-  const serial = '01'
-
-  return `${code}-${dateStr}-${serial}`
-}
-
-/**
  * 다음 우편번호 서비스 타입 선언
  */
 declare global {
   interface Window {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     daum: any
   }
 }
@@ -143,6 +120,9 @@ export function OrderForm({
 
   // 폼 데이터 상태
   const [affiliate, setAffiliate] = useState(initialData?.affiliate || '')
+  const [isPreliminaryQuote, setIsPreliminaryQuote] = useState(
+    initialData?.isPreliminaryQuote || false
+  )
   const [items, setItems] = useState<OrderItem[]>(initialData?.items || [createEmptyItem()])
   const [baseAddress, setBaseAddress] = useState('') // 기본 작업 장소 (Step 2)
   const [baseDetailAddress, setBaseDetailAddress] = useState('') // 기본 상세주소
@@ -171,6 +151,36 @@ export function OrderForm({
   }, [])
 
   /**
+   * initialData가 있으면 모든 필드 복원 (수정 모드)
+   */
+  useEffect(() => {
+    if (initialData) {
+      // 기존 데이터 복원
+      setAffiliate(initialData.affiliate || '')
+      setIsPreliminaryQuote(initialData.isPreliminaryQuote || false)
+      setItems(initialData.items || [createEmptyItem()])
+      setBusinessName(initialData.businessName || '')
+      setContactName(initialData.contactName || '')
+      setContactPhone(initialData.contactPhone || '')
+      setBuildingManagerPhone(initialData.buildingManagerPhone || '')
+      setDocumentNumber(initialData.documentNumber || '')
+      setRequestedInstallDate(initialData.requestedInstallDate || '')
+      setNotes(initialData.notes || '')
+
+      // 주소 파싱 (OrderForm이 생성한 주소를 다시 개별 필드로 분리)
+      if (initialData.address) {
+        const parsed = parseAddress(initialData.address)
+        setBaseAddress(parsed.baseAddress)
+        setBaseDetailAddress(parsed.baseDetailAddress || '')
+        if (parsed.isRelocation) {
+          setRelocationAddress(parsed.relocationAddress || '')
+          setRelocationDetailAddress(parsed.relocationDetailAddress || '')
+        }
+      }
+    }
+  }, [initialData])
+
+  /**
    * 주소 검색 팝업 열기
    */
   const handleSearchAddress = (type: 'base' | 'relocation') => {
@@ -180,6 +190,7 @@ export function OrderForm({
     }
 
     new window.daum.Postcode({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oncomplete: function(data: any) {
         // 도로명 주소 또는 지번 주소
         const fullAddress = data.roadAddress || data.jibunAddress
@@ -216,6 +227,7 @@ export function OrderForm({
   /**
    * 발주내역 항목 수정
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleItemChange = (itemId: string, field: keyof OrderItem, value: any) => {
     setItems(items.map(item =>
       item.id === itemId ? { ...item, [field]: value } : item
@@ -240,13 +252,15 @@ export function OrderForm({
    * 다음 스텝으로 이동
    */
   const handleNext = () => {
-    // 유효성 검사
+    // Step 1: 계열사 선택
     if (currentStep === 1 && !affiliate) {
       alert('계열사를 선택해주세요')
       return
     }
+
+    // Step 2: 장소 + 담당자
     if (currentStep === 2) {
-      // Step 2: 주소 + 사업자명 + 담당자 정보
+      // 기존 검증 로직 유지
       if (!baseAddress) {
         alert('작업 장소를 검색해주세요')
         return
@@ -263,30 +277,44 @@ export function OrderForm({
         alert('담당자 연락처를 입력해주세요')
         return
       }
+
+      // 🔥 사전견적이면 Step 3 건너뛰기
+      if (isPreliminaryQuote) {
+        // Step 3에서 하던 자동 생성을 여기서 처리
+        const today = new Date().toISOString().split('T')[0]
+        const dateStr = today.replace(/-/g, '')
+        const autoDocNumber = `${businessName}-${dateStr}-01`
+        setDocumentNumber(autoDocNumber)
+        setRequestedInstallDate(today)
+
+        // items 비우기
+        setItems([])
+
+        // Step 4로 직행
+        setCurrentStep(4)
+        return
+      }
     }
+
+    // Step 3: 작업 내역 (사전견적일 때는 여기 안 옴)
     if (currentStep === 3) {
-      // Step 3: 작업내역 + (조건부) 이전주소
+      // 기존 검증 로직 유지
       const hasEmptyQuantity = items.some(item => !item.quantity || item.quantity < 1)
       if (hasEmptyQuantity) {
         alert('수량을 입력해주세요')
         return
       }
 
-      // 이전설치가 있으면 이전 주소 필수
       if (isRelocation && !relocationAddress) {
         alert('이전할 주소를 검색해주세요')
         return
       }
 
-      // Step 3 → Step 4로 넘어갈 때 문서번호와 설치요청일 자동 생성
-      const today = new Date().toISOString().split('T')[0] // YYYY-MM-DD
-      const dateStr = today.replace(/-/g, '') // YYYYMMDD
-
-      // 문서번호: 사업자명-YYYYMMDD-01 (일련번호는 임시로 01, 실제는 DB 조회 필요)
+      // 문서번호 자동 생성
+      const today = new Date().toISOString().split('T')[0]
+      const dateStr = today.replace(/-/g, '')
       const autoDocNumber = `${businessName}-${dateStr}-01`
       setDocumentNumber(autoDocNumber)
-
-      // 설치요청일: 오늘 날짜로 기본 설정
       setRequestedInstallDate(today)
     }
 
@@ -297,7 +325,12 @@ export function OrderForm({
    * 이전 스텝으로 이동
    */
   const handlePrev = () => {
-    setCurrentStep(currentStep - 1)
+    // Step 4에서 이전 클릭 시
+    if (currentStep === 4 && isPreliminaryQuote) {
+      setCurrentStep(2)  // 사전견적은 Step 3을 건너뛰었으므로 Step 2로
+    } else {
+      setCurrentStep(currentStep - 1)
+    }
   }
 
   /**
@@ -311,6 +344,12 @@ export function OrderForm({
     }
     if (!requestedInstallDate) {
       alert('설치요청일을 선택해주세요')
+      return
+    }
+
+    // 🔥 사전견적이 아닐 때만 items 검증
+    if (!isPreliminaryQuote && items.length === 0) {
+      alert('최소 1개의 작업 내역이 필요합니다')
       return
     }
 
@@ -342,8 +381,9 @@ export function OrderForm({
       contactPhone,
       buildingManagerPhone: buildingManagerPhone || undefined,
       requestedInstallDate,
-      items,
-      notes
+      items,  // 사전견적일 때는 빈 배열
+      notes,
+      isPreliminaryQuote
     }
 
     onSubmit(formData)
@@ -352,19 +392,30 @@ export function OrderForm({
   /**
    * 진행률 계산
    */
-  const progress = (currentStep / 4) * 100
+  // 전체 스텝 수 계산
+  const totalSteps = isPreliminaryQuote ? 3 : 4
+
+  // 진행률 계산
+  const getDisplayStep = () => {
+    if (isPreliminaryQuote && currentStep === 4) {
+      return 3  // Step 4를 Step 3처럼 표시
+    }
+    return currentStep
+  }
+
+  const progress = (getDisplayStep() / totalSteps) * 100
 
   return (
     <div className="space-y-6">
       {/* 진행률 표시 */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Step {currentStep} / 4</span>
+          <span>Step {getDisplayStep()} / {totalSteps}</span>
           <span>{Math.round(progress)}%</span>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2">
+        <div className="w-full bg-muted rounded-full h-1.5">
           <div
-            className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+            className="bg-primary h-1.5 rounded-full transition-all duration-300"
             style={{ width: `${progress}%` }}
           />
         </div>
@@ -390,18 +441,38 @@ export function OrderForm({
                 onClick={() => setAffiliate(option)}
               >
                 <CardContent className="p-6 text-center">
-                  <div className="text-4xl mb-2">
-                    {option === '구몬' && '📚'}
-                    {option === 'Wells 영업' && '💼'}
-                    {option === 'Wells 서비스' && '🏢'}
-                    {option === '교육플랫폼' && '🎓'}
-                    {option === '기타' && '📋'}
+                  <div className="flex justify-center mb-2 text-primary">
+                    {option === '구몬' && <BookOpen className="h-10 w-10" />}
+                    {option === 'Wells 영업' && <Briefcase className="h-10 w-10" />}
+                    {option === 'Wells 서비스' && <Building2 className="h-10 w-10" />}
+                    {option === '교육플랫폼' && <GraduationCap className="h-10 w-10" />}
+                    {option === '기타' && <ClipboardList className="h-10 w-10" />}
                   </div>
                   <h3 className="font-bold text-lg">{option}</h3>
                 </CardContent>
               </Card>
             ))}
           </div>
+
+          {/* 사전견적 요청 체크박스 */}
+          <Card className="border-blue-300 bg-blue-50/50">
+            <CardContent className="p-4">
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={isPreliminaryQuote}
+                  onChange={(e) => setIsPreliminaryQuote(e.target.checked)}
+                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                />
+                <div>
+                  <p className="font-semibold text-base">사전 견적 신청 (대량 설치/천장형/환경 복잡 대상)</p>
+                  <p className="text-sm text-gray-600 mt-1">
+                    일반 발주 건도 기사님이 방문하여 추가 비용 여부를 상세히 안내해 드립니다.
+                  </p>
+                </div>
+              </label>
+            </CardContent>
+          </Card>
         </div>
       )}
 
@@ -443,7 +514,7 @@ export function OrderForm({
                   </Button>
                 </div>
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 다음 우편번호 서비스로 정확한 주소를 검색하세요
+                  다음 우편번호 서비스로 정확한 주소를 검색하세요
                 </p>
               </div>
 
@@ -459,7 +530,7 @@ export function OrderForm({
                     onChange={(e) => setBaseDetailAddress(e.target.value)}
                   />
                   <p className="text-xs text-gray-500 mt-1">
-                    💡 건물명, 동/호수 등을 입력하세요
+                    건물명, 동/호수 등을 입력하세요
                   </p>
                 </div>
               )}
@@ -482,7 +553,7 @@ export function OrderForm({
           <Card className="border-blue-200">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-2xl">👤</div>
+                <User className="h-5 w-5 text-blue-600" />
                 <h3 className="font-bold text-lg">담당자 정보</h3>
               </div>
 
@@ -526,7 +597,7 @@ export function OrderForm({
                   className="max-w-md"
                 />
                 <p className="text-xs text-gray-500 mt-1">
-                  💡 건물 소장이나 관리인과 연락해야 한다면 입력하세요
+                  건물 소장이나 관리인과 연락해야 한다면 입력하세요
                 </p>
               </div>
             </CardContent>
@@ -538,7 +609,7 @@ export function OrderForm({
       {currentStep === 3 && (
         <div className="space-y-5">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">📦 어떤 작업인가요?</h2>
+            <h2 className="text-2xl font-bold mb-2">어떤 작업인가요?</h2>
             <p className="text-gray-600">설치할 장비 정보를 입력해주세요</p>
           </div>
 
@@ -564,8 +635,6 @@ export function OrderForm({
               // 철거 작업 여부 (모델명/평형 선택사항)
               const isRemovalWork = item.workType === '철거보관' || item.workType === '철거폐기'
               // 신규/이전 작업 여부 (평형 필수)
-              const needsSize = item.workType === '신규설치' || item.workType === '이전설치'
-
               return (
                 <Card key={item.id} className={`relative ${getBorderColor()}`}>
                   <CardContent className="p-5">
@@ -615,7 +684,7 @@ export function OrderForm({
                           </label>
                           <Select
                             value={item.workType}
-                            onValueChange={(value: any) =>
+                            onValueChange={(value: string) =>
                               handleItemChange(item.id!, 'workType', value)
                             }
                           >
@@ -713,12 +782,14 @@ export function OrderForm({
 
                       {/* 안내문구 */}
                       {isRemovalWork ? (
-                        <p className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
-                          ℹ️ 철거 작업의 경우 모델명과 평형을 모르면 "미확인"으로 선택하세요
+                        <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
+                          <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          철거 작업의 경우 모델명과 평형을 모르면 &quot;미확인&quot;으로 선택하세요
                         </p>
                       ) : (
-                        <p className="text-xs text-gray-600 bg-white p-2 rounded border border-gray-200">
-                          💡 모델명을 모르는 경우 공란으로 두고, 평형은 반드시 선택해주세요
+                        <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
+                          <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
+                          모델명을 모르는 경우 공란으로 두고, 평형은 반드시 선택해주세요
                         </p>
                       )}
                     </div>
@@ -744,10 +815,10 @@ export function OrderForm({
               <CardContent className="p-6 space-y-4">
                 <div>
                   <h3 className="font-bold text-lg flex items-center gap-2 mb-2">
-                    🚚 이전설치 목적지
+                    <Truck className="h-5 w-5 text-blue-600" /> 이전설치 목적지
                   </h3>
                   <p className="text-sm text-gray-600">
-                    "{baseAddress}"에서 어디로 옮기나요?
+                    &quot;{baseAddress}&quot;에서 어디로 옮기나요?
                   </p>
                 </div>
 
@@ -789,7 +860,7 @@ export function OrderForm({
                 )}
 
                 <p className="text-xs text-blue-600">
-                  💡 TIP: 다른 작업(신규설치/철거)은 "{baseAddress}"에서 진행됩니다
+                  TIP: 다른 작업(신규설치/철거)은 &quot;{baseAddress}&quot;에서 진행됩니다
                 </p>
               </CardContent>
             </Card>
@@ -801,7 +872,7 @@ export function OrderForm({
       {currentStep === 4 && (
         <div className="space-y-5">
           <div className="text-center">
-            <h2 className="text-2xl font-bold mb-2">✅ 최종 확인</h2>
+            <h2 className="text-2xl font-bold mb-2">최종 확인</h2>
             <p className="text-gray-600">입력한 내용을 확인하고 제출해주세요</p>
           </div>
 
@@ -809,7 +880,7 @@ export function OrderForm({
           <Card className="border-purple-200 bg-purple-50">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-xl">📄</div>
+                <FileText className="h-5 w-5 text-violet-600" />
                 <h3 className="font-bold text-base">문서 정보</h3>
               </div>
 
@@ -836,7 +907,7 @@ export function OrderForm({
                   className="bg-white"
                 />
                 <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                  ⚠️ 실제 설치일은 현장 상황에 따라 요청일과 다를 수 있습니다
+                  <AlertTriangle className="h-3 w-3 flex-shrink-0" /> 실제 설치일은 현장 상황에 따라 요청일과 다를 수 있습니다
                 </p>
               </div>
             </CardContent>
@@ -846,7 +917,7 @@ export function OrderForm({
           <Card className="border-blue-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-xl">🏢</div>
+                <Building2 className="h-5 w-5 text-blue-600" />
                 <h3 className="font-bold text-base">발주처 정보</h3>
               </div>
 
@@ -867,7 +938,7 @@ export function OrderForm({
           <Card className="border-green-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-xl">👤</div>
+                <User className="h-5 w-5 text-emerald-600" />
                 <h3 className="font-bold text-base">담당자</h3>
               </div>
 
@@ -921,29 +992,38 @@ export function OrderForm({
           <Card className="border-indigo-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-xl">📦</div>
+                <Package className="h-5 w-5 text-indigo-600" />
                 <h3 className="font-bold text-base">작업 내역</h3>
               </div>
 
-              <div className="space-y-2">
-                {items.map((item, index) => (
-                  <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                    <Badge variant="outline" className="font-mono">
-                      {index + 1}
-                    </Badge>
-                    <div className="flex-1">
-                      <p className="font-semibold text-sm">
-                        {item.workType} · {item.category}
-                      </p>
-                      <p className="text-xs text-gray-600">
-                        {item.model && `${item.model} · `}
-                        {item.size && `${item.size} · `}
-                        {item.quantity}대
-                      </p>
+              {isPreliminaryQuote ? (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+                  <p className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+                    <Info className="h-4 w-4" />
+                    사전견적 요청건 (현장 확인 후 장비 선택 예정)
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {items.map((item, index) => (
+                    <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
+                      <Badge variant="outline" className="font-mono">
+                        {index + 1}
+                      </Badge>
+                      <div className="flex-1">
+                        <p className="font-semibold text-sm">
+                          {item.workType} · {item.category}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          {item.model && `${item.model} · `}
+                          {item.size && `${item.size} · `}
+                          {item.quantity}대
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -951,7 +1031,7 @@ export function OrderForm({
           <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <div className="text-xl">💬</div>
+                <MessageSquare className="h-5 w-5 text-amber-600" />
                 <h3 className="font-bold text-base">설치기사님께 전달사항</h3>
               </div>
 
@@ -963,7 +1043,7 @@ export function OrderForm({
                 className="bg-white resize-none"
               />
               <p className="text-xs text-gray-500">
-                💡 특이사항이나 기사님께 꼭 전달해야 할 내용을 자유롭게 작성해주세요
+                특이사항이나 기사님께 꼭 전달해야 할 내용을 자유롭게 작성해주세요
               </p>
             </CardContent>
           </Card>

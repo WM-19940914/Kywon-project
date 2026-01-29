@@ -10,14 +10,16 @@
 
 import { useState } from 'react'
 import { mockOrders } from '@/lib/mock-data'
-import { type Order, type OrderStatus, ORDER_STATUS_LABELS } from '@/types/order'
+import { type Order, type OrderStatus } from '@/types/order'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
+import { QuoteInputDialog } from '@/components/orders/quote-input-dialog'
 import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent } from '@/components/ui/card'
+import { LayoutGrid, List } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -46,6 +48,14 @@ export default function OrdersPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [orderToView, setOrderToView] = useState<Order | null>(null)
 
+  // 수정 모달 상태
+  const [editDialogOpen, setEditDialogOpen] = useState(false)
+  const [orderToEdit, setOrderToEdit] = useState<Order | null>(null)
+
+  // 견적 입력 모달 상태
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
+  const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
+
   // 필터/정렬 상태
   const [affiliateFilter, setAffiliateFilter] = useState<string>('all') // 계열사 필터
   const [sortOrder, setSortOrder] = useState<string>('latest') // 정렬 순서
@@ -61,7 +71,8 @@ export default function OrdersPage() {
         id: Date.now().toString(),
         ...data,
         status: 'received', // 신규 발주는 항상 '접수중'으로 시작
-        createdAt: new Date().toISOString()
+        createdAt: new Date().toISOString(),
+        isPreliminaryQuote: data.isPreliminaryQuote  // 🔥 추가
       }
 
       setOrders([newOrder, ...orders])
@@ -91,6 +102,69 @@ export default function OrdersPage() {
       o.id === orderId ? { ...o, status: newStatus } : o
     ))
     alert('진행상태가 변경되었습니다!')
+  }
+
+  /**
+   * 발주 삭제 핸들러
+   */
+  const handleDelete = (orderId: string) => {
+    setOrders(orders.filter(o => o.id !== orderId))
+    alert('발주가 삭제되었습니다.')
+  }
+
+  /**
+   * 견적 입력 버튼 클릭 핸들러
+   */
+  const handleQuoteInput = (order: Order) => {
+    setOrderForQuote(order)
+    setQuoteDialogOpen(true)
+    setDetailDialogOpen(false)  // 상세 모달 닫기
+  }
+
+  /**
+   * 견적 저장 핸들러 (더미 데이터)
+   */
+  const handleQuoteSave = (orderId: string, equipmentItems: any, installationCost: any) => {
+    setOrders(orders.map(o =>
+      o.id === orderId
+        ? { ...o, equipmentItems, installationCost }
+        : o
+    ))
+  }
+
+  /**
+   * 발주 수정 버튼 클릭 핸들러
+   */
+  const handleEdit = (order: Order) => {
+    setOrderToEdit(order)
+    setEditDialogOpen(true)
+    setDetailDialogOpen(false)  // 상세 모달 닫기
+  }
+
+  /**
+   * 발주 수정 제출 핸들러
+   */
+  const handleEditSubmit = async (data: OrderFormData) => {
+    if (!orderToEdit) return
+
+    setIsSubmitting(true)
+    try {
+      const updatedOrder: Order = {
+        ...orderToEdit,
+        ...data,
+        // id, createdAt, status 등은 유지
+      }
+
+      setOrders(orders.map(o => o.id === orderToEdit.id ? updatedOrder : o))
+      alert('발주가 수정되었습니다!')
+      setEditDialogOpen(false)
+      setOrderToEdit(null)
+    } catch (error) {
+      console.error('수정 실패:', error)
+      alert('수정에 실패했습니다.')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   /**
@@ -148,8 +222,8 @@ export default function OrdersPage() {
     <div className="container mx-auto py-8 px-4">
       {/* 페이지 헤더 */}
       <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">발주 관리</h1>
-        <p className="text-gray-600">진행상태별로 한눈에 확인하세요</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1">발주 관리</h1>
+        <p className="text-muted-foreground">진행상태별로 한눈에 확인하세요</p>
       </div>
 
 
@@ -159,7 +233,7 @@ export default function OrdersPage() {
           {/* 첫 번째 줄: 검색창 */}
           <div className="flex gap-3">
             <Input
-              placeholder="🔍 주소, 문서번호, 계열사, 사업자명으로 검색..."
+              placeholder="주소, 문서번호, 계열사, 사업자명으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="flex-1"
@@ -195,11 +269,13 @@ export default function OrdersPage() {
             </Select>
 
             {/* 뷰 전환 (일단 칸반뷰만) */}
-            <Button variant="outline" disabled>
-              📊 칸반뷰
+            <Button variant="outline" disabled className="gap-1.5">
+              <LayoutGrid className="h-4 w-4" />
+              칸반뷰
             </Button>
-            <Button variant="ghost" disabled>
-              📋 리스트뷰 (준비중)
+            <Button variant="ghost" disabled className="gap-1.5">
+              <List className="h-4 w-4" />
+              리스트뷰 (준비중)
             </Button>
 
             {/* 구분선 */}
@@ -285,7 +361,57 @@ export default function OrdersPage() {
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
         onStatusChange={handleStatusChange}
+        onDelete={handleDelete}
+        onEdit={handleEdit}
+        onQuoteInput={handleQuoteInput}
       />
+
+      {/* 견적 입력 모달 */}
+      <QuoteInputDialog
+        order={orderForQuote}
+        open={quoteDialogOpen}
+        onOpenChange={setQuoteDialogOpen}
+        onSave={handleQuoteSave}
+      />
+
+      {/* 수정 모달 */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent
+          className="max-w-3xl max-h-[90vh] overflow-y-auto"
+          onInteractOutside={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle>발주 수정</DialogTitle>
+          </DialogHeader>
+
+          {orderToEdit && (
+            <OrderForm
+              onSubmit={handleEditSubmit}
+              onCancel={() => {
+                setEditDialogOpen(false)
+                setOrderToEdit(null)
+              }}
+              initialData={{
+                documentNumber: orderToEdit.documentNumber,
+                address: orderToEdit.address,
+                orderDate: orderToEdit.orderDate,
+                orderNumber: orderToEdit.orderNumber,
+                affiliate: orderToEdit.affiliate,
+                businessName: orderToEdit.businessName,
+                contactName: orderToEdit.contactName,
+                contactPhone: orderToEdit.contactPhone,
+                buildingManagerPhone: orderToEdit.buildingManagerPhone,
+                requestedInstallDate: orderToEdit.requestedInstallDate,
+                items: orderToEdit.items,
+                notes: orderToEdit.notes,
+                isPreliminaryQuote: orderToEdit.isPreliminaryQuote
+              }}
+              submitLabel="수정 완료"
+              isSubmitting={isSubmitting}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -302,19 +428,21 @@ interface KanbanColumnProps {
 }
 
 function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps) {
-  // 상태별 배경색 (3단계)
-  const bgColors: Record<OrderStatus, string> = {
-    'received': 'bg-yellow-50',
-    'in-progress': 'bg-blue-50',
-    'completed': 'bg-purple-50',
-    'settled': 'bg-green-50'
+  // 상태별 배경색 + 상단 스트라이프 (3단계)
+  const columnStyles: Record<OrderStatus, { bg: string; stripe: string }> = {
+    'received': { bg: 'bg-amber-50/70', stripe: 'border-t-4 border-t-amber-400' },
+    'in-progress': { bg: 'bg-blue-50/70', stripe: 'border-t-4 border-t-blue-400' },
+    'completed': { bg: 'bg-violet-50/70', stripe: 'border-t-4 border-t-violet-400' },
+    'settled': { bg: 'bg-emerald-50/70', stripe: 'border-t-4 border-t-emerald-400' }
   }
 
+  const style = columnStyles[status]
+
   return (
-    <div className={`flex-shrink-0 w-80 ${bgColors[status]} rounded-lg p-4`}>
+    <div className={`flex-shrink-0 w-80 ${style.bg} ${style.stripe} rounded-xl p-4`}>
       {/* 컬럼 헤더 */}
       <div className="flex items-center justify-between mb-4">
-        <h2 className="font-bold text-lg">{title}</h2>
+        <h2 className="font-semibold text-base">{title}</h2>
         <Badge variant="outline" className="bg-white">
           {orders.length}건
         </Badge>

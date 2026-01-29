@@ -10,6 +10,8 @@
 'use client'
 
 import { Card, CardContent } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { MapPin, Calendar } from 'lucide-react'
 import type { Order } from '@/types/order'
 
 /**
@@ -25,6 +27,12 @@ interface OrderCardProps {
  * 예: "신규설치 2대 외 1건 요청건"
  */
 function generateDocumentName(order: Order): string {
+  // 🔥 사전견적일 때
+  if (order.isPreliminaryQuote) {
+    return '사전견적 요청건'
+  }
+
+  // 기존 로직 유지
   if (order.items.length === 0) return '요청건'
 
   const firstItem = order.items[0]
@@ -59,33 +67,42 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
 
   return (
     <Card
-      className="hover:shadow-lg hover:border-blue-300 transition-all duration-200 cursor-pointer"
+      className="hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
       onClick={() => onClick?.(order)}
     >
       <CardContent className="p-4 space-y-2">
-        {/* 계열사 (작게 위에 표시) */}
-        <p className="text-xs text-gray-500 font-medium">
-          {order.affiliate}
-        </p>
+        {/* 계열사 + 사전견적 Badge */}
+        <div className="flex items-center justify-between">
+          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
+            {order.affiliate}
+          </p>
+          {order.isPreliminaryQuote && (
+            <Badge className="bg-red-50 text-red-600 border-red-200 font-semibold text-[10px] px-1.5 py-0">
+              사전견적건
+            </Badge>
+          )}
+        </div>
 
         {/* 사업자명 (가장 크게 강조!) - 최대 2줄까지만 표시 */}
-        <h3 className="text-xl font-bold text-gray-900 leading-tight line-clamp-2">
+        <h3 className="text-lg font-bold text-foreground leading-tight line-clamp-2">
           {order.businessName}
         </h3>
 
         {/* 문서명 (작업 내용 요약) */}
-        <p className="text-sm font-medium text-blue-600">
+        <p className="text-sm font-medium text-primary">
           {generateDocumentName(order)}
         </p>
 
         {/* 주소 */}
-        <p className="text-xs text-gray-600">
-          📍 {shortenAddress(order.address, 35)}
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <MapPin className="h-3 w-3 flex-shrink-0" />
+          {shortenAddress(order.address, 35)}
         </p>
 
         {/* 발주일 */}
-        <p className="text-xs text-gray-500">
-          📅 {formatDate(order.orderDate)}
+        <p className="text-xs text-muted-foreground flex items-center gap-1">
+          <Calendar className="h-3 w-3 flex-shrink-0" />
+          {formatDate(order.orderDate)}
         </p>
       </CardContent>
     </Card>

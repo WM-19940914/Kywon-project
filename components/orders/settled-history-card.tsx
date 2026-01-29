@@ -54,7 +54,7 @@ export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) 
 
   return (
     <Card
-      className="hover:shadow-md hover:border-gray-300 transition-all duration-200 cursor-pointer border-gray-200 font-mono"
+      className="hover:shadow-md hover:border-border transition-all duration-200 cursor-pointer border-border/60"
       onClick={() => onClick?.(order)}
     >
       <CardContent className="p-3 space-y-1">

@@ -23,6 +23,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card, CardContent } from '@/components/ui/card'
+import { CheckCircle2, ClipboardList } from 'lucide-react'
 import type { Order } from '@/types/order'
 
 /**
@@ -87,7 +88,9 @@ export function CompleteOrderDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>✅ 설치 완료 처리</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" /> 설치 완료 처리
+          </DialogTitle>
           <DialogDescription>
             설치가 완료되었습니다. 완료 정보를 입력해주세요.
           </DialogDescription>
@@ -132,8 +135,8 @@ export function CompleteOrderDialog({
               }))}
               required
             />
-            <p className="text-xs text-gray-500 mt-1">
-              💡 실제로 설치가 완료된 날짜를 선택하세요
+            <p className="text-xs text-muted-foreground mt-1">
+              실제로 설치가 완료된 날짜를 선택하세요
             </p>
           </div>
 
@@ -145,7 +148,9 @@ export function CompleteOrderDialog({
 
             {/* 견적 금액 표시 */}
             <div className="bg-blue-50 p-3 rounded-lg mb-2 border border-blue-100">
-              <p className="text-xs text-gray-600">📋 견적 금액</p>
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <ClipboardList className="h-3 w-3" /> 견적 금액
+              </p>
               <p className="text-lg font-bold text-blue-600">
                 {order.quoteAmount?.toLocaleString('ko-KR') || '미입력'}원
               </p>
@@ -184,14 +189,14 @@ export function CompleteOrderDialog({
                   : 'bg-green-50 text-green-700 border border-green-200'
               }`}>
                 <p className="text-sm font-medium">
-                  {costDifference > 0 ? '⚠️ 견적 초과' : '✅ 견적 절감'}:{' '}
+                  {costDifference > 0 ? '견적 초과' : '견적 절감'}:{' '}
                   {costDifference > 0 ? '+' : ''}{costDifference.toLocaleString('ko-KR')}원
                 </p>
               </div>
             )}
 
-            <p className="text-xs text-gray-500 mt-2">
-              💡 실제로 지불한 공사비를 정확히 입력해주세요 (정산 시 사용)
+            <p className="text-xs text-muted-foreground mt-2">
+              실제로 지불한 공사비를 정확히 입력해주세요 (정산 시 사용)
             </p>
           </div>
         </div>

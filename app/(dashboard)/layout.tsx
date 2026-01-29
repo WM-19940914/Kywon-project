@@ -54,14 +54,14 @@ export default function DashboardLayout({
       {/* 왼쪽 사이드바 영역 */}
       <Sidebar>
         {/* 사이드바 상단: 로고와 제목 */}
-        <SidebarHeader className="border-b px-6 py-4">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-600 text-white font-bold">
+        <SidebarHeader className="border-b border-sidebar-border px-6 py-4">
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white font-bold text-sm shadow-lg">
               AC
             </div>
             <div>
-              <h2 className="font-semibold text-sm">에어컨 발주</h2>
-              <p className="text-xs text-muted-foreground">관리 시스템</p>
+              <h2 className="font-semibold text-sm text-sidebar-foreground">에어컨 발주</h2>
+              <p className="text-xs text-sidebar-foreground/60">관리 시스템</p>
             </div>
           </Link>
         </SidebarHeader>
@@ -101,7 +101,7 @@ export default function DashboardLayout({
         </SidebarContent>
 
         {/* 사이드바 하단: 사용자 정보와 설정 */}
-        <SidebarFooter className="border-t p-4">
+        <SidebarFooter className="border-t border-sidebar-border p-4">
           <SidebarMenu>
             {/* 설정 메뉴 */}
             <SidebarMenuItem>
@@ -114,18 +114,18 @@ export default function DashboardLayout({
             </SidebarMenuItem>
           </SidebarMenu>
 
-          <Separator className="my-2" />
+          <Separator className="my-2 bg-sidebar-border" />
 
           {/* 사용자 프로필 (나중에 실제 로그인 정보로 바꿀 거예요) */}
           <div className="flex items-center gap-2 px-2 py-1.5">
             <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-blue-100 text-blue-600 text-xs font-semibold">
+              <AvatarFallback className="bg-blue-500/20 text-blue-300 text-xs font-semibold">
                 우민
               </AvatarFallback>
             </Avatar>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium truncate">우민님</p>
-              <p className="text-xs text-muted-foreground truncate">관리자</p>
+              <p className="text-sm font-medium truncate text-sidebar-foreground">우민님</p>
+              <p className="text-xs text-sidebar-foreground/60 truncate">관리자</p>
             </div>
           </div>
         </SidebarFooter>
@@ -134,7 +134,7 @@ export default function DashboardLayout({
       {/* 오른쪽 메인 콘텐츠 영역 */}
       <div className="flex-1 flex flex-col min-h-screen">
         {/* 상단 헤더 */}
-        <header className="sticky top-0 z-10 flex h-16 items-center gap-4 border-b bg-white px-6">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6">
           {/* 햄버거 메뉴 (모바일에서 사이드바를 여는 버튼) */}
           <SidebarTrigger />
 
@@ -145,7 +145,7 @@ export default function DashboardLayout({
               <input
                 type="search"
                 placeholder="발주 검색..."
-                className="w-full rounded-lg border border-input bg-background pl-10 pr-4 py-2 text-sm outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+                className="w-full rounded-xl border-0 bg-muted/60 pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
               />
             </div>
           </div>
@@ -159,7 +159,7 @@ export default function DashboardLayout({
         </header>
 
         {/* 페이지 내용이 표시되는 영역 */}
-        <main className="flex-1 bg-gray-50 p-6">
+        <main className="flex-1 bg-slate-50/50 p-6">
           {children}
         </main>
       </div>

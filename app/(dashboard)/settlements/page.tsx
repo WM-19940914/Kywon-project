@@ -27,6 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { CreditCard, Download, CircleDot, Coins } from 'lucide-react'
 
 export default function SettlementsPage() {
   // 상태 관리
@@ -156,8 +157,10 @@ export default function SettlementsPage() {
     <div className="container mx-auto py-8 px-4">
       {/* 페이지 헤더 */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">💳 정산 관리</h1>
-        <p className="text-gray-600">월별 발주 정산을 관리합니다.</p>
+        <h1 className="text-2xl font-bold tracking-tight mb-1 flex items-center gap-2">
+          <CreditCard className="h-6 w-6 text-primary" /> 정산 관리
+        </h1>
+        <p className="text-muted-foreground">월별 발주 정산을 관리합니다.</p>
       </div>
 
       {/* 월 선택기 */}
@@ -215,7 +218,9 @@ export default function SettlementsPage() {
       {/* 💰 금액 통계 카드 (크게!) */}
       <Card className="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
         <CardHeader>
-          <CardTitle className="text-xl">💰 이번 달 총 금액</CardTitle>
+          <CardTitle className="text-xl flex items-center gap-2">
+            <Coins className="h-5 w-5" /> 이번 달 총 금액
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {/* 견적 합계 */}
@@ -266,7 +271,7 @@ export default function SettlementsPage() {
           size="lg"
           className="flex-1 bg-orange-600 hover:bg-orange-700"
         >
-          💳 일괄 정산 처리 ({stats.pendingCount}건)
+          <CreditCard className="h-4 w-4" /> 일괄 정산 처리 ({stats.pendingCount}건)
         </Button>
         <Button
           variant="outline"
@@ -274,7 +279,7 @@ export default function SettlementsPage() {
           className="flex-1"
           onClick={() => alert('엑셀 다운로드 기능은 Phase 2에서 구현 예정입니다!')}
         >
-          📥 엑셀 다운로드
+          <Download className="h-4 w-4" /> 엑셀 다운로드
         </Button>
       </div>
 
@@ -295,8 +300,8 @@ export default function SettlementsPage() {
           {/* ━━━ 정산 대기 목록 ━━━ */}
           <div className="mb-8">
             <div className="flex items-center gap-2 mb-4">
-              <h2 className="text-xl font-bold text-orange-600">
-                🔴 정산 대기 ({monthlyOrders.length}건)
+              <h2 className="text-xl font-bold text-orange-600 flex items-center gap-2">
+                <CircleDot className="h-5 w-5" /> 정산 대기 ({monthlyOrders.length}건)
               </h2>
               <div className="flex-1 border-t border-orange-200" />
             </div>

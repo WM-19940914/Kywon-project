@@ -68,6 +68,11 @@ export interface Order {
   completionDate?: string      // 설치 완료일
   settlementDate?: string      // 정산 처리일
   settlementMonth?: string     // 정산 월 (예: "2024-01")
+  isPreliminaryQuote?: boolean  // 🔍 사전견적 요청 여부 (현장 확인 전)
+
+  // 🔧 장비 및 설치비 정보
+  equipmentItems?: EquipmentItem[]      // 장비 입력 (선택)
+  installationCost?: InstallationCost   // 설치비 입력 (선택)
 }
 
 /**
@@ -85,10 +90,10 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
  * 노란색 → 파란색 → 보라색 → 초록색 순서
  */
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  'received': 'bg-yellow-100 text-yellow-800',        // 노란색 (시작)
-  'in-progress': 'bg-blue-100 text-blue-800',         // 파란색 (진행)
-  'completed': 'bg-purple-100 text-purple-800',       // 보라색 (완료)
-  'settled': 'bg-green-100 text-green-800'            // 초록색 (정산완료)
+  'received': 'bg-amber-100 text-amber-800 border border-amber-200',        // 앰버 (시작)
+  'in-progress': 'bg-blue-100 text-blue-800 border border-blue-200',        // 블루 (진행)
+  'completed': 'bg-violet-100 text-violet-800 border border-violet-200',    // 바이올렛 (완료)
+  'settled': 'bg-emerald-100 text-emerald-800 border border-emerald-200'    // 에메랄드 (정산완료)
 }
 
 /**
@@ -122,3 +127,115 @@ export const WORK_TYPE_OPTIONS = [
   '철거보관',
   '철거폐기'
 ] as const
+
+/**
+ * 장비 입력 항목
+ * (장비 담당자가 입력하는 실제 구매/배송 정보)
+ */
+export interface EquipmentItem {
+  id?: string                    // 항목 고유번호
+  componentName: string          // 구성품명 (예: 실외기, 실내기, 패널, 리모컨)
+  orderNumber: string            // 주문번호
+  orderDate: string              // 발주일
+  requestedDeliveryDate?: string // 배송요청일
+  confirmedDeliveryDate?: string // 배송확정일
+  quantity: number               // 수량
+  unitPrice?: number             // 매입단가
+  totalPrice?: number            // 매입금액 (자동 계산: 수량 × 단가)
+}
+
+/**
+ * 구성품명 옵션
+ */
+export const COMPONENT_OPTIONS = [
+  '실외기',
+  '실내기',
+  '패널',
+  '리모컨',
+  '배관세트',
+  '전선',
+  '기타'
+] as const
+
+/**
+ * 설치비 입력 항목
+ * (설치팀이 입력하는 실제 설치비용 정보)
+ */
+export interface InstallationCostItem {
+  id?: string                 // 항목 고유번호
+  itemName: string            // 항목명 (예: 기본설치비, 배관추가, 실외기 이동 등)
+  unitPrice: number           // 단가
+  quantity: number            // 수량
+  totalPrice?: number         // 금액 (자동 계산: 수량 × 단가)
+  notes?: string              // 비고
+}
+
+/**
+ * 설치비 입력 정보
+ */
+export interface InstallationCost {
+  items: InstallationCostItem[]   // 설치비 항목들
+  totalAmount?: number            // 총 설치비 (자동 계산)
+}
+
+/**
+ * 설치비 항목명 옵션
+ */
+export const INSTALLATION_ITEM_OPTIONS = [
+  '기본설치비',
+  '배관추가',
+  '실외기 이동',
+  '천장형 설치',
+  '고층 작업비',
+  '철거비',
+  '기타'
+] as const
+
+/**
+ * OrderForm이 생성한 주소 문자열을 역파싱
+ * "작업장소: 서울..., 101동 / 이전목적지: 경기..." → 분리된 필드
+ */
+export interface ParsedAddress {
+  baseAddress: string
+  baseDetailAddress?: string
+  relocationAddress?: string
+  relocationDetailAddress?: string
+  isRelocation: boolean
+}
+
+/**
+ * 주소 문자열 파싱 유틸리티
+ * OrderForm에서 생성한 주소를 다시 개별 필드로 분리합니다
+ */
+export function parseAddress(address: string): ParsedAddress {
+  const hasRelocation = address.includes('이전목적지:')
+
+  if (hasRelocation) {
+    const [baseText, relocationText] = address.split(' / ')
+    const baseClean = baseText.replace('작업장소:', '').trim()
+    const relocationClean = relocationText.replace('이전목적지:', '').trim()
+
+    const [base, baseDetail] = baseClean.split(',').map(s => s.trim())
+    const [relocation, relocationDetail] = relocationClean.includes(',')
+      ? relocationClean.split(',').map(s => s.trim())
+      : [relocationClean, undefined]
+
+    return {
+      baseAddress: base,
+      baseDetailAddress: baseDetail,
+      relocationAddress: relocation,
+      relocationDetailAddress: relocationDetail,
+      isRelocation: true
+    }
+  } else {
+    const [base, baseDetail] = address.includes(',')
+      ? address.split(',').map(s => s.trim())
+      : [address, undefined]
+
+    return {
+      baseAddress: base,
+      baseDetailAddress: baseDetail,
+      isRelocation: false
+    }
+  }
+}
