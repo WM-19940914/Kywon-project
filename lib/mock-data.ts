@@ -14,9 +14,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-001',
     address: '서울시 강서구 화곡로 123',
     orderDate: '2024-01-15',
-    orderNumber: 'ORD-20240115-001',
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 센트럴파크시티역 화교빌딩 센트럴파크지점',
+    contactName: '김영희',
+    contactPhone: '010-1234-5678',
     status: 'received',
     items: [
       {
@@ -37,7 +38,9 @@ export const mockOrders: Order[] = [
       }
     ],
     notes: '주말 시공 요청. 오전 10시 이후 작업 가능',
-    createdAt: '2024-01-15T09:00:00Z'
+    createdAt: '2024-01-15T09:00:00Z',
+    deliveryStatus: 'pending',         // 아직 삼성에 발주 안 넣음
+    requestedDeliveryDate: '2024-01-25'
   },
 
   // 2. 진행중 - Wells 영업 춘천지사
@@ -46,9 +49,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-002',
     address: '강원도 춘천시 중앙로 456',
     orderDate: '2024-01-16',
-    orderNumber: 'ORD-20240116-001',
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 춘천지사',
+    contactName: '박민수',
+    contactPhone: '010-2345-6789',
     status: 'in-progress',
     items: [
       {
@@ -62,11 +66,13 @@ export const mockOrders: Order[] = [
     ],
     notes: '층고 3.5m, 사다리차 필요',
     createdAt: '2024-01-16T10:30:00Z',
+    deliveryStatus: 'in-transit',      // 삼성에서 출발
+    requestedDeliveryDate: '2024-01-20',
+    confirmedDeliveryDate: '2024-01-22',
     equipmentItems: [
       {
         id: 'eq-2-1',
         componentName: '실외기',
-        orderNumber: 'ORD-20240116-001',
         orderDate: '2024-01-16',
         requestedDeliveryDate: '2024-01-20',
         confirmedDeliveryDate: '2024-01-22',
@@ -77,7 +83,6 @@ export const mockOrders: Order[] = [
       {
         id: 'eq-2-2',
         componentName: '실내기',
-        orderNumber: 'ORD-20240116-001',
         orderDate: '2024-01-16',
         requestedDeliveryDate: '2024-01-20',
         confirmedDeliveryDate: '2024-01-22',
@@ -88,7 +93,6 @@ export const mockOrders: Order[] = [
       {
         id: 'eq-2-3',
         componentName: '리모컨',
-        orderNumber: 'ORD-20240116-001',
         orderDate: '2024-01-16',
         quantity: 3,
         unitPrice: 15000,
@@ -103,9 +107,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-003',
     address: '경기도 성남시 분당구 판교역로 789',
     orderDate: '2024-01-17',
-    orderNumber: 'ORD-20240117-001',
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 본사',
+    contactName: '최지훈',
+    contactPhone: '010-3456-7890',
     status: 'in-progress',
     items: [
       {
@@ -118,7 +123,9 @@ export const mockOrders: Order[] = [
       }
     ],
     notes: '사무실 전체 교체',
-    createdAt: '2024-01-17T14:20:00Z'
+    createdAt: '2024-01-17T14:20:00Z',
+    deliveryStatus: 'pending',         // 발주대기
+    requestedDeliveryDate: '2024-01-25'
   },
 
   // 4. 완료 (정산대기) - Wells 서비스 인천센터
@@ -127,9 +134,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-004',
     address: '인천시 연수구 송도국제대로 321',
     orderDate: '2024-01-18',
-    orderNumber: 'ORD-20240118-001',
     affiliate: 'Wells 서비스',
     businessName: 'Wells 서비스 인천센터',
+    contactName: '정수진',
+    contactPhone: '010-4567-8901',
     status: 'completed',
     items: [
       {
@@ -143,6 +151,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '신축 건물, 배관 작업 완료됨',
     createdAt: '2024-01-18T11:15:00Z',
+    deliveryStatus: 'delivered',       // 배송완료
+    requestedDeliveryDate: '2024-01-19',
+    confirmedDeliveryDate: '2024-01-19',
     completionDate: '2024-01-22',
     settlementMonth: '2024-01'
   },
@@ -153,9 +164,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-005',
     address: '서울시 마포구 상암동 654',
     orderDate: '2024-01-10',
-    orderNumber: 'ORD-20240110-001',
     affiliate: '구몬',
     businessName: '구몬 마포지국',
+    contactName: '이영호',
+    contactPhone: '010-5678-9012',
     status: 'settled',
     items: [
       {
@@ -177,6 +189,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '펜트하우스, 실외기 옥상 설치',
     createdAt: '2024-01-10T09:45:00Z',
+    deliveryStatus: 'delivered',       // 배송완료
+    requestedDeliveryDate: '2024-01-14',
+    confirmedDeliveryDate: '2024-01-14',
     completionDate: '2024-01-20',
     settlementDate: '2024-01-25',
     settlementMonth: '2024-01',
@@ -190,9 +205,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-006',
     address: '경기도 고양시 일산동구 중앙로 987',
     orderDate: '2024-01-20',
-    orderNumber: 'ORD-20240120-001',
     affiliate: '기타',
     businessName: '대한냉난방',
+    contactName: '송미경',
+    contactPhone: '010-6789-0123',
     status: 'received',
     items: [
       {
@@ -214,9 +230,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-007',
     address: '서울시 송파구 올림픽로 147, 상가 1층',
     orderDate: '2024-01-21',
-    orderNumber: 'ORD-20240121-001',
     affiliate: '구몬',
     businessName: '구몬 송파지국',
+    contactName: '강동현',
+    contactPhone: '010-7890-1234',
     status: 'in-progress',
     items: [
       {
@@ -229,7 +246,10 @@ export const mockOrders: Order[] = [
       }
     ],
     notes: '영업시간 외 작업 필수 (저녁 8시 이후)',
-    createdAt: '2024-01-21T13:30:00Z'
+    createdAt: '2024-01-21T13:30:00Z',
+    deliveryStatus: 'in-transit',      // 배송중
+    requestedDeliveryDate: '2024-01-24',
+    confirmedDeliveryDate: '2024-01-25'
   },
 
   // 8. 완료 (정산대기) - Wells 영업 수원지사
@@ -238,9 +258,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-008',
     address: '경기도 수원시 영통구 광교중앙로 258',
     orderDate: '2024-01-12',
-    orderNumber: 'ORD-20240112-001',
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 수원지사',
+    contactName: '윤서연',
+    contactPhone: '010-8901-2345',
     status: 'completed',
     items: [
       {
@@ -254,6 +275,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '친환경 모델, 정부 보조금 대상',
     createdAt: '2024-01-12T10:00:00Z',
+    deliveryStatus: 'delivered',       // 배송완료
+    requestedDeliveryDate: '2024-01-16',
+    confirmedDeliveryDate: '2024-01-16',
     completionDate: '2024-01-26',
     settlementMonth: '2024-01'
   },
@@ -264,9 +288,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-009',
     address: '서울시 강서구 공항대로 369',
     orderDate: '2024-01-23',
-    orderNumber: 'ORD-20240123-001',
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 강서지사',
+    contactName: '한재민',
+    contactPhone: '010-9012-3456',
     status: 'in-progress',
     items: [
       {
@@ -279,7 +304,9 @@ export const mockOrders: Order[] = [
       }
     ],
     notes: '원룸형, 간단 설치',
-    createdAt: '2024-01-23T15:20:00Z'
+    createdAt: '2024-01-23T15:20:00Z',
+    deliveryStatus: 'pending',         // 발주대기
+    requestedDeliveryDate: '2024-01-28'
   },
 
   // 10. 정산완료 - Wells 서비스 여의도센터
@@ -288,9 +315,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-010',
     address: '서울시 영등포구 여의도동 753, 오피스 빌딩 12층',
     orderDate: '2024-01-08',
-    orderNumber: 'ORD-20240108-001',
     affiliate: 'Wells 서비스',
     businessName: 'Wells 서비스 여의도센터',
+    contactName: '임하늘',
+    contactPhone: '010-0123-4567',
     status: 'settled',
     items: [
       {
@@ -312,6 +340,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '사무실용 대형, 시스템 에어컨',
     createdAt: '2024-01-08T08:30:00Z',
+    deliveryStatus: 'delivered',
+    requestedDeliveryDate: '2024-01-12',
+    confirmedDeliveryDate: '2024-01-12',
     completionDate: '2024-01-18',
     settlementDate: '2024-01-24',
     settlementMonth: '2024-01',
@@ -325,9 +356,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-099',
     address: '서울시 강남구 테헤란로 427, 위워크 2층',
     orderDate: '2023-12-15',
-    orderNumber: 'ORD-20231215-001',
     affiliate: '구몬',
     businessName: '구몬 강남지국',
+    contactName: '오준석',
+    contactPhone: '010-1111-2222',
     status: 'settled',
     items: [
       {
@@ -341,6 +373,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '공유 오피스, 3개 룸',
     createdAt: '2023-12-15T09:00:00Z',
+    deliveryStatus: 'delivered',
+    requestedDeliveryDate: '2023-12-18',
+    confirmedDeliveryDate: '2023-12-18',
     completionDate: '2023-12-22',
     settlementDate: '2023-12-28',
     settlementMonth: '2023-12',
@@ -354,9 +389,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-098',
     address: '경기도 성남시 분당구 정자일로 95',
     orderDate: '2023-12-10',
-    orderNumber: 'ORD-20231210-001',
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 분당지사',
+    contactName: '신유진',
+    contactPhone: '010-2222-3333',
     status: 'settled',
     items: [
       {
@@ -383,9 +419,10 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-085',
     address: '부산시 해운대구 센텀중앙로 78',
     orderDate: '2023-11-20',
-    orderNumber: 'ORD-20231120-001',
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 부산지사',
+    contactName: '배승현',
+    contactPhone: '010-3333-4444',
     status: 'settled',
     items: [
       {
@@ -407,6 +444,9 @@ export const mockOrders: Order[] = [
     ],
     notes: '기존 장비 전부 철거 후 교체',
     createdAt: '2023-11-20T10:30:00Z',
+    deliveryStatus: 'delivered',
+    requestedDeliveryDate: '2023-11-23',
+    confirmedDeliveryDate: '2023-11-23',
     completionDate: '2023-11-28',
     settlementDate: '2023-11-30',
     settlementMonth: '2023-11',

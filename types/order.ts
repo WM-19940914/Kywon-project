@@ -19,6 +19,28 @@ export interface OrderItem {
 }
 
 /**
+ * 배송상태 타입
+ * pending: 발주대기 (아직 삼성에 발주 안 넣음)
+ * in-transit: 배송중 (삼성에서 출발)
+ * delivered: 배송완료 (현장 도착)
+ */
+export type DeliveryStatus = 'pending' | 'in-transit' | 'delivered'
+
+/** 배송상태 한글 표시용 */
+export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
+  'pending': '발주대기',
+  'in-transit': '배송중',
+  'delivered': '배송완료'
+}
+
+/** 배송상태별 색상 (배지용) */
+export const DELIVERY_STATUS_COLORS: Record<DeliveryStatus, string> = {
+  'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  'in-transit': 'bg-blue-50 text-blue-700 border-blue-200',
+  'delivered': 'bg-green-50 text-green-700 border-green-200'
+}
+
+/**
  * 진행상태 3단계 + 정산완료
  * 접수 → 진행 → 완료 → 정산완료 순서로 진행됩니다
  * (장비준비, 설치준비, 설치 모두 "진행중"으로 통합!)
@@ -37,7 +59,6 @@ export interface Order {
   documentNumber: string       // 문서번호 (예: DOC-2024-001)
   address: string              // 설치 주소
   orderDate: string            // 발주일 (날짜)
-  orderNumber: string          // 주문번호
 
   // 🏢 조직 구조 (2단계: 계열사 → 사업자명)
   affiliate: string            // 계열사 (예: 구몬, Wells 영업 등)
@@ -73,6 +94,18 @@ export interface Order {
   // 🔧 장비 및 설치비 정보
   equipmentItems?: EquipmentItem[]      // 장비 입력 (선택)
   installationCost?: InstallationCost   // 설치비 입력 (선택)
+
+  // 📄 소비자용 견적서 (새로 추가!)
+  customerQuote?: CustomerQuote         // 소비자에게 보여줄 견적서 (판매가)
+
+  // 💰 수익성 분석 (자동 계산)
+  profitMargin?: number                 // 마진률 (%) = (판매가 - 원가) / 판매가 × 100
+  profitAmount?: number                 // 이익금 (원) = 판매가 - 원가
+
+  // 🚚 배송 정보 (Order 레벨에서 전체 배송 상태 관리)
+  deliveryStatus?: DeliveryStatus       // 배송 상태
+  requestedDeliveryDate?: string        // 배송요청일
+  confirmedDeliveryDate?: string        // 배송확정일
 }
 
 /**
@@ -135,7 +168,6 @@ export const WORK_TYPE_OPTIONS = [
 export interface EquipmentItem {
   id?: string                    // 항목 고유번호
   componentName: string          // 구성품명 (예: 실외기, 실내기, 패널, 리모컨)
-  orderNumber: string            // 주문번호
   orderDate: string              // 발주일
   requestedDeliveryDate?: string // 배송요청일
   confirmedDeliveryDate?: string // 배송확정일
@@ -190,6 +222,38 @@ export const INSTALLATION_ITEM_OPTIONS = [
   '철거비',
   '기타'
 ] as const
+
+/**
+ * 소비자용 견적 항목 (판매가 기준)
+ *
+ * 이건 "소비자에게 보여줄 견적서"에 들어가는 항목이에요!
+ * 예: "벽걸이형 16평 1대 - 1,200,000원"
+ *
+ * ⚠️ 주의: 원가(매입단가) 정보는 절대 포함하지 않습니다!
+ */
+export interface QuoteItem {
+  id?: string                           // 항목 고유번호
+  itemName: string                      // 항목명 (예: "벽걸이형 16평 1대", "기본설치비")
+  category: 'equipment' | 'installation' // 장비 or 설치비
+  quantity: number                      // 수량
+  unitPrice: number                     // 판매 단가 (소비자에게 보여줄 가격)
+  totalPrice: number                    // 판매 금액 (수량 × 단가)
+  description?: string                  // 추가 설명
+}
+
+/**
+ * 소비자용 견적서
+ *
+ * 발주처(소비자)에게 제공할 깔끔한 견적서입니다.
+ * 인쇄 가능하고, 원가 정보는 절대 포함되지 않아요!
+ */
+export interface CustomerQuote {
+  items: QuoteItem[]          // 견적 항목들 (장비 + 설치비)
+  totalAmount: number         // 총 견적 금액 (자동 계산)
+  issuedDate?: string         // 견적서 발행일
+  validUntil?: string         // 유효기간
+  notes?: string              // 견적서 비고
+}
 
 /**
  * OrderForm이 생성한 주소 문자열을 역파싱

@@ -12,8 +12,7 @@ import {
   DialogContent,
   DialogDescription,
   DialogHeader,
-  DialogTitle,
-  DialogFooter
+  DialogTitle
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -62,6 +61,7 @@ export function OrderDetailDialog({
   onEdit,
   onQuoteInput
 }: OrderDetailDialogProps) {
+
   // order가 없으면 모달 안 보여줌
   if (!order) return null
 
@@ -126,16 +126,18 @@ export function OrderDetailDialog({
                 </Badge>
               )}
             </div>
-            {/* 우측 상단: 견적 입력 버튼 */}
-            <Button
-              variant="default"
-              onClick={handleQuoteInput}
-              className="gap-1 bg-green-600 hover:bg-green-700"
-              size="sm"
-            >
-              <FileText className="h-4 w-4" />
-              견적 입력
-            </Button>
+            {/* 우측 상단: 견적서 버튼 (X버튼과 살짝 간격) */}
+            {onQuoteInput && (
+              <Button
+                variant="default"
+                onClick={handleQuoteInput}
+                className="gap-1 bg-green-600 hover:bg-green-700 mr-2"
+                size="sm"
+              >
+                <FileText className="h-4 w-4" />
+                {order.customerQuote ? '견적서 보기' : '견적 입력'}
+              </Button>
+            )}
           </div>
           <DialogDescription>
             문서번호: {order.documentNumber}
@@ -198,8 +200,15 @@ export function OrderDetailDialog({
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
-                        {/* 작업종류 */}
-                        <Badge variant="outline" className="font-normal">
+                        {/* 작업종류 - 신규설치는 파란색으로 강조! */}
+                        <Badge
+                          variant="outline"
+                          className={`font-normal ${
+                            item.workType === '신규설치'
+                              ? 'bg-blue-100 text-blue-700 border-blue-300 font-semibold'
+                              : ''
+                          }`}
+                        >
                           {item.workType}
                         </Badge>
                         {/* 품목 */}

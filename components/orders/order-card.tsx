@@ -11,7 +11,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Calendar } from 'lucide-react'
+import { MapPin, Calendar, User } from 'lucide-react'
 import type { Order } from '@/types/order'
 
 /**
@@ -104,6 +104,15 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
           <Calendar className="h-3 w-3 flex-shrink-0" />
           {formatDate(order.orderDate)}
         </p>
+
+        {/* 담당자 정보 */}
+        {order.contactName && (
+          <p className="text-xs text-muted-foreground flex items-center gap-1">
+            <User className="h-3 w-3 flex-shrink-0" />
+            {order.contactName}
+            {order.contactPhone && ` · ${order.contactPhone}`}
+          </p>
+        )}
       </CardContent>
     </Card>
   )

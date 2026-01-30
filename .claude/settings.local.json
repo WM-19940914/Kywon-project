@@ -41,7 +41,16 @@
       "Bash(node scripts/parse-excel.js:*)",
       "Bash(node scripts/analyze-excel.js:*)",
       "Bash(node scripts/parse-excel-v2.js:*)",
-      "Bash(node scripts/analyze-detail.js:*)"
+      "Bash(node scripts/analyze-detail.js:*)",
+      "Bash(node scripts/export-price-table.js:*)",
+      "Bash(npx tsc:*)",
+      "Bash(git checkout:*)",
+      "Bash(npm run build:*)",
+      "Bash(git stash:*)",
+      "Bash(wc:*)",
+      "Bash(git commit -m \"$\\(cat <<''EOF''\ngitignore에 로그 및 임시 파일 제외 설정 추가\n\n- server.log, nul, output/ 폴더를 Git 추적에서 제외\n- 개발 중 생성되는 임시 파일들이 커밋되지 않도록 설정\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
+      "Bash(git commit:*)",
+      "Bash(git rm:*)"
     ]
   }
 }

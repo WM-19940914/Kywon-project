@@ -10,11 +10,11 @@
 
 import { useState } from 'react'
 import { mockOrders } from '@/lib/mock-data'
-import { type Order, type OrderStatus } from '@/types/order'
+import { type Order, type OrderStatus, type CustomerQuote } from '@/types/order'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
-import { QuoteInputDialog } from '@/components/orders/quote-input-dialog'
+import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -52,8 +52,8 @@ export default function OrdersPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null)
 
-  // 견적 입력 모달 상태
-  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
+  // 견적서 작성 모달 상태
+  const [quoteCreateDialogOpen, setQuoteCreateDialogOpen] = useState(false)
   const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
 
   // 필터/정렬 상태
@@ -113,23 +113,39 @@ export default function OrdersPage() {
   }
 
   /**
-   * 견적 입력 버튼 클릭 핸들러
+   * 견적서 작성/수정 버튼 클릭 핸들러
    */
-  const handleQuoteInput = (order: Order) => {
+  const handleQuoteCreate = (order: Order) => {
     setOrderForQuote(order)
-    setQuoteDialogOpen(true)
+    setQuoteCreateDialogOpen(true)
     setDetailDialogOpen(false)  // 상세 모달 닫기
   }
 
   /**
-   * 견적 저장 핸들러 (더미 데이터)
+   * 견적서 저장 핸들러
+   *
+   * QuoteCreateDialog에서 "저장" 버튼을 누르면 여기로 데이터가 전달됩니다.
+   * 발주(Order)의 customerQuote 필드에 견적서 데이터를 저장해요.
+   *
+   * @param orderId - 발주 ID
+   * @param quote - 저장할 견적서 데이터
    */
-  const handleQuoteSave = (orderId: string, equipmentItems: any, installationCost: any) => {
-    setOrders(orders.map(o =>
-      o.id === orderId
-        ? { ...o, equipmentItems, installationCost }
-        : o
+  const handleQuoteSave = (orderId: string, quote: CustomerQuote) => {
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
+        ? { ...order, customerQuote: quote }  // 해당 발주의 customerQuote 필드 업데이트
+        : order
     ))
+    console.log('✅ 견적서 저장됨:', { orderId, quote })
+  }
+
+  /**
+   * 견적서 저장 후 목록 새로고침
+   */
+  const handleRefresh = () => {
+    // 실제로는 Supabase에서 다시 불러와야 하지만
+    // 지금은 더미 데이터라서 현재 orders 상태를 그대로 유지
+    setOrderForQuote(null)
   }
 
   /**
@@ -185,7 +201,6 @@ export default function OrdersPage() {
       const matchesSearch =
         order.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.affiliate.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.businessName.toLowerCase().includes(searchTerm.toLowerCase())
 
@@ -363,15 +378,16 @@ export default function OrdersPage() {
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onEdit={handleEdit}
-        onQuoteInput={handleQuoteInput}
+        onQuoteInput={handleQuoteCreate}
       />
 
-      {/* 견적 입력 모달 */}
-      <QuoteInputDialog
+      {/* 견적서 작성/수정 모달 */}
+      <QuoteCreateDialog
         order={orderForQuote}
-        open={quoteDialogOpen}
-        onOpenChange={setQuoteDialogOpen}
-        onSave={handleQuoteSave}
+        open={quoteCreateDialogOpen}
+        onOpenChange={setQuoteCreateDialogOpen}
+        onSuccess={handleRefresh}
+        onSave={handleQuoteSave}  // 견적서 저장 핸들러 연결
       />
 
       {/* 수정 모달 */}
@@ -395,7 +411,6 @@ export default function OrdersPage() {
                 documentNumber: orderToEdit.documentNumber,
                 address: orderToEdit.address,
                 orderDate: orderToEdit.orderDate,
-                orderNumber: orderToEdit.orderNumber,
                 affiliate: orderToEdit.affiliate,
                 businessName: orderToEdit.businessName,
                 contactName: orderToEdit.contactName,

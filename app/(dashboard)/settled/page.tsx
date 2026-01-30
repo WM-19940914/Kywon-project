@@ -51,7 +51,6 @@ export default function SettledPage() {
     const matchesSearch =
       order.address.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.documentNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      order.orderNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.affiliate.toLowerCase().includes(searchTerm.toLowerCase()) ||
       order.businessName.toLowerCase().includes(searchTerm.toLowerCase())
 

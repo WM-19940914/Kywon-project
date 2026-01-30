@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { CreditCard, Download, CircleDot, Coins } from 'lucide-react'
+import { CreditCard, Download, CircleDot, Coins, TrendingUp } from 'lucide-react'
 
 export default function SettlementsPage() {
   // 상태 관리
@@ -85,16 +85,43 @@ export default function SettlementsPage() {
       return this.pendingCount + this.completedCount
     },
 
-    // 견적 금액 합계
+    // 견적 금액 합계 (기존 - 하위 호환)
     totalQuote: monthlyOrders.reduce((sum, o) => sum + (o.quoteAmount || 0), 0),
 
-    // 실제 공사비 합계
+    // 실제 공사비 합계 (기존 - 하위 호환)
     totalActual: monthlyOrders.reduce((sum, o) => sum + (o.actualCost || 0), 0),
 
-    // 차액 (실제 - 견적)
+    // 차액 (실제 - 견적) - 기존
     get difference() {
       return this.totalActual - this.totalQuote
     },
+
+    // ✨ 새로운 마진 분석 통계
+    // 총 판매가 (소비자 견적서 총액)
+    totalSalesPrice: monthlyOrders.reduce((sum, o) => sum + (o.customerQuote?.totalAmount || 0), 0),
+
+    // 총 원가 (장비 원가 + 설치비 원가)
+    totalCost: monthlyOrders.reduce((sum, o) => {
+      const equipmentCost = (o.equipmentItems || []).reduce((s, item) => s + (item.totalPrice || 0), 0)
+      const installationCost = o.installationCost?.totalAmount || 0
+      return sum + equipmentCost + installationCost
+    }, 0),
+
+    // 총 이익금 (판매가 - 원가)
+    get totalProfit() {
+      return this.totalSalesPrice - this.totalCost
+    },
+
+    // 평균 마진율 (%)
+    get averageMargin() {
+      return this.totalSalesPrice > 0 ? (this.totalProfit / this.totalSalesPrice) * 100 : 0
+    },
+
+    // 견적서 작성된 건수
+    quoteCreatedCount: monthlyOrders.filter(o => o.customerQuote).length,
+
+    // 원가 입력된 건수
+    costInputCount: monthlyOrders.filter(o => o.equipmentItems && o.equipmentItems.length > 0).length,
   }
 
   /**
@@ -215,49 +242,128 @@ export default function SettlementsPage() {
         </Card>
       </div>
 
-      {/* 💰 금액 통계 카드 (크게!) */}
-      <Card className="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+      {/* 💰 금액 통계 카드 (기존 - 하위 호환용) */}
+      {(stats.totalQuote > 0 || stats.totalActual > 0) && (
+        <Card className="mb-6 bg-gradient-to-br from-blue-50 to-blue-100 border-blue-200">
+          <CardHeader>
+            <CardTitle className="text-xl flex items-center gap-2">
+              <Coins className="h-5 w-5" /> 기존 방식 금액 (참고용)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              구 시스템 호환용 - quoteAmount, actualCost 필드
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {/* 견적 합계 */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">견적 합계</span>
+              <span className="text-2xl font-bold text-blue-600">
+                {stats.totalQuote.toLocaleString('ko-KR')}원
+              </span>
+            </div>
+
+            {/* 실제 합계 */}
+            <div className="flex justify-between items-center">
+              <span className="text-gray-700">실제 합계</span>
+              <span className="text-2xl font-bold text-blue-700">
+                {stats.totalActual.toLocaleString('ko-KR')}원
+              </span>
+            </div>
+
+            {/* 차액 */}
+            {stats.difference !== 0 && (
+              <div className={`flex justify-between items-center pt-3 border-t ${
+                stats.difference > 0
+                  ? 'border-red-200'
+                  : 'border-green-200'
+              }`}>
+                <span className="text-gray-700 font-medium">차액</span>
+                <span className={`text-xl font-bold ${
+                  stats.difference > 0
+                    ? 'text-red-600'
+                    : 'text-green-600'
+                }`}>
+                  {stats.difference > 0 ? '+' : ''}
+                  {stats.difference.toLocaleString('ko-KR')}원
+                  <span className="text-sm ml-2">
+                    {stats.difference > 0 ? '(초과)' : '(절감)'}
+                  </span>
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* ✨ 새로운 수익성 분석 카드 */}
+      <Card className="mb-6 bg-gradient-to-br from-green-50 via-cyan-50 to-blue-50 border-green-200">
         <CardHeader>
           <CardTitle className="text-xl flex items-center gap-2">
-            <Coins className="h-5 w-5" /> 이번 달 총 금액
+            <TrendingUp className="h-5 w-5 text-green-600" /> 수익성 분석
           </CardTitle>
+          <CardDescription>
+            견적서 작성: {stats.quoteCreatedCount}건 | 원가 입력: {stats.costInputCount}건
+          </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {/* 견적 합계 */}
+        <CardContent className="space-y-4">
+          {/* 판매가 */}
           <div className="flex justify-between items-center">
-            <span className="text-gray-700">견적 합계</span>
+            <span className="text-gray-700 font-medium">총 판매가 (견적서)</span>
             <span className="text-2xl font-bold text-blue-600">
-              {stats.totalQuote.toLocaleString('ko-KR')}원
+              {stats.totalSalesPrice.toLocaleString('ko-KR')}원
             </span>
           </div>
 
-          {/* 실제 합계 */}
+          {/* 원가 */}
           <div className="flex justify-between items-center">
-            <span className="text-gray-700">실제 합계</span>
-            <span className="text-2xl font-bold text-blue-700">
-              {stats.totalActual.toLocaleString('ko-KR')}원
+            <span className="text-gray-700 font-medium">총 원가 (장비+설치)</span>
+            <span className="text-2xl font-bold text-orange-600">
+              {stats.totalCost.toLocaleString('ko-KR')}원
             </span>
           </div>
 
-          {/* 차액 */}
-          {stats.difference !== 0 && (
-            <div className={`flex justify-between items-center pt-3 border-t ${
-              stats.difference > 0
-                ? 'border-red-200'
-                : 'border-green-200'
+          {/* 구분선 */}
+          <div className="border-t-2 border-gray-300"></div>
+
+          {/* 이익금 */}
+          <div className="flex justify-between items-center">
+            <span className="text-gray-700 font-bold text-lg">총 이익금</span>
+            <span className={`text-3xl font-bold ${
+              stats.totalProfit >= 0 ? 'text-green-600' : 'text-red-600'
             }`}>
-              <span className="text-gray-700 font-medium">차액</span>
-              <span className={`text-xl font-bold ${
-                stats.difference > 0
-                  ? 'text-red-600'
-                  : 'text-green-600'
+              {stats.totalProfit >= 0 ? '+' : ''}
+              {stats.totalProfit.toLocaleString('ko-KR')}원
+            </span>
+          </div>
+
+          {/* 마진율 */}
+          <div className="flex justify-between items-center p-4 bg-white rounded-lg border-2 border-green-200">
+            <span className="text-gray-700 font-bold text-lg">평균 마진율</span>
+            <div className="text-right">
+              <div className={`text-4xl font-bold ${
+                stats.averageMargin >= 20 ? 'text-green-600' :
+                stats.averageMargin >= 10 ? 'text-yellow-600' :
+                'text-red-600'
               }`}>
-                {stats.difference > 0 ? '+' : ''}
-                {stats.difference.toLocaleString('ko-KR')}원
-                <span className="text-sm ml-2">
-                  {stats.difference > 0 ? '(초과)' : '(절감)'}
-                </span>
-              </span>
+                {stats.averageMargin.toFixed(1)}%
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                {stats.averageMargin >= 20 ? '✅ 우수' :
+                 stats.averageMargin >= 10 ? '⚠️ 보통' :
+                 '❌ 주의'}
+              </div>
+            </div>
+          </div>
+
+          {/* 안내 메시지 */}
+          {stats.quoteCreatedCount === 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              💡 견적서를 작성하면 수익성 분석이 가능합니다.
+            </div>
+          )}
+          {stats.quoteCreatedCount > 0 && stats.costInputCount === 0 && (
+            <div className="p-3 bg-yellow-50 border border-yellow-200 rounded text-sm text-yellow-800">
+              💡 원가를 입력하면 정확한 마진율을 계산할 수 있습니다.
             </div>
           )}
         </CardContent>
