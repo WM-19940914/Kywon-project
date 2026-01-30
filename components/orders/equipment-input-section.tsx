@@ -45,7 +45,6 @@ export function EquipmentInputSection({
     const newItem: EquipmentItem = {
       id: `temp-eq-${Date.now()}`,
       componentName: '실외기',
-      orderNumber: '',
       orderDate: new Date().toISOString().split('T')[0],
       quantity: 1
     }
@@ -113,7 +112,6 @@ export function EquipmentInputSection({
       <div className="bg-gray-100 border rounded-t-lg sticky top-0 z-10">
         <div className="grid grid-cols-[140px_140px_120px_120px_120px_100px_120px_120px_50px] gap-2 p-2 text-xs font-bold text-gray-700">
           <div>구성품명</div>
-          <div>주문번호</div>
           <div>발주일</div>
           <div>배송요청일</div>
           <div>배송확정일</div>
@@ -146,18 +144,6 @@ export function EquipmentInputSection({
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            {/* 주문번호 (Input) */}
-            <div>
-              <Input
-                id={`eq-row-${rowIndex}-col-1`}
-                value={item.orderNumber}
-                onChange={(e) => handleChange(item.id!, 'orderNumber', e.target.value)}
-                onKeyDown={(e) => handleKeyDown(e, rowIndex, 1)}
-                placeholder="주문번호"
-                className="h-8 text-xs"
-              />
             </div>
 
             {/* 발주일 (Date) */}
