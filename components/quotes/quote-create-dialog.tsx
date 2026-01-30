@@ -12,12 +12,10 @@ import { Order, CustomerQuote, QuoteItem } from '@/types/order'
 import {
   Dialog,
   DialogContent,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import { Plus, X } from 'lucide-react'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import { priceTable } from '@/lib/price-table'
@@ -44,11 +42,8 @@ export function QuoteCreateDialog({
   open,
   onOpenChange,
   order,
-  onSuccess,
   onSave  // 새 prop 받기
 }: QuoteCreateDialogProps) {
-  if (!order) return null
-
   const [equipmentItems, setEquipmentItems] = useState<QuoteLineItem[]>([])
   const [installationItems, setInstallationItems] = useState<QuoteLineItem[]>([])
   const [roundingAdjustment, setRoundingAdjustment] = useState(0) // 단위절사
@@ -70,6 +65,7 @@ export function QuoteCreateDialog({
    * - 저장된 견적서가 있으면 → 기존 데이터 불러오기
    * - 저장된 견적서가 없으면 → 빈 화면
    */
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (open && order) {
       // 저장된 견적서가 있으면 불러오기
@@ -143,6 +139,8 @@ export function QuoteCreateDialog({
       }
     }
   }, [open, order])
+
+  if (!order) return null
 
   const updateItem = (
     items: QuoteLineItem[],

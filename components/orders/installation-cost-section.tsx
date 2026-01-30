@@ -61,6 +61,7 @@ export function InstallationCostSection({
    * 설치비 항목 필드 변경
    * 수량/단가 변경 시 총액 자동 계산
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (itemId: string, field: keyof InstallationCostItem, value: any) => {
     onChange(items.map(item => {
       if (item.id !== itemId) return item
@@ -106,6 +107,7 @@ export function InstallationCostSection({
     if (items.length === 0) {
       handleAdd()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

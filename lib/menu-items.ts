@@ -1,175 +1,138 @@
 /**
  * 사이드바 메뉴 구조 정의
  *
- * 이 파일은 왼쪽 사이드바에 표시될 메뉴 항목들을 정의합니다.
- * 마치 식당 메뉴판처럼 "어떤 페이지들이 있는지" 목록을 만드는 거예요.
- *
- * 메뉴 구조:
- * - 대시보드 (단독 메뉴)
- * - 핵심 기능: 발주 관리, AS 관리
- * - 부가 기능: 지점 관리, 장비 관리, 업체 관리
- * - 정산: 정산 관리
- * - 연간 단가표 (독립 섹션)
- * - 멜레아 관리: 배송관리, 정산관리
+ * 역할(사용자 그룹) 기준으로 메뉴를 분류합니다.
+ * - 교원그룹: 발주/AS 관리
+ * - 교원·멜레아: 정산 관리
+ * - 멜레아·에스원: 배송/설치비 관리
+ * - 공통 정보: 단가표, 재고 관리
  */
 
 import {
   Home,           // 대시보드
   ClipboardList,  // 발주 관리
   Wrench,         // AS 관리
-  MapPin,         // 지점 관리
-  Package,        // 장비 관리
-  Users,          // 업체 관리
   CreditCard,     // 정산 관리
   FileText,       // 단가표
   Truck,          // 배송 관리
-  Warehouse,      // 창고 관리
+  Warehouse,      // 재고 관리
+  Calculator,     // 설치비 관리
   Settings        // 설정
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 
-// 메뉴 아이템의 타입 정의 (어떤 정보를 담을지 설계도를 그리는 것)
+/** 메뉴 아이템 타입 */
 export interface MenuItem {
-  title: string        // 메뉴 이름 (예: "발주 목록")
-  url: string         // 이동할 페이지 주소 (예: "/orders")
-  icon: LucideIcon    // 아이콘 (예: 📝)
+  title: string        // 메뉴 이름
+  url: string          // 이동할 페이지 주소
+  icon: LucideIcon     // 아이콘
+  disabled?: boolean   // 미구현 메뉴 여부 (true면 클릭 불가 + "준비중" 표시)
 }
 
-// 메뉴 그룹의 타입 정의
+/** 메뉴 그룹 타입 */
 export interface MenuGroup {
-  title: string       // 그룹 이름 (예: "발주 관리")
-  items: MenuItem[]   // 이 그룹에 속한 메뉴 아이템들
+  title: string        // 그룹 이름
+  items: MenuItem[]    // 메뉴 아이템 목록
 }
 
 /**
- * 실제 메뉴 데이터
- *
- * 교원그룹 지점 관리에 최적화된 메뉴 구조
- * - 핵심: 발주/AS 관리 (매일 사용하는 메인 기능)
- * - 부가: 지점/장비/업체 관리 (참조용, 통계용)
- * - 정산: 월말 정산 관리
- * - 연간 단가표: 단가표 조회
- * - 멜레아 관리: 배송/정산 관리
+ * 메뉴 데이터
+ * 역할(사용자 그룹) 기준으로 분류
  */
 export const menuItems: MenuGroup[] = [
-  // ==========================================
-  // 대시보드 (단독 메뉴)
-  // ==========================================
+  // ── 대시보드 (최상단 단독) ──
   {
-    title: '홈',
+    title: '',
     items: [
       {
         title: '대시보드',
         url: '/',
-        icon: Home  // 🏠 홈 아이콘
-      }
-    ]
+        icon: Home,
+      },
+    ],
   },
 
-  // ==========================================
-  // 핵심 기능 (발주, AS)
-  // ==========================================
+  // ── 교원그룹 ──
   {
-    title: '핵심 기능',
+    title: '교원그룹',
     items: [
       {
         title: '발주 관리',
         url: '/orders',
-        icon: ClipboardList  // 📋 발주 관리 (목록 + 등록 통합)
+        icon: ClipboardList,
       },
       {
         title: 'AS 관리',
         url: '/as',
-        icon: Wrench  // 🔧 AS 관리 (목록 + 등록 통합)
-      }
-    ]
+        icon: Wrench,
+        disabled: true,
+      },
+    ],
   },
 
-  // ==========================================
-  // 부가 기능 (지점, 장비, 업체)
-  // ==========================================
+  // ── 교원 · 멜레아 ──
   {
-    title: '부가 기능',
-    items: [
-      {
-        title: '지점 관리',
-        url: '/branches',
-        icon: MapPin  // 📍 지점 (발주 시 자동 생성)
-      },
-      {
-        title: '장비 관리',
-        url: '/equipment',
-        icon: Package  // 📦 장비
-      },
-      {
-        title: '업체 관리',
-        url: '/contractors',
-        icon: Users  // 👷 시공업체
-      }
-    ]
-  },
-
-  // ==========================================
-  // 정산 관리
-  // ==========================================
-  {
-    title: '정산',
+    title: '교원 · 멜레아',
     items: [
       {
         title: '정산 관리',
         url: '/settlements',
-        icon: CreditCard  // 💳 정산
-      }
-    ]
+        icon: CreditCard,
+      },
+    ],
   },
 
-  // ==========================================
-  // 연간 단가표 (독립 섹션)
-  // ==========================================
+  // ── 멜레아 · 에스원 ──
   {
-    title: '연간 단가표',
+    title: '멜레아 · 에스원',
+    items: [
+      {
+        title: '배송 관리',
+        url: '/mellea/delivery',
+        icon: Truck,
+      },
+      {
+        title: '설치비 관리',
+        url: '/mellea/install-cost',
+        icon: Calculator,
+        disabled: true,
+      },
+    ],
+  },
+
+  // ── 공통 정보 ──
+  {
+    title: '공통 정보',
     items: [
       {
         title: '연간 단가표',
         url: '/price-table',
-        icon: FileText  // 📄 단가표
-      }
-    ]
+        icon: FileText,
+      },
+      {
+        title: '재고 관리',
+        url: '/mellea/warehouses',
+        icon: Warehouse,
+      },
+    ],
   },
-
-  // ==========================================
-  // 멜레아 관리
-  // ==========================================
+  // ── 멜레아 전용 ──
   {
-    title: '멜레아 관리',
+    title: '멜레아 전용',
     items: [
       {
-        title: '배송관리',
-        url: '/mellea/delivery',
-        icon: Truck  // 🚚 배송
+        title: '정산하러가기',
+        url: '/mellea/billing',
+        icon: CreditCard,
+        disabled: true,
       },
-      {
-        title: '창고관리',
-        url: '/mellea/warehouses',
-        icon: Warehouse  // 🏭 창고
-      },
-      {
-        title: '정산관리',
-        url: '/mellea/settlements',
-        icon: CreditCard  // 💳 정산
-      }
-    ]
-  }
+    ],
+  },
 ]
 
-/**
- * 하단 설정 메뉴
- *
- * 사이드바 맨 아래에 표시될 설정 메뉴입니다.
- * 나중에 사용자 프로필, 로그아웃 등이 추가될 수 있어요.
- */
+/** 하단 설정 메뉴 */
 export const settingsMenuItem: MenuItem = {
   title: '설정',
   url: '/settings',
-  icon: Settings  // ⚙️ 톱니바퀴 아이콘
+  icon: Settings,
 }

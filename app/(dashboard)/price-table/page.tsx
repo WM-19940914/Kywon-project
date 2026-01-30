@@ -9,7 +9,7 @@
 
 import { useState } from 'react'
 import { ChevronDown, ChevronRight, FileText } from 'lucide-react'
-import { priceTable, formatPrice, type PriceTableRow } from '@/lib/price-table'
+import { priceTable, formatPrice } from '@/lib/price-table'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 
@@ -27,6 +27,7 @@ export default function PriceTablePage() {
   }
 
   // 구성품 정렬 함수
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const sortComponents = (components: any[]) => {
     return [...components].sort((a, b) => {
       const orderA = componentOrder[a.type] || 999
@@ -105,7 +106,7 @@ export default function PriceTablePage() {
 
             {/* 테이블 바디 */}
             <tbody>
-              {displayedTable.map((row, index) => {
+              {displayedTable.map((row) => {
                 const isExpanded = expandedRows.has(row.model)
 
                 return (

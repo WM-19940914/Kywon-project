@@ -13,7 +13,7 @@
 
 'use client'
 
-import { useRef, useEffect } from 'react'
+import { useEffect } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -35,8 +35,6 @@ export function EquipmentInputSection({
   equipmentItems,
   onChange
 }: EquipmentInputSectionProps) {
-
-  const firstInputRef = useRef<HTMLInputElement>(null)
 
   /**
    * 새 장비 항목 추가
@@ -62,6 +60,7 @@ export function EquipmentInputSection({
    * 장비 항목 필드 변경
    * 수량/단가 변경 시 총액 자동 계산
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleChange = (itemId: string, field: keyof EquipmentItem, value: any) => {
     onChange(equipmentItems.map(item => {
       if (item.id !== itemId) return item
@@ -104,6 +103,7 @@ export function EquipmentInputSection({
     if (equipmentItems.length === 0) {
       handleAdd()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   return (

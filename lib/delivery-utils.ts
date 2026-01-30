@@ -1,0 +1,321 @@
+/**
+ * 배송 관련 유틸리티 함수들
+ *
+ * 배송 상태 자동 판정, 알림 분류, 날짜 계산 등
+ * 배송관리 페이지에서 사용하는 핵심 로직을 모아놓았습니다.
+ *
+ * 배송 상태 자동 판정 규칙:
+ * - 모든 구성품의 배송확정일 ≤ 오늘 → Order 전체 "입고완료" (delivered)
+ * - 주문번호 입력됨 && 배송예정일 입력됨 → "배송중" (in-transit)
+ * - 아직 주문 안 넣음 → "발주대기" (pending)
+ */
+
+import type { Order, DeliveryStatus, EquipmentItem } from '@/types/order'
+import { mockWarehouses } from '@/lib/warehouse-data'
+
+/**
+ * 오늘 날짜를 YYYY-MM-DD 형식으로 반환
+ */
+export function getToday(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
+/**
+ * 두 날짜 간의 일수 차이 계산
+ * @param a - 기준 날짜 (YYYY-MM-DD)
+ * @param b - 비교 날짜 (YYYY-MM-DD)
+ * @returns a - b 일수 (양수: a가 미래, 음수: a가 과거)
+ */
+export function daysDiff(a: string, b: string): number {
+  const dateA = new Date(a + 'T00:00:00')
+  const dateB = new Date(b + 'T00:00:00')
+  const diffMs = dateA.getTime() - dateB.getTime()
+  return Math.round(diffMs / (1000 * 60 * 60 * 24))
+}
+
+/**
+ * Order의 유효 배송일 가져오기 (확정일 우선, 없으면 요청일)
+ * @param order - 발주 정보
+ * @returns 유효 배송일 문자열 또는 undefined
+ */
+export function getEffectiveDeliveryDate(order: Order): string | undefined {
+  return order.confirmedDeliveryDate || order.requestedDeliveryDate
+}
+
+/**
+ * 구성품별 배송 상태 자동 판정
+ * @param item - 구성품 항목
+ * @returns 계산된 배송 상태
+ */
+export function computeItemDeliveryStatus(item: EquipmentItem): DeliveryStatus {
+  const today = getToday()
+
+  // 배송확정일이 오늘 이전이면 → 입고완료
+  if (item.confirmedDeliveryDate && item.confirmedDeliveryDate <= today) {
+    return 'delivered'
+  }
+
+  // 배송요청일이 있으면 → 배송중
+  if (item.requestedDeliveryDate) {
+    return 'in-transit'
+  }
+
+  // 그 외 → 발주대기
+  return 'pending'
+}
+
+/**
+ * 배송 진행률 계산
+ * 구성품 전체 수와 배송완료/배송중 수를 반환
+ *
+ * @param order - 발주 정보
+ * @returns { total: 전체 구성품 수, delivered: 입고완료 수, inTransit: 배송중 수 }
+ */
+export function computeDeliveryProgress(order: Order): { total: number; delivered: number; inTransit: number } {
+  const items = order.equipmentItems || []
+  if (items.length === 0) return { total: 0, delivered: 0, inTransit: 0 }
+
+  let delivered = 0
+  let inTransit = 0
+
+  for (const item of items) {
+    const status = computeItemDeliveryStatus(item)
+    if (status === 'delivered') delivered++
+    else if (status === 'in-transit') inTransit++
+  }
+
+  return { total: items.length, delivered, inTransit }
+}
+
+/**
+ * Order 전체의 배송 상태 자동 판정 (구성품 기반)
+ *
+ * 규칙:
+ * 1. 구성품 전부 delivered → 'delivered' (배송완료)
+ * 2. 하나라도 in-transit 또는 delivered → 'in-transit' (배송중)
+ * 3. 그 외 → 'pending' (준비중)
+ *
+ * @param order - 발주 정보
+ * @returns 계산된 배송 상태
+ */
+export function computeDeliveryStatus(order: Order): DeliveryStatus {
+  const items = order.equipmentItems || []
+
+  // 구성품이 있는 경우 구성품 기준으로 판정
+  if (items.length > 0) {
+    const progress = computeDeliveryProgress(order)
+
+    // 모든 구성품이 배송완료
+    if (progress.delivered === progress.total) return 'delivered'
+
+    // 하나라도 배송중이거나 배송완료면 → 배송중
+    if (progress.delivered > 0 || progress.inTransit > 0) return 'in-transit'
+
+    return 'pending'
+  }
+
+  // 구성품이 없는 경우 Order 레벨 정보로 판정
+  const today = getToday()
+
+  if (order.confirmedDeliveryDate && order.confirmedDeliveryDate <= today) {
+    return 'delivered'
+  }
+
+  if (order.samsungOrderNumber && order.requestedDeliveryDate) {
+    return 'in-transit'
+  }
+
+  return 'pending'
+}
+
+/**
+ * 알림 유형 분류
+ * - delayed: 배송지연 (배송예정일이 지났는데 입고 안 됨)
+ * - today: 오늘 입고 예정
+ * - tomorrow: 내일 입고 예정
+ * - this-week: 이번 주 입고 예정
+ * - none: 알림 없음
+ *
+ * @param order - 발주 정보
+ * @returns 알림 유형
+ */
+export type AlertType = 'delayed' | 'today' | 'tomorrow' | 'this-week' | 'none'
+
+export function getAlertType(order: Order): AlertType {
+  const today = getToday()
+  const status = computeDeliveryStatus(order)
+
+  // 이미 입고완료면 알림 없음
+  if (status === 'delivered') return 'none'
+
+  // 유효 배송일 가져오기
+  const effectiveDate = getEffectiveDeliveryDate(order)
+  if (!effectiveDate) return 'none'
+
+  const diff = daysDiff(effectiveDate, today)
+
+  // 배송예정일이 지났는데 입고 안 됨 → 지연
+  if (diff < 0) return 'delayed'
+
+  // 오늘 입고 예정
+  if (diff === 0) return 'today'
+
+  // 내일 입고 예정
+  if (diff === 1) return 'tomorrow'
+
+  // 이번 주 내 (7일 이내)
+  if (diff <= 7) return 'this-week'
+
+  return 'none'
+}
+
+/**
+ * 창고 ID로 창고명 변환
+ * @param warehouseId - 창고 ID
+ * @returns 창고명 (없으면 '-')
+ */
+export function getWarehouseName(warehouseId?: string): string {
+  if (!warehouseId) return '-'
+  const warehouse = mockWarehouses.find(w => w.id === warehouseId)
+  return warehouse?.name || '-'
+}
+
+/**
+ * 창고 ID로 창고 상세 정보 (인수자 + 창고명 + 창고주소) 반환
+ * @param warehouseId - 창고 ID
+ * @returns { managerName, managerPhone, name, address } 또는 null
+ */
+export function getWarehouseDetail(warehouseId?: string) {
+  if (!warehouseId) return null
+  const warehouse = mockWarehouses.find(w => w.id === warehouseId)
+  if (!warehouse) return null
+  return {
+    managerName: warehouse.managerName,
+    managerPhone: warehouse.managerPhone,
+    name: warehouse.name,
+    address: warehouse.address
+  }
+}
+
+/**
+ * 알림 유형별 스타일 정보
+ */
+export const ALERT_STYLES: Record<AlertType, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  'delayed': { label: '배송지연', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-200' },
+  'today': { label: '오늘입고', color: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
+  'tomorrow': { label: '내일입고', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+  'this-week': { label: '이번주', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' },
+  'none': { label: '', color: '', bgColor: '', borderColor: '' }
+}
+
+/**
+ * Order에서 품목 요약 텍스트 생성
+ * 예: "시스템에어컨 2대"
+ */
+export function getItemsSummary(order: Order): string {
+  const installItems = order.items.filter(i => i.workType === '신규설치')
+  if (installItems.length === 0) return '신규설치 없음'
+  return installItems.map(i => `${i.category} ${i.quantity}대`).join(', ')
+}
+
+/**
+ * 주소 짧게 자르기 (테이블에서 사용)
+ */
+export function shortenAddress(address: string, maxLength: number = 25): string {
+  if (address.length <= maxLength) return address
+  return address.substring(0, maxLength) + '...'
+}
+
+/**
+ * 주소에서 광역지역 + 시/군 추출
+ * 예: "서울시 강서구 화곡로 123" → { region: "수도권", city: "서울 강서구" }
+ * 예: "강원도 춘천시 중앙로 456" → { region: "강원도", city: "춘천시" }
+ *
+ * @param address - 전체 주소 문자열
+ * @returns { region: 광역지역명, city: 시/군/구명 }
+ */
+export function parseRegionFromAddress(address: string): { region: string; city: string } {
+  // "작업장소:" 접두사 제거
+  const clean = address.replace(/^작업장소:\s*/, '').trim()
+  const parts = clean.split(/\s+/)
+
+  const first = parts[0] || ''
+  const second = parts[1] || ''
+
+  // 수도권 판정 (서울, 경기, 인천)
+  if (first.startsWith('서울')) {
+    return { region: '수도권', city: `서울 ${second}` }
+  }
+  if (first.startsWith('경기') || first === '경기도') {
+    return { region: '수도권', city: second }
+  }
+  if (first.startsWith('인천')) {
+    return { region: '수도권', city: `인천 ${second}` }
+  }
+
+  // 광역시 매핑 (접두사 기반으로 판정)
+  const metroPatterns: { prefix: string; region: string; label: string }[] = [
+    { prefix: '대전', region: '충청남도', label: '대전' },
+    { prefix: '세종', region: '충청남도', label: '세종' },
+    { prefix: '광주', region: '전라남도', label: '광주' },
+    { prefix: '대구', region: '경상북도', label: '대구' },
+    { prefix: '부산', region: '경상남도', label: '부산' },
+    { prefix: '울산', region: '경상남도', label: '울산' },
+  ]
+
+  const metro = metroPatterns.find(m => first.startsWith(m.prefix))
+  if (metro) {
+    return { region: metro.region, city: `${metro.label} ${second}` }
+  }
+
+  // 도 단위 매핑
+  const doMap: Record<string, string> = {
+    '충북': '충청북도',
+    '충청북도': '충청북도',
+    '충남': '충청남도',
+    '충청남도': '충청남도',
+    '전북': '전라북도',
+    '전북특별자치도': '전라북도',
+    '전라북도': '전라북도',
+    '전남': '전라남도',
+    '전라남도': '전라남도',
+    '경북': '경상북도',
+    '경상북도': '경상북도',
+    '경남': '경상남도',
+    '경상남도': '경상남도',
+    '강원': '강원도',
+    '강원도': '강원도',
+    '강원특별자치도': '강원도',
+    '제주': '제주도',
+    '제주도': '제주도',
+    '제주특별자치도': '제주도',
+  }
+
+  if (doMap[first]) {
+    return { region: doMap[first], city: second }
+  }
+
+  return { region: '-', city: first }
+}
+
+/**
+ * 날짜를 MM/DD 형식으로 표시 (테이블에서 공간 절약)
+ */
+export function formatShortDate(dateString?: string): string {
+  if (!dateString) return '-'
+  const parts = dateString.split('-')
+  if (parts.length < 3) return dateString
+  return `${parts[1]}/${parts[2]}`
+}
+
+/**
+ * 날짜를 YYYY.MM.DD 형식으로 표시
+ */
+export function formatDate(dateString?: string): string {
+  if (!dateString) return '-'
+  return dateString.replace(/-/g, '.')
+}

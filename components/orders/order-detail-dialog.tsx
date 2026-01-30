@@ -170,7 +170,7 @@ export function OrderDetailDialog({
               </div>
               <div className="grid grid-cols-3 gap-2">
                 <span className="text-sm text-gray-500">주문번호</span>
-                <span className="col-span-2 font-mono text-sm">{order.orderNumber}</span>
+                <span className="col-span-2 font-mono text-sm">{order.samsungOrderNumber || '-'}</span>
               </div>
             </div>
           </div>

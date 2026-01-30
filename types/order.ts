@@ -28,7 +28,7 @@ export type DeliveryStatus = 'pending' | 'in-transit' | 'delivered'
 
 /** 배송상태 한글 표시용 */
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
-  'pending': '발주대기',
+  'pending': '준비중',
   'in-transit': '배송중',
   'delivered': '배송완료'
 }
@@ -106,6 +106,9 @@ export interface Order {
   deliveryStatus?: DeliveryStatus       // 배송 상태
   requestedDeliveryDate?: string        // 배송요청일
   confirmedDeliveryDate?: string        // 배송확정일
+
+  // 📦 삼성 주문번호 (배송관리에서 입력)
+  samsungOrderNumber?: string           // 삼성전자 주문번호 (예: SO-2026-001)
 }
 
 /**
@@ -167,13 +170,25 @@ export const WORK_TYPE_OPTIONS = [
  */
 export interface EquipmentItem {
   id?: string                    // 항목 고유번호
-  componentName: string          // 구성품명 (예: 실외기, 실내기, 패널, 리모컨)
+  setModel?: string              // SET 모델명 (예: AP072BAPPBH2S) - 단가표 기준 (배송관리에서는 미표시)
+  componentName: string          // 구성품명 (예: 실외기, 실내기, 자재박스, 리모컨)
+  componentModel?: string        // 구성품 모델명 (예: AP072BNPPBH1) - 배송관리 테이블에 표시
+  supplier?: string              // 매입처 (기본값: 삼성전자)
+  orderNumber?: string           // 개별 주문번호 (구성품마다 다를 수 있음)
   orderDate: string              // 발주일
   requestedDeliveryDate?: string // 배송요청일
   confirmedDeliveryDate?: string // 배송확정일
   quantity: number               // 수량
   unitPrice?: number             // 매입단가
   totalPrice?: number            // 매입금액 (자동 계산: 수량 × 단가)
+  warehouseId?: string           // 배송 창고 ID (warehouse-data.ts 참조)
+  /**
+   * 구성품별 개별 배송 상태
+   * - pending: 발주대기 (아직 배송 예정일 미입력)
+   * - in-transit: 배송중 (배송예정일 입력됨)
+   * - delivered: 입고완료 (배송확정일이 오늘 이전)
+   */
+  deliveryStatus?: DeliveryStatus
 }
 
 /**

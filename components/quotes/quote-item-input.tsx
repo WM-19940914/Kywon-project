@@ -61,6 +61,7 @@ export function QuoteItemInput({ items, onItemsChange }: QuoteItemInputProps) {
    * @param field - 변경할 필드명 (itemName, quantity 등)
    * @param value - 새로운 값
    */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const updateItem = (index: number, field: keyof QuoteItem, value: any) => {
     const newItems = [...items]
     newItems[index] = { ...newItems[index], [field]: value }
