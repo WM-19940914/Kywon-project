@@ -110,7 +110,7 @@ export const menuItems: MenuGroup[] = [
         icon: FileText,
       },
       {
-        title: '재고 관리',
+        title: '전국 설치팀 창고',
         url: '/mellea/warehouses',
         icon: Warehouse,
       },

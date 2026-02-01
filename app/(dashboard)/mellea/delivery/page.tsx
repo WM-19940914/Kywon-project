@@ -25,7 +25,7 @@ import { DeliveryDetailDialog } from '@/components/delivery/delivery-detail-dial
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Truck } from 'lucide-react'
-import { computeDeliveryStatus } from '@/lib/delivery-utils'
+// computeDeliveryStatus 자동 판정 대신 order.deliveryStatus를 직접 사용
 
 export default function DeliveryPage() {
   // 발주 데이터 (나중에 Supabase로 교체)
@@ -69,9 +69,8 @@ export default function DeliveryPage() {
         if (!matchesSearch) return false
       }
 
-      // 상태 탭 필터
-      const computed = computeDeliveryStatus(order)
-      if (computed !== statusFilter) return false
+      // 상태 탭 필터 (order.deliveryStatus 직접 사용)
+      if (order.deliveryStatus !== statusFilter) return false
 
       return true
     })
@@ -83,8 +82,8 @@ export default function DeliveryPage() {
   const statusCounts = useMemo(() => {
     const counts = { pending: 0, 'in-transit': 0, delivered: 0 }
     deliveryOrders.forEach(order => {
-      const status = computeDeliveryStatus(order)
-      counts[status]++
+      // order.deliveryStatus 직접 사용
+      if (order.deliveryStatus) counts[order.deliveryStatus]++
     })
     return counts
   }, [deliveryOrders])
@@ -95,6 +94,17 @@ export default function DeliveryPage() {
   const handleEditDelivery = (order: Order) => {
     setOrderToEdit(order)
     setInputDialogOpen(true)
+  }
+
+  /**
+   * 배송상태 수동 전환 핸들러
+   * 발주대기 → 배송중, 배송중 → 입고완료
+   */
+  const handleChangeDeliveryStatus = (orderId: string, newStatus: DeliveryStatus) => {
+    setOrders(prev => prev.map(order => {
+      if (order.id !== orderId) return order
+      return { ...order, deliveryStatus: newStatus }
+    }))
   }
 
   /**
@@ -115,16 +125,12 @@ export default function DeliveryPage() {
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order
 
-      const updated: Order = {
+      // 자동 판정 제거 — deliveryStatus는 수동 전환으로만 변경
+      return {
         ...order,
         samsungOrderNumber: data.samsungOrderNumber,
         equipmentItems: data.equipmentItems,
       }
-
-      // 자동 상태 판정 적용
-      updated.deliveryStatus = computeDeliveryStatus(updated)
-
-      return updated
     }))
 
     alert('배송 정보가 저장되었습니다!')
@@ -186,11 +192,26 @@ export default function DeliveryPage() {
         </span>
       </div>
 
+      {/* 탭별 안내 문구 */}
+      <p className="text-sm text-muted-foreground mb-3">
+        {statusFilter === 'pending' && <span className="inline-flex items-center gap-3"><span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span><span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span></span><span className="text-muted-foreground">삼성전자에 주문을 넣기 전 단계입니다. 구성품별 주문번호와 배송일정을 입력하세요.</span></span>}
+        {statusFilter === 'in-transit' && '삼성전자에서 출발한 장비입니다. 설치팀은 입고 일정을 확인하세요.'}
+        {statusFilter === 'delivered' && '창고에 입고 완료된 장비입니다.'}
+      </p>
+
       {/* 메인 테이블 */}
       <DeliveryTable
         orders={filteredOrders}
         onEditDelivery={handleEditDelivery}
         onViewDetail={handleViewDetail}
+        onChangeStatus={handleChangeDeliveryStatus}
+        onSaveItems={(orderId, items) => {
+          // 자동 판정 제거 — deliveryStatus는 수동 전환으로만 변경
+          setOrders(prev => prev.map(order => {
+            if (order.id !== orderId) return order
+            return { ...order, equipmentItems: items }
+          }))
+        }}
       />
 
       {/* 배송정보 입력 모달 */}

@@ -470,7 +470,7 @@ function KoreaMap({
               fontSize="10"
               fontWeight={isSelected ? '600' : '500'}
             >
-              {wh.name}
+              {wh.name}_{wh.managerName}
             </text>
           </g>
         )
@@ -649,7 +649,7 @@ function WarehouseCard({
         <>
           <div className="flex items-center justify-between mb-1.5">
             <h3 className="text-sm font-semibold text-foreground truncate">
-              {warehouse.name}
+              {warehouse.name}_{warehouse.managerName}
             </h3>
             <div className="flex items-center gap-0.5 flex-shrink-0">
               <Button
@@ -663,7 +663,7 @@ function WarehouseCard({
                 size="sm" variant="ghost"
                 onClick={(e) => {
                   e.stopPropagation()
-                  if (confirm(`"${warehouse.name}" 창고를 삭제하시겠습니까?`)) {
+                  if (confirm(`"${warehouse.name}_${warehouse.managerName}" 창고를 삭제하시겠습니까?`)) {
                     onDelete(warehouse.id)
                   }
                 }}

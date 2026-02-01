@@ -23,29 +23,16 @@ interface OrderCardProps {
 }
 
 /**
- * 문서명 자동 생성
- * 예: "신규설치 2대 외 1건 요청건"
+ * 작업종류별 뱃지 색상 매핑
+ * 신규설치가 가장 눈에 띄게, 나머지도 구분 가능하도록
  */
-function generateDocumentName(order: Order): string {
-  // 🔥 사전견적일 때
-  if (order.isPreliminaryQuote) {
-    return '사전견적 요청건'
-  }
-
-  // 기존 로직 유지
-  if (order.items.length === 0) return '요청건'
-
-  const firstItem = order.items[0]
-  const firstItemText = `${firstItem.workType} ${firstItem.quantity}대`
-
-  if (order.items.length === 1) {
-    // 항목이 1개만 있으면: "신규설치 2대 요청건"
-    return `${firstItemText} 요청건`
-  } else {
-    // 여러 항목이 있으면: "신규설치 2대 외 1건 요청건"
-    return `${firstItemText} 외 ${order.items.length - 1}건 요청건`
-  }
+const WORK_TYPE_STYLES: Record<string, string> = {
+  '신규설치': 'bg-blue-100 text-blue-800 border-blue-300',
+  '이전설치': 'bg-purple-100 text-purple-800 border-purple-300',
+  '철거보관': 'bg-orange-100 text-orange-800 border-orange-300',
+  '철거폐기': 'bg-red-100 text-red-700 border-red-300',
 }
+const DEFAULT_WORK_TYPE_STYLE = 'bg-gray-100 text-gray-700 border-gray-300'
 
 /**
  * 주소 짧게 자르기
@@ -88,10 +75,23 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
           {order.businessName}
         </h3>
 
-        {/* 문서명 (작업 내용 요약) */}
-        <p className="text-sm font-medium text-primary">
-          {generateDocumentName(order)}
-        </p>
+        {/* 작업종류 뱃지 (신규설치/이전설치/철거보관 등 강조 표시) */}
+        <div className="flex flex-wrap items-center gap-1.5">
+          {order.isPreliminaryQuote ? (
+            <span className="text-sm font-medium text-primary">사전견적 요청건</span>
+          ) : order.items.length === 0 ? (
+            <span className="text-sm font-medium text-primary">요청건</span>
+          ) : (
+            order.items.map((item, idx) => (
+              <Badge
+                key={idx}
+                className={`${WORK_TYPE_STYLES[item.workType] || DEFAULT_WORK_TYPE_STYLE} text-xs font-bold border px-2 py-0.5`}
+              >
+                {item.workType} {item.quantity}대
+              </Badge>
+            ))
+          )}
+        </div>
 
         {/* 주소 */}
         <p className="text-xs text-muted-foreground flex items-center gap-1">

@@ -147,7 +147,8 @@ export type AlertType = 'delayed' | 'today' | 'tomorrow' | 'this-week' | 'none'
 
 export function getAlertType(order: Order): AlertType {
   const today = getToday()
-  const status = computeDeliveryStatus(order)
+  // order.deliveryStatus 직접 사용 (자동 판정 대신 수동 전환 값)
+  const status = order.deliveryStatus || 'pending'
 
   // 이미 입고완료면 알림 없음
   if (status === 'delivered') return 'none'
@@ -309,7 +310,61 @@ export function formatShortDate(dateString?: string): string {
   if (!dateString) return '-'
   const parts = dateString.split('-')
   if (parts.length < 3) return dateString
-  return `${parts[1]}/${parts[2]}`
+  // YY.MM.DD 형식 (예: 26.01.30)
+  const yy = parts[0].length === 4 ? parts[0].slice(2) : parts[0]
+  return `${yy}.${parts[1]}.${parts[2]}`
+}
+
+/**
+ * 주문의 구성품별 배송 지연 현황 분석
+ *
+ * 각 EquipmentItem의 requestedDeliveryDate vs scheduledDeliveryDate 비교:
+ * - 둘 다 있고 scheduled <= requested → 정상
+ * - 둘 다 있고 scheduled > requested → 지연 (+N일)
+ * - 하나라도 없으면 → 미입력
+ *
+ * @param items - 구성품 목록
+ * @returns { total, normal, delayed, noDate, maxDelayDays }
+ */
+export function analyzeDeliveryDelay(items?: EquipmentItem[]): {
+  total: number
+  normal: number
+  delayed: number
+  noDate: number
+  maxDelayDays: number
+} {
+  if (!items || items.length === 0) {
+    return { total: 0, normal: 0, delayed: 0, noDate: 0, maxDelayDays: 0 }
+  }
+
+  let normal = 0
+  let delayed = 0
+  let noDate = 0
+  let maxDelayDays = 0
+
+  for (const item of items) {
+    const requested = item.requestedDeliveryDate
+    const scheduled = item.scheduledDeliveryDate
+
+    // 하나라도 없으면 미입력
+    if (!requested || !scheduled) {
+      noDate++
+      continue
+    }
+
+    // 날짜 비교: scheduled - requested 일수
+    const diff = daysDiff(scheduled, requested)
+    if (diff <= 0) {
+      // 예정일이 요청일 이하 → 정상
+      normal++
+    } else {
+      // 예정일이 요청일보다 뒤 → 지연
+      delayed++
+      if (diff > maxDelayDays) maxDelayDays = diff
+    }
+  }
+
+  return { total: items.length, normal, delayed, noDate, maxDelayDays }
 }
 
 /**

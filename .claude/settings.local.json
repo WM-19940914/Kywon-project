@@ -50,7 +50,28 @@
       "Bash(wc:*)",
       "Bash(git commit -m \"$\\(cat <<''EOF''\ngitignore에 로그 및 임시 파일 제외 설정 추가\n\n- server.log, nul, output/ 폴더를 Git 추적에서 제외\n- 개발 중 생성되는 임시 파일들이 커밋되지 않도록 설정\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(git commit:*)",
-      "Bash(git rm:*)"
+      "Bash(git rm:*)",
+      "WebFetch(domain:localhost)",
+      "Bash(curl:*)",
+      "Bash(powershell -Command \"\\(Get-Content C:\\\\Users\\\\User\\\\workspace\\\\first\\\\temp_page.html -Raw\\).Length\")",
+      "Bash(powershell:*)",
+      "Bash(npx playwright:*)",
+      "Bash(python:*)",
+      "Bash(node -e:*)",
+      "Bash(Get-Content \"C:\\\\Users\\\\User\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\C--Users-User-workspace-first\\\\tasks\\\\b2e8632.output\")",
+      "Bash(Select-Object -Last 50)",
+      "Bash(npx next dev)",
+      "WebFetch(domain:simplemaps.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(find:*)",
+      "Bash(git push:*)",
+      "Bash(more:*)",
+      "Bash(npx kill-port:*)",
+      "Bash(Remove-Item -Recurse -Force C:UsersUserworkspacefirst.next)",
+      "Bash(cmd /c \"taskkill /PID 8400 /F\")",
+      "Bash(cmd /c:*)",
+      "Bash(npx next dev -p 3001)",
+      "Bash(npx next dev -p 3000)"
     ]
   }
 }

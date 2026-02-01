@@ -176,8 +176,9 @@ export interface EquipmentItem {
   supplier?: string              // 매입처 (기본값: 삼성전자)
   orderNumber?: string           // 개별 주문번호 (구성품마다 다를 수 있음)
   orderDate: string              // 발주일
-  requestedDeliveryDate?: string // 배송요청일
-  confirmedDeliveryDate?: string // 배송확정일
+  requestedDeliveryDate?: string // 배송요청일 (내가 삼성에 요청한 날짜)
+  scheduledDeliveryDate?: string // 배송예정일 (삼성에서 알려준 실제 배송 예정 날짜)
+  confirmedDeliveryDate?: string // 배송확정일 (실제 입고된 날짜, 배송중 단계에서 입력)
   quantity: number               // 수량
   unitPrice?: number             // 매입단가
   totalPrice?: number            // 매입금액 (자동 계산: 수량 × 단가)
