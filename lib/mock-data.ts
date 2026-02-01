@@ -59,7 +59,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '주말 시공 요청. 오전 10시 이후 작업 가능',
     createdAt: relativeDate(-10) + 'T09:00:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(-2),
     samsungOrderNumber: 'SO-2026-001',
     equipmentItems: [
@@ -77,7 +77,7 @@ export const mockOrders: Order[] = [
         unitPrice: 728857,
         totalPrice: 728857,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-1-2',
@@ -92,7 +92,7 @@ export const mockOrders: Order[] = [
         unitPrice: 417457,
         totalPrice: 417457,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-1-3',
@@ -107,7 +107,7 @@ export const mockOrders: Order[] = [
         unitPrice: 71286,
         totalPrice: 71286,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       // SET 2: AP072BAPPBH2S (18평 스탠드) - 2번째 (주문번호 다름!)
       {
@@ -123,7 +123,7 @@ export const mockOrders: Order[] = [
         unitPrice: 728857,
         totalPrice: 728857,
         warehouseId: '1',
-        deliveryStatus: 'pending'
+        deliveryStatus: 'ordered'
       },
       {
         id: 'eq-1-5',
@@ -137,7 +137,7 @@ export const mockOrders: Order[] = [
         unitPrice: 417457,
         totalPrice: 417457,
         warehouseId: '1',
-        deliveryStatus: 'pending'
+        deliveryStatus: 'ordered'
       },
       {
         id: 'eq-1-6',
@@ -151,7 +151,7 @@ export const mockOrders: Order[] = [
         unitPrice: 71286,
         totalPrice: 71286,
         warehouseId: '1',
-        deliveryStatus: 'pending'
+        deliveryStatus: 'ordered'
       }
     ]
   },
@@ -182,7 +182,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '층고 3.5m, 사다리차 필요',
     createdAt: relativeDate(-14) + 'T10:30:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(0),
     confirmedDeliveryDate: relativeDate(0),
     samsungOrderNumber: 'SO-2026-002',
@@ -201,7 +201,7 @@ export const mockOrders: Order[] = [
         unitPrice: 744621,
         totalPrice: 2233863,
         warehouseId: '2',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-2-2',
@@ -217,7 +217,7 @@ export const mockOrders: Order[] = [
         unitPrice: 462568,
         totalPrice: 1387704,
         warehouseId: '2',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-2-3',
@@ -233,7 +233,7 @@ export const mockOrders: Order[] = [
         unitPrice: 116411,
         totalPrice: 349233,
         warehouseId: '2',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       }
     ]
   },
@@ -264,7 +264,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '사무실 전체 교체',
     createdAt: relativeDate(-7) + 'T14:20:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(0),
     confirmedDeliveryDate: relativeDate(0),
     samsungOrderNumber: 'SO-2026-003',
@@ -283,7 +283,7 @@ export const mockOrders: Order[] = [
         unitPrice: 651559,
         totalPrice: 3257795,
         warehouseId: '4',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-3-2',
@@ -299,7 +299,7 @@ export const mockOrders: Order[] = [
         unitPrice: 338472,
         totalPrice: 1692360,
         warehouseId: '4',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-3-3',
@@ -315,7 +315,7 @@ export const mockOrders: Order[] = [
         unitPrice: 86669,
         totalPrice: 433345,
         warehouseId: '4',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       }
     ]
   },
@@ -346,7 +346,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '신축 건물, 배관 작업 완료됨',
     createdAt: relativeDate(-20) + 'T11:15:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(-15),
     confirmedDeliveryDate: relativeDate(-15),
     samsungOrderNumber: 'SO-2026-004',
@@ -367,7 +367,7 @@ export const mockOrders: Order[] = [
         unitPrice: 466692,
         totalPrice: 1866768,
         warehouseId: '1',
-        deliveryStatus: 'delivered'
+        deliveryStatus: 'confirmed'
       },
       {
         id: 'eq-4-2',
@@ -383,7 +383,7 @@ export const mockOrders: Order[] = [
         unitPrice: 254885,
         totalPrice: 1019540,
         warehouseId: '1',
-        deliveryStatus: 'delivered'
+        deliveryStatus: 'confirmed'
       },
       {
         id: 'eq-4-3',
@@ -399,7 +399,7 @@ export const mockOrders: Order[] = [
         unitPrice: 28207,
         totalPrice: 112828,
         warehouseId: '1',
-        deliveryStatus: 'delivered'
+        deliveryStatus: 'confirmed'
       },
       {
         id: 'eq-4-4',
@@ -415,7 +415,7 @@ export const mockOrders: Order[] = [
         unitPrice: 24616,
         totalPrice: 98464,
         warehouseId: '1',
-        deliveryStatus: 'delivered'
+        deliveryStatus: 'confirmed'
       }
     ]
   },
@@ -454,7 +454,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '펜트하우스, 실외기 옥상 설치',
     createdAt: relativeDate(-30) + 'T09:45:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(-25),
     confirmedDeliveryDate: relativeDate(-25),
     samsungOrderNumber: 'SO-2026-005',
@@ -521,7 +521,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '영업시간 외 작업 필수 (저녁 8시 이후)',
     createdAt: relativeDate(-8) + 'T13:30:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(1),
     confirmedDeliveryDate: relativeDate(1),
     samsungOrderNumber: 'SO-2026-007',
@@ -540,7 +540,7 @@ export const mockOrders: Order[] = [
         unitPrice: 1032356,
         totalPrice: 2064712,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-7-2',
@@ -556,7 +556,7 @@ export const mockOrders: Order[] = [
         unitPrice: 823628,
         totalPrice: 1647256,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-7-3',
@@ -571,7 +571,7 @@ export const mockOrders: Order[] = [
         unitPrice: 116416,
         totalPrice: 232832,
         warehouseId: '1',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       }
     ]
   },
@@ -602,7 +602,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '친환경 모델, 정부 보조금 대상',
     createdAt: relativeDate(-25) + 'T10:00:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(-20),
     confirmedDeliveryDate: relativeDate(-20),
     samsungOrderNumber: 'SO-2026-008',
@@ -674,7 +674,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '사무실용 대형, 시스템 에어컨',
     createdAt: relativeDate(-40) + 'T08:30:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(-35),
     confirmedDeliveryDate: relativeDate(-35),
     samsungOrderNumber: 'SO-2026-010',
@@ -711,7 +711,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '공유 오피스, 3개 룸',
     createdAt: '2023-12-15T09:00:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: '2023-12-18',
     confirmedDeliveryDate: '2023-12-18',
     completionDate: '2023-12-22',
@@ -787,7 +787,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '기존 장비 전부 철거 후 교체',
     createdAt: '2023-11-20T10:30:00Z',
-    deliveryStatus: 'delivered',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: '2023-11-23',
     confirmedDeliveryDate: '2023-11-23',
     completionDate: '2023-11-28',
@@ -823,7 +823,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '사무실 2개층 설치',
     createdAt: relativeDate(-6) + 'T09:00:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(4),
     confirmedDeliveryDate: relativeDate(4),
     samsungOrderNumber: 'SO-2026-014',
@@ -842,7 +842,7 @@ export const mockOrders: Order[] = [
         unitPrice: 857482,
         totalPrice: 1714964,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-14-2',
@@ -858,7 +858,7 @@ export const mockOrders: Order[] = [
         unitPrice: 682601,
         totalPrice: 1365202,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-14-3',
@@ -874,7 +874,7 @@ export const mockOrders: Order[] = [
         unitPrice: 116417,
         totalPrice: 232834,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       }
     ]
   },
@@ -905,7 +905,7 @@ export const mockOrders: Order[] = [
     ],
     notes: '1층 상가, 주차 편리',
     createdAt: relativeDate(-4) + 'T11:00:00Z',
-    deliveryStatus: 'in-transit',
+    deliveryStatus: 'ordered',
     requestedDeliveryDate: relativeDate(5),
     samsungOrderNumber: 'SO-2026-015',
     equipmentItems: [
@@ -922,7 +922,7 @@ export const mockOrders: Order[] = [
         unitPrice: 523123,
         totalPrice: 1046246,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-15-2',
@@ -937,7 +937,7 @@ export const mockOrders: Order[] = [
         unitPrice: 289769,
         totalPrice: 579538,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-15-3',
@@ -952,7 +952,7 @@ export const mockOrders: Order[] = [
         unitPrice: 39491,
         totalPrice: 78982,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       },
       {
         id: 'eq-15-4',
@@ -967,7 +967,7 @@ export const mockOrders: Order[] = [
         unitPrice: 24617,
         totalPrice: 49234,
         warehouseId: '5',
-        deliveryStatus: 'in-transit'
+        deliveryStatus: 'scheduled'
       }
     ]
   }

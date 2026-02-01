@@ -19,25 +19,49 @@ export interface OrderItem {
 }
 
 /**
- * 배송상태 타입
+ * 배송상태 타입 (Order 레벨 — 2단계)
  * pending: 발주대기 (아직 삼성에 발주 안 넣음)
- * in-transit: 배송중 (삼성에서 출발)
- * delivered: 배송완료 (현장 도착)
+ * ordered: 발주완료 (삼성에 발주 넣음)
+ *
+ * 구성품별 세부 배송상태는 ItemDeliveryStatus로 별도 관리
  */
-export type DeliveryStatus = 'pending' | 'in-transit' | 'delivered'
+export type DeliveryStatus = 'pending' | 'ordered'
 
-/** 배송상태 한글 표시용 */
+/** 배송상태 한글 표시용 (Order 레벨) */
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
-  'pending': '준비중',
-  'in-transit': '배송중',
-  'delivered': '배송완료'
+  'pending': '발주대기',
+  'ordered': '발주완료'
 }
 
-/** 배송상태별 색상 (배지용) */
+/** 배송상태별 색상 (Order 레벨 배지용) */
 export const DELIVERY_STATUS_COLORS: Record<DeliveryStatus, string> = {
   'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'in-transit': 'bg-blue-50 text-blue-700 border-blue-200',
-  'delivered': 'bg-green-50 text-green-700 border-green-200'
+  'ordered': 'bg-blue-50 text-blue-700 border-blue-200'
+}
+
+/**
+ * 구성품별 배송상태 타입 (EquipmentItem 레벨 — 4단계, 삼성 DPS 기준)
+ * none: 공란 (주문일/주문번호 없음)
+ * ordered: 주문완료 (주문일 또는 주문번호 입력됨)
+ * scheduled: 배송예정 (배송예정일 입력됨)
+ * confirmed: 배송확정 (배송확정일 입력됨)
+ */
+export type ItemDeliveryStatus = 'none' | 'ordered' | 'scheduled' | 'confirmed'
+
+/** 구성품별 배송상태 한글 표시용 */
+export const ITEM_DELIVERY_STATUS_LABELS: Record<ItemDeliveryStatus, string> = {
+  'none': '—',
+  'ordered': '주문완료',
+  'scheduled': '배송예정',
+  'confirmed': '배송확정'
+}
+
+/** 구성품별 배송상태 색상 (배지용) */
+export const ITEM_DELIVERY_STATUS_COLORS: Record<ItemDeliveryStatus, string> = {
+  'none': '',
+  'ordered': 'bg-blue-50 text-blue-700 border-blue-200',
+  'scheduled': 'bg-purple-50 text-purple-700 border-purple-200',
+  'confirmed': 'bg-green-50 text-green-700 border-green-200'
 }
 
 /**
@@ -109,6 +133,11 @@ export interface Order {
 
   // 📦 삼성 주문번호 (배송관리에서 입력)
   samsungOrderNumber?: string           // 삼성전자 주문번호 (예: SO-2026-001)
+
+  // 📋 설치일정 정보 (설치팀이 입력)
+  installScheduleDate?: string          // 설치예정일 (YYYY-MM-DD)
+  installCompleteDate?: string          // 설치완료일 (YYYY-MM-DD)
+  installMemo?: string                  // 설치 관련 메모
 }
 
 /**
@@ -142,6 +171,16 @@ export const AFFILIATE_OPTIONS = [
   '교육플랫폼',
   '기타'
 ] as const
+
+/**
+ * 작업종류별 뱃지 색상
+ */
+export const WORK_TYPE_COLORS: Record<string, string> = {
+  '신규설치': 'bg-blue-100 text-blue-800 border-blue-200',
+  '이전설치': 'bg-purple-100 text-purple-800 border-purple-200',
+  '철거보관': 'bg-amber-100 text-amber-800 border-amber-200',
+  '철거폐기': 'bg-red-100 text-red-800 border-red-200',
+}
 
 /**
  * 품목 목록 (드롭다운용)
@@ -184,12 +223,13 @@ export interface EquipmentItem {
   totalPrice?: number            // 매입금액 (자동 계산: 수량 × 단가)
   warehouseId?: string           // 배송 창고 ID (warehouse-data.ts 참조)
   /**
-   * 구성품별 개별 배송 상태
-   * - pending: 발주대기 (아직 배송 예정일 미입력)
-   * - in-transit: 배송중 (배송예정일 입력됨)
-   * - delivered: 입고완료 (배송확정일이 오늘 이전)
+   * 구성품별 개별 배송 상태 (삼성 DPS 4단계)
+   * - none: 공란 (주문일/주문번호 없음)
+   * - ordered: 주문완료 (주문일 또는 주문번호 입력됨)
+   * - scheduled: 배송예정 (배송예정일 입력됨)
+   * - confirmed: 배송확정 (배송확정일 입력됨)
    */
-  deliveryStatus?: DeliveryStatus
+  deliveryStatus?: ItemDeliveryStatus
 }
 
 /**

@@ -30,8 +30,8 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Truck, Plus, Trash2 } from 'lucide-react'
-import type { Order, EquipmentItem, DeliveryStatus } from '@/types/order'
-import { DELIVERY_STATUS_LABELS, DELIVERY_STATUS_COLORS, COMPONENT_OPTIONS } from '@/types/order'
+import type { Order, EquipmentItem, ItemDeliveryStatus } from '@/types/order'
+import { ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS, COMPONENT_OPTIONS } from '@/types/order'
 import { mockWarehouses } from '@/lib/warehouse-data'
 import { computeItemDeliveryStatus } from '@/lib/delivery-utils'
 
@@ -118,7 +118,7 @@ export function DeliveryInputDialog({
     // 각 구성품의 배송상태 자동 계산
     const updatedItems = items.map(item => ({
       ...item,
-      deliveryStatus: computeItemDeliveryStatus(item) as DeliveryStatus
+      deliveryStatus: computeItemDeliveryStatus(item) as ItemDeliveryStatus
     }))
 
     onSave(order.id, {
@@ -187,8 +187,8 @@ export function DeliveryInputDialog({
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-2">
                           <span className="font-medium text-sm">#{index + 1}</span>
-                          <Badge className={`${DELIVERY_STATUS_COLORS[itemStatus]} text-xs`}>
-                            {DELIVERY_STATUS_LABELS[itemStatus]}
+                          <Badge className={`${ITEM_DELIVERY_STATUS_COLORS[itemStatus]} text-xs`}>
+                            {ITEM_DELIVERY_STATUS_LABELS[itemStatus]}
                           </Badge>
                         </div>
                         <Button

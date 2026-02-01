@@ -17,6 +17,7 @@ import {
   Truck,          // 배송 관리
   Warehouse,      // 재고 관리
   Calculator,     // 설치비 관리
+  CalendarCheck,  // 설치일정 관리
   Settings        // 설정
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
@@ -86,6 +87,11 @@ export const menuItems: MenuGroup[] = [
   {
     title: '멜레아 · 에스원',
     items: [
+      {
+        title: '설치일정 관리',
+        url: '/mellea/schedule',
+        icon: CalendarCheck,
+      },
       {
         title: '배송 관리',
         url: '/mellea/delivery',

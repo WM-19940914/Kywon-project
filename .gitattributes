@@ -1,0 +1,6 @@
+# 폰트 파일을 바이너리로 처리 (Git 경고 방지)
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
+*.eot binary

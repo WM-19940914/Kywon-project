@@ -1,17 +1,10 @@
 /**
  * 배송관리 페이지 (멜레아 전용)
  *
- * 삼성전자에 발주한 장비의 배송 현황을 테이블 리스트로 관리합니다.
- *
- * 주요 기능:
- * - 상태 탭 필터: 발주대기/배송중/입고완료 (발주대기 기본 선택)
- * - 테이블 리스트: 현장별 행 + 아코디언 구성품 상세 (SET 모델 + 구성품)
+ * 삼성전자에 발주한 장비의 배송 현황을 관리합니다.
+ * - 상태 탭 필터: 발주대기/발주완료 (발주대기 기본 선택)
+ * - 테이블 리스트: 현장별 행 + 아코디언 구성품 상세
  * - 배송정보 입력 모달: 주문번호/배송일/창고 입력
- *
- * 배송 상태 자동 판정:
- * - 모든 구성품 확정일 ≤ 오늘 → 입고완료
- * - 주문번호 + 배송예정일 입력 → 배송중
- * - 그 외 → 발주대기
  */
 
 'use client'
@@ -25,7 +18,6 @@ import { DeliveryDetailDialog } from '@/components/delivery/delivery-detail-dial
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Truck } from 'lucide-react'
-// computeDeliveryStatus 자동 판정 대신 order.deliveryStatus를 직접 사용
 
 export default function DeliveryPage() {
   // 발주 데이터 (나중에 Supabase로 교체)
@@ -80,7 +72,7 @@ export default function DeliveryPage() {
    * 상태별 건수 계산 (탭 표시용)
    */
   const statusCounts = useMemo(() => {
-    const counts = { pending: 0, 'in-transit': 0, delivered: 0 }
+    const counts = { pending: 0, ordered: 0 }
     deliveryOrders.forEach(order => {
       // order.deliveryStatus 직접 사용
       if (order.deliveryStatus) counts[order.deliveryStatus]++
@@ -98,7 +90,7 @@ export default function DeliveryPage() {
 
   /**
    * 배송상태 수동 전환 핸들러
-   * 발주대기 → 배송중, 배송중 → 입고완료
+   * 발주대기 → 발주완료 한 방향만
    */
   const handleChangeDeliveryStatus = (orderId: string, newStatus: DeliveryStatus) => {
     setOrders(prev => prev.map(order => {
@@ -136,11 +128,10 @@ export default function DeliveryPage() {
     alert('배송 정보가 저장되었습니다!')
   }
 
-  /** 상태 탭 정의 (전체 탭 제거, 발주대기 먼저) */
+  /** 상태 탭 정의 (2단계: 발주대기/발주완료) */
   const statusTabs: { label: string; value: DeliveryStatus; count: number }[] = [
     { label: '발주대기', value: 'pending', count: statusCounts.pending },
-    { label: '배송중', value: 'in-transit', count: statusCounts['in-transit'] },
-    { label: '입고완료', value: 'delivered', count: statusCounts.delivered },
+    { label: '발주완료', value: 'ordered', count: statusCounts.ordered },
   ]
 
   return (
@@ -151,7 +142,7 @@ export default function DeliveryPage() {
           <Truck className="h-6 w-6" />
           배송관리
         </h1>
-        <p className="text-muted-foreground">삼성전자 장비 배송 현황을 한눈에 확인하세요</p>
+        <p className="text-muted-foreground">삼성전자에 발주한 장비의 배송 현황을 관리하세요</p>
       </div>
 
       {/* 검색 영역 */}
@@ -194,9 +185,8 @@ export default function DeliveryPage() {
 
       {/* 탭별 안내 문구 */}
       <p className="text-sm text-muted-foreground mb-3">
-        {statusFilter === 'pending' && <span className="inline-flex items-center gap-3"><span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span><span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span></span><span className="text-muted-foreground">삼성전자에 주문을 넣기 전 단계입니다. 구성품별 주문번호와 배송일정을 입력하세요.</span></span>}
-        {statusFilter === 'in-transit' && '삼성전자에서 출발한 장비입니다. 설치팀은 입고 일정을 확인하세요.'}
-        {statusFilter === 'delivered' && '창고에 입고 완료된 장비입니다.'}
+        {statusFilter === 'pending' && <span className="inline-flex items-center gap-3"><span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span><span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span></span><span className="text-muted-foreground">삼성전자에 발주를 신속히 진행하고 발주완료로 변경해주세요.</span></span>}
+        {statusFilter === 'ordered' && '삼성전자에 발주 완료된 장비입니다. 구성품별 배송현황을 확인하세요.'}
       </p>
 
       {/* 메인 테이블 */}
@@ -206,7 +196,6 @@ export default function DeliveryPage() {
         onViewDetail={handleViewDetail}
         onChangeStatus={handleChangeDeliveryStatus}
         onSaveItems={(orderId, items) => {
-          // 자동 판정 제거 — deliveryStatus는 수동 전환으로만 변경
           setOrders(prev => prev.map(order => {
             if (order.id !== orderId) return order
             return { ...order, equipmentItems: items }
@@ -222,7 +211,7 @@ export default function DeliveryPage() {
         onSave={handleSaveDelivery}
       />
 
-      {/* 배송 상세 정보 모달 (기존 유지) */}
+      {/* 배송 상세 정보 모달 */}
       <DeliveryDetailDialog
         order={orderToView}
         open={detailDialogOpen}

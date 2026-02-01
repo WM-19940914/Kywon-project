@@ -4,13 +4,14 @@
  * 배송 상태 자동 판정, 알림 분류, 날짜 계산 등
  * 배송관리 페이지에서 사용하는 핵심 로직을 모아놓았습니다.
  *
- * 배송 상태 자동 판정 규칙:
- * - 모든 구성품의 배송확정일 ≤ 오늘 → Order 전체 "입고완료" (delivered)
- * - 주문번호 입력됨 && 배송예정일 입력됨 → "배송중" (in-transit)
- * - 아직 주문 안 넣음 → "발주대기" (pending)
+ * 구성품별 배송 상태 자동 판정 규칙 (삼성 DPS 4단계):
+ * - 배송확정일 있음 → confirmed (배송확정)
+ * - 배송예정일 있음 → scheduled (배송예정)
+ * - 주문일 또는 주문번호 있음 → ordered (주문완료)
+ * - 그 외 → none (공란)
  */
 
-import type { Order, DeliveryStatus, EquipmentItem } from '@/types/order'
+import type { Order, DeliveryStatus, ItemDeliveryStatus, EquipmentItem } from '@/types/order'
 import { mockWarehouses } from '@/lib/warehouse-data'
 
 /**
@@ -47,88 +48,72 @@ export function getEffectiveDeliveryDate(order: Order): string | undefined {
 }
 
 /**
- * 구성품별 배송 상태 자동 판정
+ * 구성품별 배송 상태 자동 판정 (삼성 DPS 4단계)
+ *
+ * 판정 우선순위:
+ * 1. 배송확정일 있음 → confirmed (배송확정)
+ * 2. 배송예정일 있음 → scheduled (배송예정)
+ * 3. 주문일 또는 주문번호 있음 → ordered (주문완료)
+ * 4. 그 외 → none (공란)
+ *
  * @param item - 구성품 항목
  * @returns 계산된 배송 상태
  */
-export function computeItemDeliveryStatus(item: EquipmentItem): DeliveryStatus {
-  const today = getToday()
-
-  // 배송확정일이 오늘 이전이면 → 입고완료
-  if (item.confirmedDeliveryDate && item.confirmedDeliveryDate <= today) {
-    return 'delivered'
+export function computeItemDeliveryStatus(item: EquipmentItem): ItemDeliveryStatus {
+  // 배송확정일 입력됨 → 배송확정
+  if (item.confirmedDeliveryDate) {
+    return 'confirmed'
   }
 
-  // 배송요청일이 있으면 → 배송중
-  if (item.requestedDeliveryDate) {
-    return 'in-transit'
+  // 배송예정일 입력됨 → 배송예정
+  if (item.scheduledDeliveryDate) {
+    return 'scheduled'
   }
 
-  // 그 외 → 발주대기
-  return 'pending'
+  // 주문일 또는 주문번호 입력됨 → 주문완료
+  if (item.orderDate || (item.orderNumber && item.orderNumber.trim())) {
+    return 'ordered'
+  }
+
+  // 그 외 → 공란
+  return 'none'
 }
 
 /**
  * 배송 진행률 계산
- * 구성품 전체 수와 배송완료/배송중 수를 반환
+ * 구성품 전체 수와 배송확정/배송예정 수를 반환
  *
  * @param order - 발주 정보
- * @returns { total: 전체 구성품 수, delivered: 입고완료 수, inTransit: 배송중 수 }
+ * @returns { total: 전체 구성품 수, confirmed: 배송확정 수, scheduled: 배송예정 수 }
  */
-export function computeDeliveryProgress(order: Order): { total: number; delivered: number; inTransit: number } {
+export function computeDeliveryProgress(order: Order): { total: number; confirmed: number; scheduled: number } {
   const items = order.equipmentItems || []
-  if (items.length === 0) return { total: 0, delivered: 0, inTransit: 0 }
+  if (items.length === 0) return { total: 0, confirmed: 0, scheduled: 0 }
 
-  let delivered = 0
-  let inTransit = 0
+  let confirmed = 0
+  let scheduled = 0
 
   for (const item of items) {
     const status = computeItemDeliveryStatus(item)
-    if (status === 'delivered') delivered++
-    else if (status === 'in-transit') inTransit++
+    if (status === 'confirmed') confirmed++
+    else if (status === 'scheduled') scheduled++
   }
 
-  return { total: items.length, delivered, inTransit }
+  return { total: items.length, confirmed, scheduled }
 }
 
 /**
- * Order 전체의 배송 상태 자동 판정 (구성품 기반)
+ * Order 전체의 배송 상태 자동 판정 (2단계)
  *
  * 규칙:
- * 1. 구성품 전부 delivered → 'delivered' (배송완료)
- * 2. 하나라도 in-transit 또는 delivered → 'in-transit' (배송중)
- * 3. 그 외 → 'pending' (준비중)
+ * 1. 삼성 주문번호가 있으면 → 'ordered' (발주완료)
+ * 2. 그 외 → 'pending' (발주대기)
  *
  * @param order - 발주 정보
  * @returns 계산된 배송 상태
  */
 export function computeDeliveryStatus(order: Order): DeliveryStatus {
-  const items = order.equipmentItems || []
-
-  // 구성품이 있는 경우 구성품 기준으로 판정
-  if (items.length > 0) {
-    const progress = computeDeliveryProgress(order)
-
-    // 모든 구성품이 배송완료
-    if (progress.delivered === progress.total) return 'delivered'
-
-    // 하나라도 배송중이거나 배송완료면 → 배송중
-    if (progress.delivered > 0 || progress.inTransit > 0) return 'in-transit'
-
-    return 'pending'
-  }
-
-  // 구성품이 없는 경우 Order 레벨 정보로 판정
-  const today = getToday()
-
-  if (order.confirmedDeliveryDate && order.confirmedDeliveryDate <= today) {
-    return 'delivered'
-  }
-
-  if (order.samsungOrderNumber && order.requestedDeliveryDate) {
-    return 'in-transit'
-  }
-
+  if (order.samsungOrderNumber) return 'ordered'
   return 'pending'
 }
 
@@ -150,8 +135,8 @@ export function getAlertType(order: Order): AlertType {
   // order.deliveryStatus 직접 사용 (자동 판정 대신 수동 전환 값)
   const status = order.deliveryStatus || 'pending'
 
-  // 이미 입고완료면 알림 없음
-  if (status === 'delivered') return 'none'
+  // 발주대기 상태면 알림 없음
+  if (status === 'pending') return 'none'
 
   // 유효 배송일 가져오기
   const effectiveDate = getEffectiveDeliveryDate(order)
