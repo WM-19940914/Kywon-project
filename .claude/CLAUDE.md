@@ -162,7 +162,33 @@ settlements (월별 정산)
 - **아코디언 우측 삭제 버튼 제거** — 좌측 삭제 버튼만 유지
 - **행추가 버튼 개선** — `행추가` / `3행 추가[스탠드]` / `4행 추가[벽걸이]`
 
+### 2026-02-03 작업 내용
+- **사이드바 메뉴명 변경** (`lib/menu-items.ts`)
+  - `설치 관리/ 견적 및 정산 관리` → `설치 관리/견적 관리`
+- **에스원 정산관리 페이지 신규 생성** (`app/(dashboard)/mellea/s1-settlement/page.tsx`)
+  - 멜레아 ↔ 에스원(설치팀) 간 월별 설치비 정산 관리
+  - 3탭 구조: 미정산 / 정산 진행중 / 정산 완료
+  - 월 선택기 (설치완료일 기준 YYYY-MM 필터)
+  - 체크박스 일괄 상태 변경 (미정산→진행중, 진행중→완료)
+  - 개별 되돌리기 (진행중→미정산)
+  - 통계 카드: 건수, 설치비 합계, 전체 현황
+  - 정산 업무: 매달 20~29일경 진행, 애매한 건은 미정산에 남김
+- **설치완료 탭에 정산 상태 열 추가** (`components/schedule/schedule-table.tsx`)
+  - 설치완료 탭에서만 견적서 열 옆에 정산 뱃지 표시
+  - 미정산(회색) / 진행중(주황) / 완료(초록)
+  - 데스크톱 테이블 + 모바일 카드 모두 적용
+- **타입 추가** (`types/order.ts`)
+  - `S1SettlementStatus` 타입: `'unsettled' | 'in-progress' | 'settled'`
+  - `S1_SETTLEMENT_STATUS_LABELS`, `S1_SETTLEMENT_STATUS_COLORS` 상수
+  - Order에 `s1SettlementStatus`, `s1SettlementMonth` 필드 추가
+- **DAL 함수 추가** (`lib/supabase/dal.ts`)
+  - `updateS1SettlementStatus()` — 개별 정산 상태 변경
+  - `batchUpdateS1SettlementStatus()` — 일괄 정산 상태 변경
+- **사이드바 메뉴 추가** — "멜레아 · 에스원" 그룹에 에스원 정산관리 메뉴 (Receipt 아이콘)
+- **shadcn checkbox 컴포넌트 설치** (`components/ui/checkbox.tsx`)
+
 ### 이어서 할 작업 (미정)
+- Supabase DB에 `s1_settlement_status`, `s1_settlement_month` 컬럼 추가 필요
 - 배송중/입고완료 탭에도 MeLEA 또는 역할별 로고 뱃지 추가 검토
 - 배송정보 입력/수정 모달 개선
 - Supabase DB 연동 작업
