@@ -12,7 +12,29 @@
  */
 
 import type { Order, DeliveryStatus, ItemDeliveryStatus, EquipmentItem } from '@/types/order'
-import { mockWarehouses } from '@/lib/warehouse-data'
+import type { Warehouse } from '@/types/warehouse'
+
+/**
+ * 창고 목록 캐시 (컴포넌트에서 setWarehouses로 설정)
+ * DB에서 가져온 창고 데이터를 여기에 저장하면
+ * getWarehouseName, getWarehouseDetail 등의 함수에서 사용할 수 있습니다.
+ */
+let _warehouseCache: Warehouse[] = []
+
+/**
+ * 창고 캐시 설정 (페이지 로드 시 호출)
+ * 예: setWarehouseCache(await fetchWarehouses())
+ */
+export function setWarehouseCache(warehouses: Warehouse[]) {
+  _warehouseCache = warehouses
+}
+
+/**
+ * 현재 캐시된 창고 목록 반환
+ */
+export function getWarehouseCache(): Warehouse[] {
+  return _warehouseCache
+}
 
 /**
  * 오늘 날짜를 YYYY-MM-DD 형식으로 반환
@@ -166,7 +188,7 @@ export function getAlertType(order: Order): AlertType {
  */
 export function getWarehouseName(warehouseId?: string): string {
   if (!warehouseId) return '-'
-  const warehouse = mockWarehouses.find(w => w.id === warehouseId)
+  const warehouse = _warehouseCache.find(w => w.id === warehouseId)
   return warehouse?.name || '-'
 }
 
@@ -177,7 +199,7 @@ export function getWarehouseName(warehouseId?: string): string {
  */
 export function getWarehouseDetail(warehouseId?: string) {
   if (!warehouseId) return null
-  const warehouse = mockWarehouses.find(w => w.id === warehouseId)
+  const warehouse = _warehouseCache.find(w => w.id === warehouseId)
   if (!warehouse) return null
   return {
     managerName: warehouse.managerName,
@@ -350,6 +372,46 @@ export function analyzeDeliveryDelay(items?: EquipmentItem[]): {
   }
 
   return { total: items.length, normal, delayed, noDate, maxDelayDays }
+}
+
+/**
+ * 발주완료 탭 문서상태 2단계 타입
+ * - in-progress: 진행중 (배송확정일이 1개라도 없거나, 오늘 이후인 경우)
+ * - completed: 완료 (모든 구성품의 배송확정일이 입력되어 있고, 모두 과거인 경우)
+ */
+export type OrderedDocStatus = 'in-progress' | 'completed'
+
+/**
+ * 발주완료 탭 문서상태 자동 계산 (구성품 배열을 직접 받음)
+ *
+ * - 완료: 모든 구성품의 배송확정일이 입력 + 모두 오늘 이전(과거)
+ * - 진행중: 그 외 전부 (배송확정일 미입력, 오늘, 미래 포함)
+ *
+ * @param items - 구성품 배열 (편집 중이면 editingItems, 아니면 order.equipmentItems)
+ * @returns 계산된 문서상태
+ */
+export function computeOrderedDocStatus(items: EquipmentItem[]): OrderedDocStatus {
+  const today = getToday()
+
+  // 구성품이 없으면 진행중
+  if (items.length === 0) return 'in-progress'
+
+  // 모든 구성품에 배송확정일이 있고, 전부 과거(오늘 미포함)인지 확인
+  const allDone = items.every(item => {
+    if (!item.confirmedDeliveryDate) return false
+    // daysDiff(확정일, 오늘) < 0 → 확정일이 과거 (오늘은 포함 안 함)
+    return daysDiff(item.confirmedDeliveryDate, today) < 0
+  })
+
+  return allDone ? 'completed' : 'in-progress'
+}
+
+/**
+ * 발주완료 탭 문서상태별 뱃지 스타일
+ */
+export const ORDERED_DOC_STATUS_STYLES: Record<OrderedDocStatus, { label: string; color: string; bgColor: string; borderColor: string }> = {
+  'in-progress': { label: '진행중', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+  'completed': { label: '완료', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
 }
 
 /**

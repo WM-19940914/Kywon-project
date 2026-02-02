@@ -7,8 +7,8 @@
 
 'use client'
 
-import { useState } from 'react'
-import { mockOrders } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { fetchOrders } from '@/lib/supabase/dal'
 import { type Order } from '@/types/order'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -23,10 +23,18 @@ import {
 } from '@/components/ui/select'
 
 export default function SettledPage() {
-  // 상태 관리
-  const [searchTerm, setSearchTerm] = useState('') // 검색어
-  const [selectedMonth, setSelectedMonth] = useState('all') // 선택된 월
-  const [orders] = useState(mockOrders) // 발주 목록
+  // Supabase에서 데이터 로드
+  const [searchTerm, setSearchTerm] = useState('')
+  const [selectedMonth, setSelectedMonth] = useState('all')
+  const [orders, setOrders] = useState<Order[]>([])
+  const [, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchOrders().then(data => {
+      setOrders(data)
+      setIsLoading(false)
+    })
+  }, [])
 
   // 상세보기 모달 상태
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)

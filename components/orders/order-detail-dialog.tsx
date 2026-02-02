@@ -23,7 +23,7 @@ import {
   type Order,
   type OrderStatus
 } from '@/types/order'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, FileText } from 'lucide-react'
+import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, FileText, User, Phone, Calendar } from 'lucide-react'
 
 /**
  * 컴포넌트가 받을 Props
@@ -169,9 +169,46 @@ export function OrderDetailDialog({
                 <span className="col-span-2">{formatDate(order.orderDate)}</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
+                <span className="text-sm text-gray-500 flex items-center gap-1">
+                  <Calendar className="h-3.5 w-3.5" />설치요청일
+                </span>
+                <span className="col-span-2">{formatDate(order.requestedInstallDate)}</span>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
                 <span className="text-sm text-gray-500">주문번호</span>
                 <span className="col-span-2 font-mono text-sm">{order.samsungOrderNumber || '-'}</span>
               </div>
+
+              {/* 담당자 정보 */}
+              {(order.contactName || order.contactPhone || order.buildingManagerPhone) && (
+                <>
+                  <Separator />
+                  {order.contactName && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <User className="h-3.5 w-3.5" />담당자
+                      </span>
+                      <span className="col-span-2 font-medium">{order.contactName}</span>
+                    </div>
+                  )}
+                  {order.contactPhone && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" />담당자 연락처
+                      </span>
+                      <span className="col-span-2">{order.contactPhone}</span>
+                    </div>
+                  )}
+                  {order.buildingManagerPhone && (
+                    <div className="grid grid-cols-3 gap-2">
+                      <span className="text-sm text-gray-500 flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5" />건물관리인
+                      </span>
+                      <span className="col-span-2">{order.buildingManagerPhone}</span>
+                    </div>
+                  )}
+                </>
+              )}
             </div>
           </div>
 
@@ -273,28 +310,32 @@ export function OrderDetailDialog({
 
         {/* 하단 버튼 */}
         <div className="flex justify-between items-center pt-6 border-t mt-6">
-          {/* 왼쪽: 삭제 + 수정 */}
+          {/* 왼쪽: 삭제 + 수정 (콜백이 있을 때만 표시) */}
           <div className="flex gap-2">
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              className="gap-1"
-            >
-              <Trash2 className="h-4 w-4" />
-              삭제
-            </Button>
-            <Button variant="secondary" onClick={handleEdit} className="gap-1">
-              <Edit className="h-4 w-4" />
-              수정
-            </Button>
+            {onDelete && (
+              <Button
+                variant="destructive"
+                onClick={handleDelete}
+                className="gap-1"
+              >
+                <Trash2 className="h-4 w-4" />
+                삭제
+              </Button>
+            )}
+            {onEdit && (
+              <Button variant="secondary" onClick={handleEdit} className="gap-1">
+                <Edit className="h-4 w-4" />
+                수정
+              </Button>
+            )}
           </div>
 
-          {/* 오른쪽: 닫기 + 상태변경 */}
+          {/* 오른쪽: 닫기 + 상태변경 (콜백이 있을 때만 표시) */}
           <div className="flex gap-2">
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               닫기
             </Button>
-            {nextStatus && (
+            {nextStatus && onStatusChange && (
               <Button onClick={handleStatusChange}>
                 {ORDER_STATUS_LABELS[nextStatus]}(으)로 변경
               </Button>

@@ -9,8 +9,8 @@
 
 'use client'
 
-import { useState, useRef, useCallback } from 'react'
-import { mockWarehouses } from '@/lib/warehouse-data'
+import { useState, useEffect, useRef, useCallback } from 'react'
+import { fetchWarehouses, createWarehouse as createWarehouseDB, updateWarehouse as updateWarehouseDB, deleteWarehouse as deleteWarehouseDB } from '@/lib/supabase/dal'
 import type { Warehouse } from '@/types/warehouse'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -811,10 +811,19 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
 }
 
 export default function WarehousesPage() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>(mockWarehouses)
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([])
+  const [, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const cardElements = useRef<Record<string, HTMLDivElement | null>>({})
+
+  // Supabase에서 창고 데이터 가져오기
+  useEffect(() => {
+    fetchWarehouses().then(data => {
+      setWarehouses(data)
+      setIsLoading(false)
+    })
+  }, [])
 
   // 검색 필터
   const filteredWarehouses = warehouses.filter(
@@ -838,22 +847,27 @@ export default function WarehousesPage() {
     }
   }, [])
 
-  // 창고 정보 업데이트
-  const handleUpdate = useCallback((updated: Warehouse) => {
+  // 창고 정보 업데이트 (DB 연동)
+  const handleUpdate = useCallback(async (updated: Warehouse) => {
+    await updateWarehouseDB(updated.id, updated)
     setWarehouses((prev) =>
       prev.map((w) => (w.id === updated.id ? updated : w))
     )
   }, [])
 
-  // 창고 삭제
-  const handleDelete = useCallback((id: string) => {
+  // 창고 삭제 (DB 연동)
+  const handleDelete = useCallback(async (id: string) => {
+    await deleteWarehouseDB(id)
     setWarehouses((prev) => prev.filter((w) => w.id !== id))
     if (selectedId === id) setSelectedId(null)
   }, [selectedId])
 
-  // 창고 추가
-  const handleAdd = useCallback((wh: Warehouse) => {
-    setWarehouses((prev) => [...prev, wh])
+  // 창고 추가 (DB 연동)
+  const handleAdd = useCallback(async (wh: Warehouse) => {
+    const created = await createWarehouseDB(wh)
+    if (created) {
+      setWarehouses((prev) => [...prev, created])
+    }
   }, [])
 
   return (

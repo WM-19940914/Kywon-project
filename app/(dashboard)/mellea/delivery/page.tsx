@@ -9,19 +9,31 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
-import { mockOrders } from '@/lib/mock-data'
+import { useState, useEffect, useMemo } from 'react'
+import { fetchOrders, updateOrder, updateDeliveryStatus, updateOrderStatus, saveEquipmentItems } from '@/lib/supabase/dal'
+import { fetchWarehouses } from '@/lib/supabase/dal'
+import { setWarehouseCache } from '@/lib/delivery-utils'
 import type { Order, DeliveryStatus, EquipmentItem } from '@/types/order'
 import { DeliveryTable } from '@/components/delivery/delivery-table'
 import { DeliveryInputDialog } from '@/components/delivery/delivery-input-dialog'
-import { DeliveryDetailDialog } from '@/components/delivery/delivery-detail-dialog'
+import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Truck } from 'lucide-react'
 
 export default function DeliveryPage() {
-  // 발주 데이터 (나중에 Supabase로 교체)
-  const [orders, setOrders] = useState<Order[]>(mockOrders)
+  // Supabase에서 데이터 로드
+  const [orders, setOrders] = useState<Order[]>([])
+  const [, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    // 창고 + 발주 데이터 동시 로드
+    Promise.all([fetchWarehouses(), fetchOrders()]).then(([warehouses, ordersData]) => {
+      setWarehouseCache(warehouses) // 창고 캐시 설정 (delivery-utils에서 사용)
+      setOrders(ordersData)
+      setIsLoading(false)
+    })
+  }, [])
 
   // 검색어
   const [searchTerm, setSearchTerm] = useState('')
@@ -41,7 +53,8 @@ export default function DeliveryPage() {
    * 배송 대상 발주만 필터링 (deliveryStatus가 있는 발주)
    */
   const deliveryOrders = useMemo(() => {
-    return orders.filter(order => order.deliveryStatus)
+    // 정산완료(settled)된 건은 배송관리에서 제외
+    return orders.filter(order => order.deliveryStatus && order.status !== 'settled')
   }, [orders])
 
   /**
@@ -92,7 +105,8 @@ export default function DeliveryPage() {
    * 배송상태 수동 전환 핸들러
    * 발주대기 → 발주완료 한 방향만
    */
-  const handleChangeDeliveryStatus = (orderId: string, newStatus: DeliveryStatus) => {
+  const handleChangeDeliveryStatus = async (orderId: string, newStatus: DeliveryStatus) => {
+    await updateDeliveryStatus(orderId, newStatus)
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order
       return { ...order, deliveryStatus: newStatus }
@@ -110,14 +124,16 @@ export default function DeliveryPage() {
   /**
    * 배송정보 저장 핸들러
    */
-  const handleSaveDelivery = (orderId: string, data: {
+  const handleSaveDelivery = async (orderId: string, data: {
     samsungOrderNumber: string
     equipmentItems: EquipmentItem[]
   }) => {
+    // DB에 저장
+    await updateOrder(orderId, { samsungOrderNumber: data.samsungOrderNumber })
+    await saveEquipmentItems(orderId, data.equipmentItems)
+
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order
-
-      // 자동 판정 제거 — deliveryStatus는 수동 전환으로만 변경
       return {
         ...order,
         samsungOrderNumber: data.samsungOrderNumber,
@@ -195,10 +211,18 @@ export default function DeliveryPage() {
         onEditDelivery={handleEditDelivery}
         onViewDetail={handleViewDetail}
         onChangeStatus={handleChangeDeliveryStatus}
-        onSaveItems={(orderId, items) => {
+        onSaveItems={async (orderId, items) => {
+          await saveEquipmentItems(orderId, items)
           setOrders(prev => prev.map(order => {
             if (order.id !== orderId) return order
             return { ...order, equipmentItems: items }
+          }))
+        }}
+        onSettle={async (orderId) => {
+          await updateOrderStatus(orderId, 'settled')
+          setOrders(prev => prev.map(order => {
+            if (order.id !== orderId) return order
+            return { ...order, status: 'settled' }
           }))
         }}
       />
@@ -211,8 +235,8 @@ export default function DeliveryPage() {
         onSave={handleSaveDelivery}
       />
 
-      {/* 배송 상세 정보 모달 */}
-      <DeliveryDetailDialog
+      {/* 발주 상세 모달 (전체 페이지 공용) */}
+      <OrderDetailDialog
         order={orderToView}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}

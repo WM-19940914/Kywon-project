@@ -221,7 +221,7 @@ export interface EquipmentItem {
   quantity: number               // 수량
   unitPrice?: number             // 매입단가
   totalPrice?: number            // 매입금액 (자동 계산: 수량 × 단가)
-  warehouseId?: string           // 배송 창고 ID (warehouse-data.ts 참조)
+  warehouseId?: string           // 배송 창고 ID (warehouses 테이블 참조)
   /**
    * 구성품별 개별 배송 상태 (삼성 DPS 4단계)
    * - none: 공란 (주문일/주문번호 없음)
@@ -322,6 +322,14 @@ export interface ParsedAddress {
   relocationDetailAddress?: string
   isRelocation: boolean
 }
+
+/**
+ * 설치일정 탭 상태 타입
+ * - unscheduled: 일정미정 (설치예정일 없음)
+ * - scheduled: 설치예정 (설치예정일 있음, 완료일 없음)
+ * - completed: 설치완료 (설치완료일 있음)
+ */
+export type InstallScheduleStatus = 'unscheduled' | 'scheduled' | 'completed'
 
 /**
  * 주소 문자열 파싱 유틸리티

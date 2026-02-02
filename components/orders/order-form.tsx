@@ -23,7 +23,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck, CalendarDays } from 'lucide-react'
 import {
   AFFILIATE_OPTIONS,
   CATEGORY_OPTIONS,
@@ -277,6 +277,10 @@ export function OrderForm({
         alert('담당자 연락처를 입력해주세요')
         return
       }
+      if (!requestedInstallDate) {
+        alert('설치요청일을 선택해주세요')
+        return
+      }
 
       // 🔥 사전견적이면 Step 3 건너뛰기
       if (isPreliminaryQuote) {
@@ -285,7 +289,6 @@ export function OrderForm({
         const dateStr = today.replace(/-/g, '')
         const autoDocNumber = `${businessName}-${dateStr}-01`
         setDocumentNumber(autoDocNumber)
-        setRequestedInstallDate(today)
 
         // items 비우기
         setItems([])
@@ -315,7 +318,6 @@ export function OrderForm({
       const dateStr = today.replace(/-/g, '')
       const autoDocNumber = `${businessName}-${dateStr}-01`
       setDocumentNumber(autoDocNumber)
-      setRequestedInstallDate(today)
     }
 
     setCurrentStep(currentStep + 1)
@@ -598,6 +600,37 @@ export function OrderForm({
                 />
                 <p className="text-xs text-gray-500 mt-1">
                   건물 소장이나 관리인과 연락해야 한다면 입력하세요
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* 설치요청일 섹션 */}
+          <Card className="border-orange-200">
+            <CardContent className="p-6 space-y-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-5 w-5 text-orange-600" />
+                <h3 className="font-bold text-lg">설치요청일</h3>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  희망 설치일 <span className="text-red-500">*</span>
+                </label>
+                <Input
+                  type="date"
+                  value={requestedInstallDate}
+                  onChange={(e) => setRequestedInstallDate(e.target.value)}
+                  className="max-w-xs"
+                />
+              </div>
+
+              {/* 안내 문구 */}
+              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-orange-700">
+                  설치 일정은 장비 입고 상황 및 현장 여건에 따라 변동될 수 있습니다.
+                  확정된 설치일은 담당자에게 별도 안내드립니다.
                 </p>
               </div>
             </CardContent>
@@ -898,17 +931,9 @@ export function OrderForm({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  설치요청일 <span className="text-red-500">*</span>
+                  설치요청일
                 </label>
-                <Input
-                  type="date"
-                  value={requestedInstallDate}
-                  onChange={(e) => setRequestedInstallDate(e.target.value)}
-                  className="bg-white"
-                />
-                <p className="text-xs text-orange-600 mt-1 flex items-center gap-1">
-                  <AlertTriangle className="h-3 w-3 flex-shrink-0" /> 실제 설치일은 현장 상황에 따라 요청일과 다를 수 있습니다
-                </p>
+                <p className="font-semibold text-sm">{requestedInstallDate ? requestedInstallDate.replace(/-/g, '.') : '-'}</p>
               </div>
             </CardContent>
           </Card>

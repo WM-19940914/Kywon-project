@@ -7,9 +7,11 @@
  * - 업체별 현황: 각 업체별 발주 건수
  */
 
-'use client'  // ← 중요! mockOrders를 사용하려면 필수
+'use client'
 
-import { mockOrders } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { fetchOrders } from '@/lib/supabase/dal'
+import type { Order } from '@/types/order'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ORDER_STATUS_LABELS, ORDER_STATUS_COLORS } from '@/types/order'
@@ -17,34 +19,45 @@ import { ClipboardList, Clock, Loader2, CheckCircle2 } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
+  // Supabase에서 발주 데이터 가져오기
+  const [orders, setOrders] = useState<Order[]>([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetchOrders()
+      .then(data => {
+        setOrders(data)
+        setIsLoading(false)
+      })
+      .catch(err => {
+        console.error('데이터 로드 실패:', err)
+        setLoadError(err?.message || '데이터를 불러오는데 실패했습니다')
+        setIsLoading(false)
+      })
+  }, [])
+
   // ===========================================
   // 1. 통계 계산
   // ===========================================
-  // 전체, 대기중, 진행중, 완료 각각 몇 건인지 세어요
   const stats = {
-    total: mockOrders.length,  // 전체 개수
-    pending: mockOrders.filter(o => o.status === 'received').length,  // 접수중 개수
-    'in-progress': mockOrders.filter(o => o.status === 'in-progress').length,  // 진행중 개수
-    completed: mockOrders.filter(o => o.status === 'completed').length,  // 완료 개수
+    total: orders.length,
+    pending: orders.filter(o => o.status === 'received').length,
+    'in-progress': orders.filter(o => o.status === 'in-progress').length,
+    completed: orders.filter(o => o.status === 'completed').length,
   }
 
   // ===========================================
   // 2. 최근 발주 5개 (날짜순 정렬)
   // ===========================================
-  // [...mockOrders]: 원본 데이터를 복사해요 (원본을 바꾸면 안 돼요!)
-  // sort(): 날짜 최신순으로 정렬 (b - a = 내림차순)
-  // slice(0, 5): 앞에서 5개만 가져오기
-  const recentOrders = [...mockOrders]
+  const recentOrders = [...orders]
     .sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime())
     .slice(0, 5)
 
   // ===========================================
   // 3. 업체별 통계
   // ===========================================
-  // reduce()로 업체별로 건수를 세어요
-  // 예: { '삼성설비': 4, '한일공조': 3, '대한냉난방': 3 }
-  const contractorStats = mockOrders.reduce((acc, order) => {
-    // 현재 업체의 개수에 1을 더해요 (없으면 0에서 시작)
+  const contractorStats = orders.reduce((acc, order) => {
     acc[order.affiliate] = (acc[order.affiliate] || 0) + 1
     return acc
   }, {} as Record<string, number>)
@@ -52,6 +65,32 @@ export default function DashboardPage() {
   // 업체별 통계를 배열로 바꿔서 건수 많은 순으로 정렬
   const contractorStatsArray = Object.entries(contractorStats)
     .sort((a, b) => b[1] - a[1])  // 건수 많은 순
+
+  // 로딩 중이면 로딩 표시
+  if (isLoading) {
+    return (
+      <div className="container mx-auto py-8 px-4 text-center">
+        <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-blue-500" />
+        <p className="text-muted-foreground">데이터를 불러오는 중...</p>
+      </div>
+    )
+  }
+
+  // 에러가 있으면 에러 표시
+  if (loadError) {
+    return (
+      <div className="container mx-auto py-8 px-4 text-center">
+        <p className="text-red-500 mb-2">데이터 로드 실패</p>
+        <p className="text-sm text-muted-foreground">{loadError}</p>
+        <button
+          onClick={() => window.location.reload()}
+          className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+        >
+          새로고침
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="container mx-auto py-8 px-4">

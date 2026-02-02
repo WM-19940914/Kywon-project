@@ -54,15 +54,14 @@ import { DELIVERY_STATUS_LABELS, DELIVERY_STATUS_COLORS, ITEM_DELIVERY_STATUS_LA
 import {
   computeDeliveryProgress,
   getAlertType,
-  getEffectiveDeliveryDate,
   getWarehouseDetail,
   formatShortDate,
   computeItemDeliveryStatus,
-  parseRegionFromAddress,
   analyzeDeliveryDelay,
-  ALERT_STYLES
+  computeOrderedDocStatus,
+  ORDERED_DOC_STATUS_STYLES,
+  getWarehouseCache,
 } from '@/lib/delivery-utils'
-import { mockWarehouses } from '@/lib/warehouse-data'
 import { DeliveryPriceTableSheet } from '@/components/delivery/delivery-price-table-sheet'
 
 /**
@@ -238,7 +237,8 @@ function WarehousePickerDialog({
   /** 새 인도처 입력 데이터 */
   const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '', managerName: '', managerPhone: '' })
 
-  const filtered = mockWarehouses.filter(wh => {
+  const warehouseList = getWarehouseCache()
+  const filtered = warehouseList.filter(wh => {
     if (!search) return true
     const term = search.toLowerCase()
     return (
@@ -248,17 +248,22 @@ function WarehousePickerDialog({
     )
   })
 
-  /** 새 인도처 저장 (mockWarehouses에 추가) */
-  const handleAddWarehouse = () => {
+  /** 새 인도처 저장 (DB + 캐시에 추가) */
+  const handleAddWarehouse = async () => {
     if (!newWarehouse.name.trim() || !newWarehouse.address.trim()) return
     const newId = `wh-${Date.now()}`
-    mockWarehouses.push({
+    const whData = {
       id: newId,
       name: newWarehouse.name.trim(),
       address: newWarehouse.address.trim(),
       managerName: newWarehouse.managerName.trim() || undefined,
       managerPhone: newWarehouse.managerPhone.trim() || undefined,
-    })
+    }
+    // 캐시에 추가 (UI 즉시 반영)
+    getWarehouseCache().push(whData)
+    // DB에도 저장 (비동기)
+    const { createWarehouse } = await import('@/lib/supabase/dal')
+    createWarehouse(whData)
     // 추가 후 바로 선택
     onSelect(newId)
     onOpenChange(false)
@@ -438,6 +443,8 @@ interface DeliveryTableProps {
   onChangeStatus?: (orderId: string, newStatus: DeliveryStatus) => void
   /** 인라인 편집 저장 콜백 */
   onSaveItems?: (orderId: string, items: EquipmentItem[]) => void
+  /** 정산완료 처리 콜백 */
+  onSettle?: (orderId: string) => void
 }
 
 /** 상태별 행 스타일 */
@@ -450,14 +457,20 @@ function getRowStyle(order: Order): string {
   return ''
 }
 
-/** 상태 뱃지 (발주대기 / 발주완료) */
-function StatusBadge({ order }: { order: Order }) {
+/**
+ * 상태 뱃지 (발주대기 / 진행중 / 완료)
+ * @param order - 발주 정보
+ * @param editingItems - 아코디언에서 편집 중인 구성품 (있으면 이걸로 판정)
+ */
+function StatusBadge({ order, editingItems }: { order: Order; editingItems?: EquipmentItem[] }) {
   const status = order.deliveryStatus || 'pending'
-  const alertType = getAlertType(order)
 
-  // 발주완료 탭: 알림 우선 표시
-  if (alertType !== 'none' && alertType !== 'this-week') {
-    const style = ALERT_STYLES[alertType]
+  // 발주완료 탭: 진행중/완료 자동 판정
+  if (status === 'ordered') {
+    // 편집 중인 데이터가 있으면 그걸 기준으로, 없으면 원본 데이터
+    const items = editingItems || order.equipmentItems || []
+    const docStatus = computeOrderedDocStatus(items)
+    const style = ORDERED_DOC_STATUS_STYLES[docStatus]
     return (
       <Badge className={`${style.bgColor} ${style.color} border ${style.borderColor} text-xs`}>
         {style.label}
@@ -465,6 +478,7 @@ function StatusBadge({ order }: { order: Order }) {
     )
   }
 
+  // 발주대기 탭: 기존대로 "발주대기" 표시
   return (
     <Badge className={`${DELIVERY_STATUS_COLORS[status]} text-xs`}>
       {DELIVERY_STATUS_LABELS[status]}
@@ -476,6 +490,13 @@ function StatusBadge({ order }: { order: Order }) {
  * 발주완료 탭 진행률 요약 컴포넌트
  * 구성품 입고 현황을 "n/전체 입고" 형태로 표시
  */
+/**
+ * 발주완료 탭 진행률 요약 컴포넌트
+ *
+ * - 구성품 없음: '-'
+ * - 전체 배송확정: 초록 체크 + "전체확정"
+ * - 진행중: 프로그레스 바 + "n/전체 확정"
+ */
 function DeliveryProgressSummary({ order }: { order: Order }) {
   const progress = computeDeliveryProgress(order)
 
@@ -484,20 +505,23 @@ function DeliveryProgressSummary({ order }: { order: Order }) {
     return <span className="text-xs text-gray-400">-</span>
   }
 
-  // 전체 배송확정
+  // 전체 배송확정: 초록 체크 아이콘
   if (progress.confirmed === progress.total) {
     return (
-      <Badge className="bg-green-50 text-green-700 border border-green-200 text-xs">
-        전체확정
-      </Badge>
+      <div className="flex items-center gap-1.5">
+        <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+          <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+        </svg>
+        <span className="text-xs font-medium text-green-700">전체확정</span>
+      </div>
     )
   }
 
-  // 진행 중: n/전체 확정 + 게이지 바
+  // 진행 중: 프로그레스 바
   const percent = Math.round((progress.confirmed / progress.total) * 100)
   return (
-    <div className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-blue-700">
+    <div className="flex flex-col gap-1 min-w-[60px]">
+      <span className="text-[11px] font-semibold text-blue-700">
         {progress.confirmed}/{progress.total} 확정
       </span>
       <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
@@ -540,34 +564,65 @@ function getMostFrequentWarehouse(items?: EquipmentItem[]): string | undefined {
  * - 전체 정상: "전체 정상"
  * - 지연 있음: "N건 지연 +X일"
  */
-function renderDeliverySummary(equipmentItems?: EquipmentItem[]): { text: string; className: string } {
+/**
+ * 배송현황 요약 컴포넌트 (발주대기 탭용)
+ *
+ * - 구성품 없음: '-'
+ * - 지연: 깜빡이는 빨간 점 + "N건 지연"
+ * - 전부 미입력: 회색 점 + "미입력"
+ * - 일부 미입력: 회색 점 + "미입력 N건"
+ * - 전체 정상: 초록 체크 + "전체 정상"
+ */
+function DeliverySummaryDisplay({ equipmentItems }: { equipmentItems?: EquipmentItem[] }) {
   const analysis = analyzeDeliveryDelay(equipmentItems)
 
   // 구성품 없음
   if (analysis.total === 0) {
-    return { text: '-', className: 'text-gray-400' }
+    return <span className="text-xs text-gray-400">-</span>
   }
 
-  // 지연 있음 (최우선)
+  // 지연 있음: 깜빡이는 빨간 점
   if (analysis.delayed > 0) {
-    return {
-      text: `${analysis.delayed}건 지연 +${analysis.maxDelayDays}일`,
-      className: 'text-red-600 font-medium'
-    }
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="relative flex h-2 w-2">
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+        </span>
+        <span className="text-xs font-medium text-red-600">{analysis.delayed}건 지연 +{analysis.maxDelayDays}일</span>
+      </div>
+    )
   }
 
   // 전부 날짜 미입력
   if (analysis.noDate === analysis.total) {
-    return { text: '미입력', className: 'text-gray-400' }
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex rounded-full h-2 w-2 bg-gray-300" />
+        <span className="text-xs text-gray-400">미입력</span>
+      </div>
+    )
   }
 
-  // 일부 미입력, 나머지 정상
+  // 일부 미입력
   if (analysis.noDate > 0) {
-    return { text: `미입력 ${analysis.noDate}건`, className: 'text-gray-400' }
+    return (
+      <div className="flex items-center gap-1.5">
+        <span className="inline-flex rounded-full h-2 w-2 bg-gray-300" />
+        <span className="text-xs text-gray-400">미입력 {analysis.noDate}건</span>
+      </div>
+    )
   }
 
-  // 전체 정상
-  return { text: '전체 정상', className: 'text-green-600' }
+  // 전체 정상: 초록 체크
+  return (
+    <div className="flex items-center gap-1.5">
+      <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
+      </svg>
+      <span className="text-xs font-medium text-green-700">전체 정상</span>
+    </div>
+  )
 }
 
 /**
@@ -591,7 +646,7 @@ function createDefaultRows(): EquipmentItem[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems }: DeliveryTableProps) {
+export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, onSettle }: DeliveryTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   /** 주문별 편집 중인 구성품 데이터 (orderId → EquipmentItem[]) */
@@ -604,6 +659,9 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
 
   /** 발주완료 확인 다이얼로그 대상 (orderId + 현장명) */
   const [confirmTarget, setConfirmTarget] = useState<{ orderId: string; businessName: string } | null>(null)
+
+  /** 정산완료 확인 다이얼로그 대상 (orderId + 현장명) */
+  const [settleTarget, setSettleTarget] = useState<{ orderId: string; businessName: string } | null>(null)
 
   /** 단가표 Sheet 열림/닫힘 상태 */
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
@@ -647,7 +705,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
       })
       // 자동 저장: 구성품명이 있는 행만 필터링해서 부모에 전달
       if (onSaveItems) {
-        const validItems = updated.filter(item => item.componentName && item.componentName.trim() !== '')
+        const validItems = updated.filter(item => (item.componentName && item.componentName.trim() !== '') || (item.componentModel && item.componentModel.trim() !== ''))
         const withStatus = validItems.map(item => ({
           ...item,
           deliveryStatus: computeItemDeliveryStatus(item)
@@ -672,7 +730,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
       const updated = (prev[orderId] || []).filter((_, i) => i !== index)
       // 자동 저장
       if (onSaveItems) {
-        const validItems = updated.filter(item => item.componentName && item.componentName.trim() !== '')
+        const validItems = updated.filter(item => (item.componentName && item.componentName.trim() !== '') || (item.componentModel && item.componentModel.trim() !== ''))
         const withStatus = validItems.map(item => ({
           ...item,
           deliveryStatus: computeItemDeliveryStatus(item)
@@ -701,12 +759,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
         items.push(createEmptyItem())
       }
 
-      // 구성품을 현재 행부터 순서대로 채움 (setModel도 함께 저장)
+      // 구성품을 현재 행부터 순서대로 채움 (setModel, componentModel, componentName 모두 저장)
       for (let i = 0; i < components.length; i++) {
         const comp = components[i]
         items[itemIdx + i] = {
           ...items[itemIdx + i],
-          componentName: comp.model,
+          componentName: comp.type,
+          componentModel: comp.model,
           quantity: comp.quantity,
           supplier: '삼성전자',
           setModel: setModel || undefined,
@@ -715,7 +774,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
 
       // 자동 저장
       if (onSaveItems) {
-        const validItems = items.filter(item => item.componentName && item.componentName.trim() !== '')
+        const validItems = items.filter(item => (item.componentName && item.componentName.trim() !== '') || (item.componentModel && item.componentModel.trim() !== ''))
         const withStatus = validItems.map(item => ({
           ...item,
           deliveryStatus: computeItemDeliveryStatus(item)
@@ -727,9 +786,10 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
     setPriceSheetTarget(null)
   }, [priceSheetTarget, onSaveItems])
 
+  // 교원 발주등록일 기준 오름차순 정렬 (오래된 발주가 맨 위)
   const sortedOrders = [...orders].sort((a, b) => {
-    const dateA = getEffectiveDeliveryDate(a) || '9999-12-31'
-    const dateB = getEffectiveDeliveryDate(b) || '9999-12-31'
+    const dateA = a.orderDate || '9999-12-31'
+    const dateB = b.orderDate || '9999-12-31'
     return dateA.localeCompare(dateB)
   })
 
@@ -754,8 +814,8 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>교원 발주등록일</th>
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '70px' }}>교원 발주서</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>배송현황</th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '160px' }}>현장명</th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '100px' }}>현장위치</th>
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>현장명</th>
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '180px' }}>현장주소</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>창고정보</th>
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '100px' }}></th>
             </tr>
@@ -778,26 +838,25 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         : <ChevronRight className="h-4 w-4 text-gray-500 inline-block" />
                       }
                     </td>
-                    {/* 상태 뱃지 (단일 표시) */}
+                    {/* 상태 뱃지 (단일 표시) — 편집 중인 구성품 반영 */}
                     <td className="p-3">
-                      <StatusBadge order={order} />
+                      <StatusBadge order={order} editingItems={editingItems[order.id]} />
                     </td>
                     <td className="p-3">
                       <p className="text-sm">{formatShortDate(order.orderDate)}</p>
                     </td>
                     {/* 교원 발주서 보기 버튼 */}
-                    <td className="p-3 text-center">
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                       {onViewDetail && (
-                        <button
-                          className="inline-flex items-center justify-center h-7 w-7 rounded hover:bg-blue-50 text-gray-400 hover:text-blue-600 transition-colors"
-                          title="교원 발주서 보기"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            onViewDetail(order)
-                          }}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs gap-1 px-2"
+                          onClick={() => onViewDetail(order)}
                         >
-                          <FileText className="h-4 w-4" />
-                        </button>
+                          <FileText className="h-3 w-3" />
+                          보기
+                        </Button>
                       )}
                     </td>
                     {/* 배송현황 요약: 발주완료 탭은 입고 진행률, 발주대기 탭은 기존 요약 */}
@@ -805,26 +864,14 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       {status === 'ordered' ? (
                         <DeliveryProgressSummary order={order} />
                       ) : (
-                        (() => {
-                          const summary = renderDeliverySummary(order.equipmentItems)
-                          return <p className={`text-sm ${summary.className}`}>{summary.text}</p>
-                        })()
+                        <DeliverySummaryDisplay equipmentItems={order.equipmentItems} />
                       )}
                     </td>
                     <td className="p-3">
                       <p className="font-semibold text-sm truncate">{order.businessName}</p>
-                      <p className="text-xs text-gray-500 truncate">{order.address}</p>
                     </td>
                     <td className="p-3">
-                      {(() => {
-                        const { region, city } = parseRegionFromAddress(order.address)
-                        return (
-                          <>
-                            <p className="text-xs font-medium text-gray-700">{region}</p>
-                            <p className="text-xs text-gray-500">{city}</p>
-                          </>
-                        )
-                      })()}
+                      <p className="text-xs text-gray-600 truncate">{order.address}</p>
                     </td>
                     {/* 창고정보: 구성품 중 가장 많이 설정된 창고 표시 */}
                     <td className="p-3">
@@ -837,7 +884,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         )
                       })()}
                     </td>
-                    {/* 발주완료 버튼 (발주대기일 때만 표시) */}
+                    {/* 상태 전환 버튼: 발주대기→발주완료 / 발주완료→정산완료 */}
                     <td className="p-3 text-center">
                       {status === 'pending' && onChangeStatus && (
                         <Button
@@ -851,6 +898,18 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                           발주완료
                         </Button>
                       )}
+                      {status === 'ordered' && onSettle && (
+                        <Button
+                          size="sm"
+                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 h-7"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setSettleTarget({ orderId: order.id, businessName: order.businessName })
+                          }}
+                        >
+                          정산완료
+                        </Button>
+                      )}
                     </td>
                   </tr>
 
@@ -860,7 +919,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       <td colSpan={9} className="p-0">
                         <div className="border-t border-gray-200 bg-gray-50/60 px-4 py-4">
                           <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm mb-3">
-                            <table className="text-sm" style={{ minWidth: '1650px' }}>
+                            <table className="text-sm" style={{ minWidth: '1720px' }}>
                               <thead>
                                 <tr className="bg-gray-100/80 text-xs text-gray-500 tracking-wide">
                                   <th className="text-center px-2 py-2.5 font-medium w-[32px]"></th>
@@ -873,6 +932,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                   <th className="text-left px-2 py-2.5 font-medium w-[162px]">배송예정일</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[162px]">배송확정일</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[202px]">모델명</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[80px]">구성품</th>
                                   <th className="text-center px-2 py-2.5 font-medium w-[45px]">수량</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[161px]">창고명</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[220px]">창고주소</th>
@@ -972,8 +1032,8 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       >
                                         <div className="flex items-center gap-1">
                                           <Input
-                                            value={item.componentName || ''}
-                                            onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)}
+                                            value={item.componentModel || ''}
+                                            onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)}
                                             placeholder="모델명"
                                             className="h-7 text-xs border-gray-200 flex-1"
                                           />
@@ -990,6 +1050,16 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                             <ClipboardList className="h-3.5 w-3.5" />
                                           </button>
                                         </div>
+                                      </td>
+                                      {/* 구성품 (단가표에서 자동 입력, 직접 수정도 가능) */}
+                                      <td className="px-1 py-1.5">
+                                        <Input
+                                          value={item.componentName || ''}
+                                          onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)}
+                                          placeholder="실외기"
+                                          className="h-7 border-gray-200"
+                                          style={{ fontSize: '12px' }}
+                                        />
                                       </td>
                                       {/* 수량 (텍스트 입력, Ctrl+C/V 가능) */}
                                       <td className="px-1 py-1.5">
@@ -1104,7 +1174,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 onClick={() => toggleRow(order.id, order)}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <StatusBadge order={order} />
+                  <StatusBadge order={order} editingItems={editingItems[order.id]} />
                   <span className="text-xs text-gray-500">{formatShortDate(order.orderDate)}</span>
                 </div>
 
@@ -1115,20 +1185,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   {status === 'ordered' ? (
                     <DeliveryProgressSummary order={order} />
                   ) : (
-                    (() => {
-                      const summary = renderDeliverySummary(order.equipmentItems)
-                      return <span className={summary.className}>배송: {summary.text}</span>
-                    })()
+                    <DeliverySummaryDisplay equipmentItems={order.equipmentItems} />
                   )}
                 </div>
 
                 <div className="flex items-center justify-between text-xs text-gray-600">
-                  <span className="font-medium">
-                    {(() => {
-                      const { region, city } = parseRegionFromAddress(order.address)
-                      return `${region} ${city}`
-                    })()}
-                  </span>
                   <span>
                     {(() => {
                       const whId = getMostFrequentWarehouse(order.equipmentItems)
@@ -1141,16 +1202,18 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 {/* 발주서 보기 + 발주완료 버튼 (모바일) */}
                 <div className="flex items-center justify-between mt-2">
                   {onViewDetail && (
-                    <button
-                      className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs gap-1 px-2"
                       onClick={(e) => {
                         e.stopPropagation()
                         onViewDetail(order)
                       }}
                     >
-                      <FileText className="h-3.5 w-3.5" />
-                      교원 발주서 보기
-                    </button>
+                      <FileText className="h-3 w-3" />
+                      보기
+                    </Button>
                   )}
                   {status === 'pending' && onChangeStatus && (
                     <Button
@@ -1162,6 +1225,18 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       }}
                     >
                       발주완료
+                    </Button>
+                  )}
+                  {status === 'ordered' && onSettle && (
+                    <Button
+                      size="sm"
+                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 h-7"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        setSettleTarget({ orderId: order.id, businessName: order.businessName })
+                      }}
+                    >
+                      정산완료
                     </Button>
                   )}
                 </div>
@@ -1211,7 +1286,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                             <div>
                               <label className="text-[10px] text-gray-400">모델명</label>
                               <div className="flex items-center gap-1">
-                                <Input value={item.componentName || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)} placeholder="모델명" className="h-7 text-xs flex-1" />
+                                <Input value={item.componentModel || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)} placeholder="모델명" className="h-7 text-xs flex-1" />
                                 <button
                                   type="button"
                                   title="단가표에서 선택"
@@ -1225,6 +1300,10 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                   <ClipboardList className="h-3.5 w-3.5" />
                                 </button>
                               </div>
+                            </div>
+                            <div>
+                              <label className="text-[10px] text-gray-400">구성품</label>
+                              <Input value={item.componentName || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)} placeholder="실외기" className="h-7 text-xs" />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">수량</label>
@@ -1352,7 +1431,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 }))
                 // 자동 저장
                 if (onSaveItems) {
-                  const validItems = updated.filter(item => item.componentName && item.componentName.trim() !== '')
+                  const validItems = updated.filter(item => (item.componentName && item.componentName.trim() !== '') || (item.componentModel && item.componentModel.trim() !== ''))
                   const withStatus = validItems.map(item => ({
                     ...item,
                     deliveryStatus: computeItemDeliveryStatus(item)
@@ -1388,6 +1467,33 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               }}
             >
               변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 정산완료 확인 다이얼로그 */}
+      <AlertDialog open={!!settleTarget} onOpenChange={(open) => { if (!open) setSettleTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>정산완료 처리</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{settleTarget?.businessName}&rdquo;을(를) 정산완료로 처리하시겠습니까?
+              정산완료된 건은 배송관리 목록에서 사라집니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={() => {
+                if (settleTarget && onSettle) {
+                  onSettle(settleTarget.orderId)
+                }
+                setSettleTarget(null)
+              }}
+            >
+              정산완료
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -34,6 +34,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-001',
     address: '서울시 강서구 화곡로 123',
     orderDate: relativeDate(-10),
+    requestedInstallDate: relativeDate(-3),   // 발주 후 7일 뒤 희망
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 센트럴파크시티역 화교빌딩 센트럴파크지점',
     contactName: '김영희',
@@ -165,6 +166,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-002',
     address: '강원도 춘천시 중앙로 456',
     orderDate: relativeDate(-14),
+    requestedInstallDate: relativeDate(-7),   // 발주 후 7일 뒤 희망
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 춘천지사',
     contactName: '박민수',
@@ -247,6 +249,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-003',
     address: '경기도 성남시 분당구 판교역로 789',
     orderDate: relativeDate(-7),
+    requestedInstallDate: relativeDate(-1),   // 발주 후 6일 뒤 희망
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 본사',
     contactName: '최지훈',
@@ -329,6 +332,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-004',
     address: '인천시 연수구 송도국제대로 321',
     orderDate: relativeDate(-20),
+    requestedInstallDate: relativeDate(-10),  // 발주 후 10일 뒤 희망
     affiliate: 'Wells 서비스',
     businessName: 'Wells 서비스 인천센터',
     contactName: '정수진',
@@ -429,6 +433,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-005',
     address: '서울시 마포구 상암동 654',
     orderDate: relativeDate(-30),
+    requestedInstallDate: relativeDate(-20),  // 발주 후 10일 뒤 희망
     affiliate: '구몬',
     businessName: '구몬 마포지국',
     contactName: '이영호',
@@ -474,6 +479,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-006',
     address: '경기도 고양시 일산동구 중앙로 987',
     orderDate: relativeDate(-3),
+    requestedInstallDate: relativeDate(4),    // 발주 후 7일 뒤 희망
     affiliate: '기타',
     businessName: '대한냉난방',
     contactName: '송미경',
@@ -504,6 +510,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-007',
     address: '서울시 송파구 올림픽로 147, 상가 1층',
     orderDate: relativeDate(-8),
+    requestedInstallDate: relativeDate(-1),   // 발주 후 7일 뒤 희망
     affiliate: '구몬',
     businessName: '구몬 송파지국',
     contactName: '강동현',
@@ -585,6 +592,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-008',
     address: '경기도 수원시 영통구 광교중앙로 258',
     orderDate: relativeDate(-25),
+    requestedInstallDate: relativeDate(-15),  // 발주 후 10일 뒤 희망
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 수원지사',
     contactName: '윤서연',
@@ -619,6 +627,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-009',
     address: '서울시 강서구 공항대로 369',
     orderDate: relativeDate(-5),
+    requestedInstallDate: relativeDate(2),    // 발주 후 7일 뒤 희망
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 강서지사',
     contactName: '한재민',
@@ -649,6 +658,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-010',
     address: '서울시 영등포구 여의도동 753, 오피스 빌딩 12층',
     orderDate: relativeDate(-40),
+    requestedInstallDate: relativeDate(-30),  // 발주 후 10일 뒤 희망
     affiliate: 'Wells 서비스',
     businessName: 'Wells 서비스 여의도센터',
     contactName: '임하늘',
@@ -694,6 +704,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-099',
     address: '서울시 강남구 테헤란로 427, 위워크 2층',
     orderDate: '2023-12-15',
+    requestedInstallDate: '2023-12-22',       // 발주 후 7일 뒤 희망
     affiliate: '구몬',
     businessName: '구몬 강남지국',
     contactName: '오준석',
@@ -729,6 +740,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-098',
     address: '경기도 성남시 분당구 정자일로 95',
     orderDate: '2023-12-10',
+    requestedInstallDate: '2023-12-18',       // 발주 후 8일 뒤 희망
     affiliate: '교육플랫폼',
     businessName: '교육플랫폼 분당지사',
     contactName: '신유진',
@@ -762,6 +774,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2023-085',
     address: '부산시 해운대구 센텀중앙로 78',
     orderDate: '2023-11-20',
+    requestedInstallDate: '2023-11-28',       // 발주 후 8일 뒤 희망
     affiliate: 'Wells 영업',
     businessName: 'Wells 영업 부산지사',
     contactName: '배승현',
@@ -806,6 +819,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-014',
     address: '광주광역시 서구 상무중앙로 110',
     orderDate: relativeDate(-6),
+    requestedInstallDate: relativeDate(1),    // 발주 후 7일 뒤 희망
     affiliate: 'Wells 서비스',
     businessName: 'Wells 서비스 광주센터',
     contactName: '장미래',
@@ -888,6 +902,7 @@ export const mockOrders: Order[] = [
     documentNumber: 'DOC-2024-015',
     address: '대구광역시 수성구 달구벌대로 2200',
     orderDate: relativeDate(-4),
+    requestedInstallDate: relativeDate(3),    // 발주 후 7일 뒤 희망
     affiliate: '구몬',
     businessName: '구몬 대구지국',
     contactName: '조하늘',

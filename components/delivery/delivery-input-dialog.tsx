@@ -32,7 +32,7 @@ import { Badge } from '@/components/ui/badge'
 import { Truck, Plus, Trash2 } from 'lucide-react'
 import type { Order, EquipmentItem, ItemDeliveryStatus } from '@/types/order'
 import { ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS, COMPONENT_OPTIONS } from '@/types/order'
-import { mockWarehouses } from '@/lib/warehouse-data'
+import { getWarehouseCache } from '@/lib/delivery-utils'
 import { computeItemDeliveryStatus } from '@/lib/delivery-utils'
 
 interface DeliveryInputDialogProps {
@@ -266,7 +266,7 @@ export function DeliveryInputDialog({
                               <SelectValue placeholder="선택" />
                             </SelectTrigger>
                             <SelectContent>
-                              {mockWarehouses.map(wh => (
+                              {getWarehouseCache().map(wh => (
                                 <SelectItem key={wh.id} value={wh.id}>{wh.name}</SelectItem>
                               ))}
                             </SelectContent>

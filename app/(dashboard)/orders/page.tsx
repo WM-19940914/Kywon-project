@@ -8,8 +8,8 @@
 
 'use client'
 
-import { useState } from 'react'
-import { mockOrders } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, updateOrderStatus, saveCustomerQuote } from '@/lib/supabase/dal'
 import { type Order, type OrderStatus, type CustomerQuote } from '@/types/order'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
@@ -41,8 +41,17 @@ export default function OrdersPage() {
   // 상태 관리
   const [searchTerm, setSearchTerm] = useState('') // 검색어
   const [isDialogOpen, setIsDialogOpen] = useState(false) // 신규 등록 모달
-  const [orders, setOrders] = useState(mockOrders) // 발주 목록
+  const [orders, setOrders] = useState<Order[]>([]) // 발주 목록 (DB에서 로드)
   const [isSubmitting, setIsSubmitting] = useState(false) // 제출 중 상태
+  const [, setIsLoading] = useState(true) // 로딩 상태
+
+  // Supabase에서 발주 데이터 가져오기
+  useEffect(() => {
+    fetchOrders().then(data => {
+      setOrders(data)
+      setIsLoading(false)
+    })
+  }, [])
 
   // 상세보기 모달 상태
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -67,17 +76,27 @@ export default function OrdersPage() {
     setIsSubmitting(true)
 
     try {
+      // orderNumber는 DB에 없는 필드이므로 제거 (사용하지 않으므로 _로 표시)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { orderNumber: _orderNumber, ...orderData } = data
+
       const newOrder: Order = {
         id: Date.now().toString(),
-        ...data,
-        status: 'received', // 신규 발주는 항상 '접수중'으로 시작
+        ...orderData,
+        status: 'received',
         createdAt: new Date().toISOString(),
-        isPreliminaryQuote: data.isPreliminaryQuote  // 🔥 추가
+        isPreliminaryQuote: data.isPreliminaryQuote
       }
 
-      setOrders([newOrder, ...orders])
-      alert('발주가 등록되었습니다!')
-      setIsDialogOpen(false)
+      // DB에 저장
+      const created = await createOrderDB(newOrder)
+      if (created) {
+        setOrders([created, ...orders])
+        alert('발주가 등록되었습니다!')
+        setIsDialogOpen(false)
+      } else {
+        alert('발주 등록에 실패했습니다.')
+      }
     } catch (error) {
       console.error('발주 등록 실패:', error)
       alert('발주 등록에 실패했습니다.')
@@ -97,19 +116,30 @@ export default function OrdersPage() {
   /**
    * 진행상태 변경 핸들러
    */
-  const handleStatusChange = (orderId: string, newStatus: OrderStatus) => {
-    setOrders(orders.map(o =>
-      o.id === orderId ? { ...o, status: newStatus } : o
-    ))
-    alert('진행상태가 변경되었습니다!')
+  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
+    // DB에 상태 변경 반영
+    const success = await updateOrderStatus(orderId, newStatus)
+    if (success) {
+      setOrders(orders.map(o =>
+        o.id === orderId ? { ...o, status: newStatus } : o
+      ))
+      alert('진행상태가 변경되었습니다!')
+    } else {
+      alert('상태 변경에 실패했습니다.')
+    }
   }
 
   /**
    * 발주 삭제 핸들러
    */
-  const handleDelete = (orderId: string) => {
-    setOrders(orders.filter(o => o.id !== orderId))
-    alert('발주가 삭제되었습니다.')
+  const handleDelete = async (orderId: string) => {
+    const success = await deleteOrderDB(orderId)
+    if (success) {
+      setOrders(orders.filter(o => o.id !== orderId))
+      alert('발주가 삭제되었습니다.')
+    } else {
+      alert('발주 삭제에 실패했습니다.')
+    }
   }
 
   /**
@@ -130,21 +160,24 @@ export default function OrdersPage() {
    * @param orderId - 발주 ID
    * @param quote - 저장할 견적서 데이터
    */
-  const handleQuoteSave = (orderId: string, quote: CustomerQuote) => {
+  const handleQuoteSave = async (orderId: string, quote: CustomerQuote) => {
+    // DB에 견적서 저장
+    await saveCustomerQuote(orderId, quote)
     setOrders(prev => prev.map(order =>
       order.id === orderId
-        ? { ...order, customerQuote: quote }  // 해당 발주의 customerQuote 필드 업데이트
+        ? { ...order, customerQuote: quote }
         : order
     ))
-    console.log('✅ 견적서 저장됨:', { orderId, quote })
+    console.log('견적서 저장됨:', { orderId, quote })
   }
 
   /**
    * 견적서 저장 후 목록 새로고침
    */
-  const handleRefresh = () => {
-    // 실제로는 Supabase에서 다시 불러와야 하지만
-    // 지금은 더미 데이터라서 현재 orders 상태를 그대로 유지
+  const handleRefresh = async () => {
+    // Supabase에서 데이터 새로고침
+    const data = await fetchOrders()
+    setOrders(data)
     setOrderForQuote(null)
   }
 
@@ -165,16 +198,19 @@ export default function OrdersPage() {
 
     setIsSubmitting(true)
     try {
-      const updatedOrder: Order = {
-        ...orderToEdit,
-        ...data,
-        // id, createdAt, status 등은 유지
+      // orderNumber는 DB에 없는 필드이므로 제거 (사용하지 않으므로 _로 표시)
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { orderNumber: _orderNumber, ...orderData } = data
+      // DB에 수정 반영
+      const updated = await updateOrderDB(orderToEdit.id, orderData)
+      if (updated) {
+        setOrders(orders.map(o => o.id === orderToEdit.id ? updated : o))
+        alert('발주가 수정되었습니다!')
+        setEditDialogOpen(false)
+        setOrderToEdit(null)
+      } else {
+        alert('수정에 실패했습니다.')
       }
-
-      setOrders(orders.map(o => o.id === orderToEdit.id ? updatedOrder : o))
-      alert('발주가 수정되었습니다!')
-      setEditDialogOpen(false)
-      setOrderToEdit(null)
     } catch (error) {
       console.error('수정 실패:', error)
       alert('수정에 실패했습니다.')

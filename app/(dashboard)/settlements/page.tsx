@@ -13,8 +13,8 @@
 
 'use client'
 
-import { useState } from 'react'
-import { mockOrders } from '@/lib/mock-data'
+import { useState, useEffect } from 'react'
+import { fetchOrders, updateOrderStatus } from '@/lib/supabase/dal'
 import { type Order } from '@/types/order'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -30,8 +30,16 @@ import {
 import { CreditCard, Download, CircleDot, Coins, TrendingUp } from 'lucide-react'
 
 export default function SettlementsPage() {
-  // 상태 관리
-  const [orders, setOrders] = useState(mockOrders)
+  // Supabase에서 데이터 로드
+  const [orders, setOrders] = useState<Order[]>([])
+  const [, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    fetchOrders().then(data => {
+      setOrders(data)
+      setIsLoading(false)
+    })
+  }, [])
 
   // 상세보기 모달 상태
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -128,7 +136,7 @@ export default function SettlementsPage() {
    * 일괄 정산 처리
    * 모든 정산 대기 발주를 "settled"로 변경
    */
-  const handleBulkSettle = () => {
+  const handleBulkSettle = async () => {
     if (monthlyOrders.length === 0) {
       alert('정산할 발주가 없습니다.')
       return
@@ -144,22 +152,25 @@ export default function SettlementsPage() {
     // 정산 대기 발주들의 ID 목록
     const pendingIds = monthlyOrders.map(o => o.id)
 
-    // 발주 목록에서 해당 발주들을 "정산 완료(settled)"로 변경
+    // DB에 일괄 정산 처리
+    const results = await Promise.all(
+      pendingIds.map(id => updateOrderStatus(id, 'settled'))
+    )
+
+    // 성공한 건만 UI에 반영
+    const successIds = pendingIds.filter((_, i) => results[i])
     setOrders(orders.map(order => {
-      if (pendingIds.includes(order.id)) {
+      if (successIds.includes(order.id)) {
         return {
           ...order,
-          status: 'settled' as const,  // status를 settled로 변경
+          status: 'settled' as const,
           settlementDate: new Date().toISOString().split('T')[0]
         }
       }
       return order
     }))
 
-    alert(`${monthlyOrders.length}건이 정산 완료되었습니다!`)
-
-    // Phase 2: Supabase 연동 시 여기에 추가
-    // await supabase.from('orders').update({ status: 'settled' }).in('id', pendingIds)
+    alert(`${successIds.length}건이 정산 완료되었습니다!`)
   }
 
   /**
