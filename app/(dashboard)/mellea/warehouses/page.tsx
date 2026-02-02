@@ -27,6 +27,7 @@ import {
   Trash2,
   Plus,
 } from 'lucide-react'
+import { useAlert } from '@/components/ui/custom-alert'
 
 // ─── 다음 우편번호 API ─────────────────────────────────────────
 
@@ -540,6 +541,7 @@ function WarehouseCard({
   onSelect: (id: string) => void
   cardRef?: (el: HTMLDivElement | null) => void
 }) {
+  const { showConfirm } = useAlert()
   const [isEditing, setIsEditing] = useState(false)
   const [editData, setEditData] = useState({
     name: warehouse.name,
@@ -661,9 +663,10 @@ function WarehouseCard({
               </Button>
               <Button
                 size="sm" variant="ghost"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation()
-                  if (confirm(`"${warehouse.name}_${warehouse.managerName}" 창고를 삭제하시겠습니까?`)) {
+                  const confirmed = await showConfirm(`"${warehouse.name}_${warehouse.managerName}" 창고를 삭제하시겠습니까?`)
+                  if (confirmed) {
                     onDelete(warehouse.id)
                   }
                 }}

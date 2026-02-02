@@ -33,6 +33,7 @@ import {
 } from '@/types/order'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import { SIZE_OPTIONS } from '@/lib/price-table'
+import { useAlert } from '@/components/ui/custom-alert'
 
 /**
  * 폼 데이터 타입 정의
@@ -115,6 +116,8 @@ export function OrderForm({
   submitLabel = '등록',
   isSubmitting = false
 }: OrderFormProps) {
+  const { showAlert } = useAlert()
+
   // 스텝 관리 (1~4)
   const [currentStep, setCurrentStep] = useState(1)
 
@@ -185,7 +188,7 @@ export function OrderForm({
    */
   const handleSearchAddress = (type: 'base' | 'relocation') => {
     if (!window.daum) {
-      alert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.')
+      showAlert('주소 검색 서비스를 불러오는 중입니다. 잠시 후 다시 시도해주세요.', 'info')
       return
     }
 
@@ -218,7 +221,7 @@ export function OrderForm({
    */
   const handleRemoveItem = (itemId: string) => {
     if (items.length === 1) {
-      alert('최소 1개의 발주내역은 있어야 합니다')
+      showAlert('최소 1개의 발주내역은 있어야 합니다', 'warning')
       return
     }
     setItems(items.filter(item => item.id !== itemId))
@@ -254,7 +257,7 @@ export function OrderForm({
   const handleNext = () => {
     // Step 1: 계열사 선택
     if (currentStep === 1 && !affiliate) {
-      alert('계열사를 선택해주세요')
+      showAlert('계열사를 선택해주세요', 'warning')
       return
     }
 
@@ -262,23 +265,23 @@ export function OrderForm({
     if (currentStep === 2) {
       // 기존 검증 로직 유지
       if (!baseAddress) {
-        alert('작업 장소를 검색해주세요')
+        showAlert('작업 장소를 검색해주세요', 'warning')
         return
       }
       if (!businessName) {
-        alert('사업자명을 입력해주세요')
+        showAlert('사업자명을 입력해주세요', 'warning')
         return
       }
       if (!contactName) {
-        alert('담당자 성함을 입력해주세요')
+        showAlert('담당자 성함을 입력해주세요', 'warning')
         return
       }
       if (!contactPhone) {
-        alert('담당자 연락처를 입력해주세요')
+        showAlert('담당자 연락처를 입력해주세요', 'warning')
         return
       }
       if (!requestedInstallDate) {
-        alert('설치요청일을 선택해주세요')
+        showAlert('설치요청일을 선택해주세요', 'warning')
         return
       }
 
@@ -304,12 +307,12 @@ export function OrderForm({
       // 기존 검증 로직 유지
       const hasEmptyQuantity = items.some(item => !item.quantity || item.quantity < 1)
       if (hasEmptyQuantity) {
-        alert('수량을 입력해주세요')
+        showAlert('수량을 입력해주세요', 'warning')
         return
       }
 
       if (isRelocation && !relocationAddress) {
-        alert('이전할 주소를 검색해주세요')
+        showAlert('이전할 주소를 검색해주세요', 'warning')
         return
       }
 
@@ -341,7 +344,7 @@ export function OrderForm({
   const handleSubmit = () => {
     // 필수 항목 검증
     if (!documentNumber) {
-      alert('문서번호를 입력해주세요')
+      showAlert('문서번호를 입력해주세요', 'warning')
       return
     }
     if (!requestedInstallDate) {
@@ -351,7 +354,7 @@ export function OrderForm({
 
     // 🔥 사전견적이 아닐 때만 items 검증
     if (!isPreliminaryQuote && items.length === 0) {
-      alert('최소 1개의 작업 내역이 필요합니다')
+      showAlert('최소 1개의 작업 내역이 필요합니다', 'warning')
       return
     }
 

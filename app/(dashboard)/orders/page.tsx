@@ -9,17 +9,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, updateOrderStatus, saveCustomerQuote } from '@/lib/supabase/dal'
-import { type Order, type OrderStatus, type CustomerQuote } from '@/types/order'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, updateOrderStatus } from '@/lib/supabase/dal'
+import { type Order, type OrderStatus } from '@/types/order'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
-import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { LayoutGrid, List } from 'lucide-react'
+import { useAlert } from '@/components/ui/custom-alert'
 import {
   Dialog,
   DialogContent,
@@ -38,6 +38,8 @@ import {
 import { AFFILIATE_OPTIONS } from '@/types/order'
 
 export default function OrdersPage() {
+  const { showAlert } = useAlert()
+
   // 상태 관리
   const [searchTerm, setSearchTerm] = useState('') // 검색어
   const [isDialogOpen, setIsDialogOpen] = useState(false) // 신규 등록 모달
@@ -60,10 +62,6 @@ export default function OrdersPage() {
   // 수정 모달 상태
   const [editDialogOpen, setEditDialogOpen] = useState(false)
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null)
-
-  // 견적서 작성 모달 상태
-  const [quoteCreateDialogOpen, setQuoteCreateDialogOpen] = useState(false)
-  const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
 
   // 필터/정렬 상태
   const [affiliateFilter, setAffiliateFilter] = useState<string>('all') // 계열사 필터
@@ -92,14 +90,14 @@ export default function OrdersPage() {
       const created = await createOrderDB(newOrder)
       if (created) {
         setOrders([created, ...orders])
-        alert('발주가 등록되었습니다!')
+        showAlert('발주가 등록되었습니다!', 'success')
         setIsDialogOpen(false)
       } else {
-        alert('발주 등록에 실패했습니다.')
+        showAlert('발주 등록에 실패했습니다.', 'error')
       }
     } catch (error) {
       console.error('발주 등록 실패:', error)
-      alert('발주 등록에 실패했습니다.')
+      showAlert('발주 등록에 실패했습니다.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -123,9 +121,9 @@ export default function OrdersPage() {
       setOrders(orders.map(o =>
         o.id === orderId ? { ...o, status: newStatus } : o
       ))
-      alert('진행상태가 변경되었습니다!')
+      showAlert('진행상태가 변경되었습니다!', 'success')
     } else {
-      alert('상태 변경에 실패했습니다.')
+      showAlert('상태 변경에 실패했습니다.', 'error')
     }
   }
 
@@ -136,49 +134,10 @@ export default function OrdersPage() {
     const success = await deleteOrderDB(orderId)
     if (success) {
       setOrders(orders.filter(o => o.id !== orderId))
-      alert('발주가 삭제되었습니다.')
+      showAlert('발주가 삭제되었습니다.', 'success')
     } else {
-      alert('발주 삭제에 실패했습니다.')
+      showAlert('발주 삭제에 실패했습니다.', 'error')
     }
-  }
-
-  /**
-   * 견적서 작성/수정 버튼 클릭 핸들러
-   */
-  const handleQuoteCreate = (order: Order) => {
-    setOrderForQuote(order)
-    setQuoteCreateDialogOpen(true)
-    setDetailDialogOpen(false)  // 상세 모달 닫기
-  }
-
-  /**
-   * 견적서 저장 핸들러
-   *
-   * QuoteCreateDialog에서 "저장" 버튼을 누르면 여기로 데이터가 전달됩니다.
-   * 발주(Order)의 customerQuote 필드에 견적서 데이터를 저장해요.
-   *
-   * @param orderId - 발주 ID
-   * @param quote - 저장할 견적서 데이터
-   */
-  const handleQuoteSave = async (orderId: string, quote: CustomerQuote) => {
-    // DB에 견적서 저장
-    await saveCustomerQuote(orderId, quote)
-    setOrders(prev => prev.map(order =>
-      order.id === orderId
-        ? { ...order, customerQuote: quote }
-        : order
-    ))
-    console.log('견적서 저장됨:', { orderId, quote })
-  }
-
-  /**
-   * 견적서 저장 후 목록 새로고침
-   */
-  const handleRefresh = async () => {
-    // Supabase에서 데이터 새로고침
-    const data = await fetchOrders()
-    setOrders(data)
-    setOrderForQuote(null)
   }
 
   /**
@@ -205,15 +164,15 @@ export default function OrdersPage() {
       const updated = await updateOrderDB(orderToEdit.id, orderData)
       if (updated) {
         setOrders(orders.map(o => o.id === orderToEdit.id ? updated : o))
-        alert('발주가 수정되었습니다!')
+        showAlert('발주가 수정되었습니다!', 'success')
         setEditDialogOpen(false)
         setOrderToEdit(null)
       } else {
-        alert('수정에 실패했습니다.')
+        showAlert('수정에 실패했습니다.', 'error')
       }
     } catch (error) {
       console.error('수정 실패:', error)
-      alert('수정에 실패했습니다.')
+      showAlert('수정에 실패했습니다.', 'error')
     } finally {
       setIsSubmitting(false)
     }
@@ -414,16 +373,6 @@ export default function OrdersPage() {
         onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onEdit={handleEdit}
-        onQuoteInput={handleQuoteCreate}
-      />
-
-      {/* 견적서 작성/수정 모달 */}
-      <QuoteCreateDialog
-        order={orderForQuote}
-        open={quoteCreateDialogOpen}
-        onOpenChange={setQuoteCreateDialogOpen}
-        onSuccess={handleRefresh}
-        onSave={handleQuoteSave}  // 견적서 저장 핸들러 연결
       />
 
       {/* 수정 모달 */}

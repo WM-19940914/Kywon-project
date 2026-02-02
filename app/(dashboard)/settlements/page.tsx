@@ -28,8 +28,11 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { CreditCard, Download, CircleDot, Coins, TrendingUp } from 'lucide-react'
+import { useAlert } from '@/components/ui/custom-alert'
 
 export default function SettlementsPage() {
+  const { showAlert, showConfirm } = useAlert()
+
   // Supabase에서 데이터 로드
   const [orders, setOrders] = useState<Order[]>([])
   const [, setIsLoading] = useState(true)
@@ -138,11 +141,11 @@ export default function SettlementsPage() {
    */
   const handleBulkSettle = async () => {
     if (monthlyOrders.length === 0) {
-      alert('정산할 발주가 없습니다.')
+      showAlert('정산할 발주가 없습니다.', 'warning')
       return
     }
 
-    const confirmed = confirm(
+    const confirmed = await showConfirm(
       `${selectedMonth}월의 정산 대기 발주 ${monthlyOrders.length}건을 일괄 정산 처리하시겠습니까?\n\n` +
       `총 금액: ${stats.totalActual.toLocaleString('ko-KR')}원`
     )
@@ -170,7 +173,7 @@ export default function SettlementsPage() {
       return order
     }))
 
-    alert(`${successIds.length}건이 정산 완료되었습니다!`)
+    showAlert(`${successIds.length}건이 정산 완료되었습니다!`, 'success')
   }
 
   /**
@@ -394,7 +397,7 @@ export default function SettlementsPage() {
           variant="outline"
           size="lg"
           className="flex-1"
-          onClick={() => alert('엑셀 다운로드 기능은 Phase 2에서 구현 예정입니다!')}
+          onClick={() => showAlert('엑셀 다운로드 기능은 Phase 2에서 구현 예정입니다!', 'info')}
         >
           <Download className="h-4 w-4" /> 엑셀 다운로드
         </Button>

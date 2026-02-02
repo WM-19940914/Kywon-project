@@ -30,7 +30,7 @@ export type DeliveryStatus = 'pending' | 'ordered'
 /** 배송상태 한글 표시용 (Order 레벨) */
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   'pending': '발주대기',
-  'ordered': '발주완료'
+  'ordered': '진행중'
 }
 
 /** 배송상태별 색상 (Order 레벨 배지용) */
@@ -138,6 +138,10 @@ export interface Order {
   installScheduleDate?: string          // 설치예정일 (YYYY-MM-DD)
   installCompleteDate?: string          // 설치완료일 (YYYY-MM-DD)
   installMemo?: string                  // 설치 관련 메모
+
+  // 💵 에스원 정산 정보 (멜레아 ↔ 에스원 설치비 정산)
+  s1SettlementStatus?: S1SettlementStatus  // 에스원 정산 상태
+  s1SettlementMonth?: string               // 에스원 정산 처리 월 (예: "2026-02")
 }
 
 /**
@@ -330,6 +334,28 @@ export interface ParsedAddress {
  * - completed: 설치완료 (설치완료일 있음)
  */
 export type InstallScheduleStatus = 'unscheduled' | 'scheduled' | 'completed'
+
+/**
+ * 에스원 정산 상태 타입 (멜레아 ↔ 에스원 설치비 정산)
+ * - unsettled: 미정산 (설치 완료됐지만 아직 정산 안 함)
+ * - in-progress: 정산 진행중 (매달 20~29일 정산 작업 중)
+ * - settled: 정산 완료
+ */
+export type S1SettlementStatus = 'unsettled' | 'in-progress' | 'settled'
+
+/** 에스원 정산 상태 한글 표시용 */
+export const S1_SETTLEMENT_STATUS_LABELS: Record<S1SettlementStatus, string> = {
+  'unsettled': '미정산',
+  'in-progress': '진행중',
+  'settled': '완료'
+}
+
+/** 에스원 정산 상태 색상 (뱃지용) */
+export const S1_SETTLEMENT_STATUS_COLORS: Record<S1SettlementStatus, string> = {
+  'unsettled': 'bg-gray-100 text-gray-500 border-gray-200',
+  'in-progress': 'bg-orange-50 text-orange-700 border-orange-200',
+  'settled': 'bg-green-50 text-green-700 border-green-200'
+}
 
 /**
  * 주소 문자열 파싱 유틸리티

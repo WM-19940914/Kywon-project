@@ -34,11 +34,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
   FileText,
   MapPin,
+  MoreVertical,
   Package,
   Pencil,
   Phone,
@@ -53,7 +60,6 @@ import type { Order, EquipmentItem, DeliveryStatus } from '@/types/order'
 import { DELIVERY_STATUS_LABELS, DELIVERY_STATUS_COLORS, ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS } from '@/types/order'
 import {
   computeDeliveryProgress,
-  getAlertType,
   getWarehouseDetail,
   formatShortDate,
   computeItemDeliveryStatus,
@@ -443,17 +449,14 @@ interface DeliveryTableProps {
   onChangeStatus?: (orderId: string, newStatus: DeliveryStatus) => void
   /** 인라인 편집 저장 콜백 */
   onSaveItems?: (orderId: string, items: EquipmentItem[]) => void
-  /** 정산완료 처리 콜백 */
-  onSettle?: (orderId: string) => void
+  /** 읽기전용 모드 (배송완료 탭에서 사용) */
+  readOnly?: boolean
+  /** 강제 배송완료 콜백 (진행중 탭에서 ⋮ 메뉴로 호출) */
+  onForceDelivered?: (orderId: string) => void
 }
 
 /** 상태별 행 스타일 */
-function getRowStyle(order: Order): string {
-  const alertType = getAlertType(order)
-
-  if (alertType === 'delayed') return 'border-l-4 border-l-red-500 bg-red-50/50'
-  if (alertType === 'today') return 'border-l-4 border-l-orange-400 bg-orange-50/50'
-  if (alertType === 'tomorrow') return 'border-l-4 border-l-blue-400 bg-blue-50/30'
+function getRowStyle(): string {
   return ''
 }
 
@@ -646,7 +649,7 @@ function createDefaultRows(): EquipmentItem[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, onSettle }: DeliveryTableProps) {
+export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, readOnly, onForceDelivered }: DeliveryTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   /** 주문별 편집 중인 구성품 데이터 (orderId → EquipmentItem[]) */
@@ -660,8 +663,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
   /** 발주완료 확인 다이얼로그 대상 (orderId + 현장명) */
   const [confirmTarget, setConfirmTarget] = useState<{ orderId: string; businessName: string } | null>(null)
 
-  /** 정산완료 확인 다이얼로그 대상 (orderId + 현장명) */
-  const [settleTarget, setSettleTarget] = useState<{ orderId: string; businessName: string } | null>(null)
+  /** 되돌리기 확인 다이얼로그 대상 (진행중→발주대기) */
+  const [revertTarget, setRevertTarget] = useState<{ orderId: string; businessName: string } | null>(null)
+
+  /** 강제 배송완료 확인 다이얼로그 대상 */
+  const [forceDeliveredTarget, setForceDeliveredTarget] = useState<{ orderId: string; businessName: string } | null>(null)
 
   /** 단가표 Sheet 열림/닫힘 상태 */
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
@@ -786,11 +792,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
     setPriceSheetTarget(null)
   }, [priceSheetTarget, onSaveItems])
 
-  // 교원 발주등록일 기준 오름차순 정렬 (오래된 발주가 맨 위)
+  // 교원 발주등록일 기준 내림차순 정렬 (최신 발주가 맨 위)
   const sortedOrders = [...orders].sort((a, b) => {
-    const dateA = a.orderDate || '9999-12-31'
-    const dateB = b.orderDate || '9999-12-31'
-    return dateA.localeCompare(dateB)
+    const dateA = a.orderDate || '0000-00-00'
+    const dateB = b.orderDate || '0000-00-00'
+    return dateB.localeCompare(dateA)
   })
 
   if (sortedOrders.length === 0) {
@@ -829,7 +835,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               return (
                 <Fragment key={order.id}>
                   <tr
-                    className={`cursor-pointer hover:bg-gray-100/50 transition-colors ${getRowStyle(order)}`}
+                    className={`cursor-pointer hover:bg-gray-100/50 transition-colors ${getRowStyle()}`}
                     onClick={() => toggleRow(order.id, order)}
                   >
                     <td className="p-3 text-center">
@@ -884,32 +890,58 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         )
                       })()}
                     </td>
-                    {/* 상태 전환 버튼: 발주대기→발주완료 / 발주완료→정산완료 */}
+                    {/* 상태 전환 버튼 + 되돌리기 + 케밥 메뉴 */}
                     <td className="p-3 text-center">
-                      {status === 'pending' && onChangeStatus && (
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-7"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setConfirmTarget({ orderId: order.id, businessName: order.businessName })
-                          }}
-                        >
-                          발주완료
-                        </Button>
-                      )}
-                      {status === 'ordered' && onSettle && (
-                        <Button
-                          size="sm"
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 h-7"
-                          onClick={(e) => {
-                            e.stopPropagation()
-                            setSettleTarget({ orderId: order.id, businessName: order.businessName })
-                          }}
-                        >
-                          정산완료
-                        </Button>
-                      )}
+                      <div className="flex flex-col items-center gap-1">
+                        {/* 앞으로 전환 버튼 (readOnly 시 숨김) */}
+                        {!readOnly && status === 'pending' && onChangeStatus && (
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 h-8 rounded-lg shadow-sm hover:shadow-md transition-all hover:scale-105"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setConfirmTarget({ orderId: order.id, businessName: order.businessName })
+                            }}
+                          >
+                            발주완료 →
+                          </Button>
+                        )}
+                        {/* ⋮ 케밥 메뉴 (진행중 탭: 발주대기로 되돌리기 + 강제 배송완료) */}
+                        {!readOnly && status === 'ordered' && onChangeStatus && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <button
+                                className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-600"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem
+                                className="text-xs cursor-pointer text-orange-600 focus:text-orange-600"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  setRevertTarget({ orderId: order.id, businessName: order.businessName })
+                                }}
+                              >
+                                ← 발주대기로 되돌리기
+                              </DropdownMenuItem>
+                              {onForceDelivered && (
+                                <DropdownMenuItem
+                                  className="text-xs cursor-pointer text-emerald-700 focus:text-emerald-700"
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    setForceDeliveredTarget({ orderId: order.id, businessName: order.businessName })
+                                  }}
+                                >
+                                  강제 배송완료 →
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
+                      </div>
                     </td>
                   </tr>
 
@@ -949,17 +981,19 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       key={item.id || idx}
                                       className="hover:bg-gray-50/30 transition-colors"
                                     >
-                                      {/* 좌측 삭제 버튼 */}
+                                      {/* 좌측 삭제 버튼 (readOnly 시 숨김) */}
                                       <td className="px-1 py-1.5 text-center">
-                                        <button
-                                          className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRemoveRow(order.id, idx)
-                                          }}
-                                        >
-                                          <Trash2 className="h-3.5 w-3.5" />
-                                        </button>
+                                        {!readOnly && (
+                                          <button
+                                            className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
+                                            onClick={(e) => {
+                                              e.stopPropagation()
+                                              handleRemoveRow(order.id, idx)
+                                            }}
+                                          >
+                                            <Trash2 className="h-3.5 w-3.5" />
+                                          </button>
+                                        )}
                                       </td>
                                       {/* 상태 (구성품별 배송상태: 공란/주문완료/배송예정/배송확정) */}
                                       <td className="px-2 py-1.5">
@@ -982,6 +1016,8 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           onChange={(e) => handleItemChange(order.id, idx, 'supplier', e.target.value)}
                                           placeholder="삼성전자"
                                           className="h-7 text-xs border-gray-200"
+                                          readOnly={readOnly}
+                                          tabIndex={readOnly ? -1 : undefined}
                                         />
                                       </td>
                                       {/* 현장명 */}
@@ -990,10 +1026,14 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       </td>
                                       {/* 주문일 */}
                                       <td className="px-1 py-1.5">
-                                        <DateInput
-                                          value={item.orderDate || ''}
-                                          onChange={(val) => handleItemChange(order.id, idx, 'orderDate', val)}
-                                        />
+                                        {readOnly ? (
+                                          <span className="text-xs text-gray-700">{item.orderDate || '-'}</span>
+                                        ) : (
+                                          <DateInput
+                                            value={item.orderDate || ''}
+                                            onChange={(val) => handleItemChange(order.id, idx, 'orderDate', val)}
+                                          />
+                                        )}
                                       </td>
                                       {/* 주문번호 */}
                                       <td className="px-1 py-1.5">
@@ -1002,28 +1042,42 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           onChange={(e) => handleItemChange(order.id, idx, 'orderNumber', e.target.value)}
                                           placeholder="주문번호"
                                           className="h-7 text-xs font-mono border-gray-200"
+                                          readOnly={readOnly}
+                                          tabIndex={readOnly ? -1 : undefined}
                                         />
                                       </td>
                                       {/* 배송요청일 (내가 삼성에 요청한 날짜) */}
                                       <td className="px-1 py-1.5">
-                                        <DateInput
-                                          value={item.requestedDeliveryDate || ''}
-                                          onChange={(val) => handleItemChange(order.id, idx, 'requestedDeliveryDate', val)}
-                                        />
+                                        {readOnly ? (
+                                          <span className="text-xs text-gray-700">{item.requestedDeliveryDate || '-'}</span>
+                                        ) : (
+                                          <DateInput
+                                            value={item.requestedDeliveryDate || ''}
+                                            onChange={(val) => handleItemChange(order.id, idx, 'requestedDeliveryDate', val)}
+                                          />
+                                        )}
                                       </td>
                                       {/* 배송예정일 (삼성에서 알려준 실제 예정일) */}
                                       <td className="px-1 py-1.5">
-                                        <DateInput
-                                          value={item.scheduledDeliveryDate || ''}
-                                          onChange={(val) => handleItemChange(order.id, idx, 'scheduledDeliveryDate', val)}
-                                        />
+                                        {readOnly ? (
+                                          <span className="text-xs text-gray-700">{item.scheduledDeliveryDate || '-'}</span>
+                                        ) : (
+                                          <DateInput
+                                            value={item.scheduledDeliveryDate || ''}
+                                            onChange={(val) => handleItemChange(order.id, idx, 'scheduledDeliveryDate', val)}
+                                          />
+                                        )}
                                       </td>
                                       {/* 배송확정일 (실제 입고된 날짜) */}
                                       <td className="px-1 py-1.5">
-                                        <DateInput
-                                          value={item.confirmedDeliveryDate || ''}
-                                          onChange={(val) => handleItemChange(order.id, idx, 'confirmedDeliveryDate', val)}
-                                        />
+                                        {readOnly ? (
+                                          <span className="text-xs text-gray-700">{item.confirmedDeliveryDate || '-'}</span>
+                                        ) : (
+                                          <DateInput
+                                            value={item.confirmedDeliveryDate || ''}
+                                            onChange={(val) => handleItemChange(order.id, idx, 'confirmedDeliveryDate', val)}
+                                          />
+                                        )}
                                       </td>
                                       {/* 모델명 (직접 입력 + 단가표 버튼) — SET 그룹 컬러바 표시 */}
                                       <td
@@ -1036,19 +1090,23 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                             onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)}
                                             placeholder="모델명"
                                             className="h-7 text-xs border-gray-200 flex-1"
+                                            readOnly={readOnly}
+                                            tabIndex={readOnly ? -1 : undefined}
                                           />
-                                          <button
-                                            type="button"
-                                            title="단가표에서 선택"
-                                            className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                                            onClick={(e) => {
-                                              e.stopPropagation()
-                                              setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
-                                              setPriceSheetOpen(true)
-                                            }}
-                                          >
-                                            <ClipboardList className="h-3.5 w-3.5" />
-                                          </button>
+                                          {!readOnly && (
+                                            <button
+                                              type="button"
+                                              title="단가표에서 선택"
+                                              className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                              onClick={(e) => {
+                                                e.stopPropagation()
+                                                setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
+                                                setPriceSheetOpen(true)
+                                              }}
+                                            >
+                                              <ClipboardList className="h-3.5 w-3.5" />
+                                            </button>
+                                          )}
                                         </div>
                                       </td>
                                       {/* 구성품 (단가표에서 자동 입력, 직접 수정도 가능) */}
@@ -1059,6 +1117,8 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           placeholder="실외기"
                                           className="h-7 border-gray-200"
                                           style={{ fontSize: '12px' }}
+                                          readOnly={readOnly}
+                                          tabIndex={readOnly ? -1 : undefined}
                                         />
                                       </td>
                                       {/* 수량 (텍스트 입력, Ctrl+C/V 가능) */}
@@ -1078,18 +1138,28 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           }}
                                           placeholder=""
                                           className="h-7 text-xs text-center border-gray-200"
+                                          readOnly={readOnly}
+                                          tabIndex={readOnly ? -1 : undefined}
                                         />
                                       </td>
                                       {/* 창고명 (팝업으로 한번에 선택, 3컬럼 분리 표시) */}
                                       <td className="px-1 py-1.5">
-                                        <WarehouseNameCell
-                                          warehouseId={item.warehouseId}
-                                          onPickerOpen={() => {
-                                            // 이미 창고가 설정된 행 → 개별 수정, 미설정 → 전체 적용
-                                            setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
-                                            setPickerOpen(true)
-                                          }}
-                                        />
+                                        {readOnly ? (
+                                          <span className="text-xs font-semibold text-gray-800 truncate">
+                                            {(() => {
+                                              const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                              return d ? `${d.name}_${d.managerName}` : '-'
+                                            })()}
+                                          </span>
+                                        ) : (
+                                          <WarehouseNameCell
+                                            warehouseId={item.warehouseId}
+                                            onPickerOpen={() => {
+                                              setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
+                                              setPickerOpen(true)
+                                            }}
+                                          />
+                                        )}
                                       </td>
                                       {/* 창고주소 */}
                                       <td className="px-1 py-1.5">
@@ -1108,45 +1178,47 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                             </table>
                           </div>
 
-                          {/* 행추가 버튼 그룹 */}
-                          <div className="flex gap-1.5">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleAddRow(order.id)
-                              }}
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              행추가
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleAddRow(order.id, 3)
-                              }}
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              3행 추가[스탠드]
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-xs"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleAddRow(order.id, 4)
-                              }}
-                            >
-                              <Plus className="h-3.5 w-3.5 mr-1" />
-                              4행 추가[벽걸이]
-                            </Button>
-                          </div>
+                          {/* 행추가 버튼 그룹 (readOnly 시 숨김) */}
+                          {!readOnly && (
+                            <div className="flex gap-1.5">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAddRow(order.id)
+                                }}
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                행추가
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAddRow(order.id, 3)
+                                }}
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                3행 추가[스탠드]
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleAddRow(order.id, 4)
+                                }}
+                              >
+                                <Plus className="h-3.5 w-3.5 mr-1" />
+                                4행 추가[벽걸이]
+                              </Button>
+                            </div>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -1167,7 +1239,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
           return (
             <div
               key={order.id}
-              className={`border rounded-lg overflow-hidden bg-white ${getRowStyle(order)}`}
+              className={`border rounded-lg overflow-hidden bg-white ${getRowStyle()}`}
             >
               <div
                 className="p-4 cursor-pointer"
@@ -1199,7 +1271,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   </span>
                 </div>
 
-                {/* 발주서 보기 + 발주완료 버튼 (모바일) */}
+                {/* 발주서 보기 + 상태 전환 버튼 (모바일) */}
                 <div className="flex items-center justify-between mt-2">
                   {onViewDetail && (
                     <Button
@@ -1215,30 +1287,55 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       보기
                     </Button>
                   )}
-                  {status === 'pending' && onChangeStatus && (
-                    <Button
-                      size="sm"
-                      className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-7"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setConfirmTarget({ orderId: order.id, businessName: order.businessName })
-                      }}
-                    >
-                      발주완료
-                    </Button>
-                  )}
-                  {status === 'ordered' && onSettle && (
-                    <Button
-                      size="sm"
-                      className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 h-7"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        setSettleTarget({ orderId: order.id, businessName: order.businessName })
-                      }}
-                    >
-                      정산완료
-                    </Button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {/* ⋮ 케밥 메뉴 (진행중 탭: 발주대기로 되돌리기 + 강제 배송완료) */}
+                    {!readOnly && status === 'ordered' && onChangeStatus && (
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-600"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <MoreVertical className="h-4 w-4" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            className="text-xs cursor-pointer text-orange-600 focus:text-orange-600"
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              setRevertTarget({ orderId: order.id, businessName: order.businessName })
+                            }}
+                          >
+                            ← 발주대기로 되돌리기
+                          </DropdownMenuItem>
+                          {onForceDelivered && (
+                            <DropdownMenuItem
+                              className="text-xs cursor-pointer text-emerald-700 focus:text-emerald-700"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setForceDeliveredTarget({ orderId: order.id, businessName: order.businessName })
+                              }}
+                            >
+                              강제 배송완료 →
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
+                    {!readOnly && status === 'pending' && onChangeStatus && (
+                      <Button
+                        size="sm"
+                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 h-8 rounded-lg shadow-sm hover:shadow-md transition-all hover:scale-105"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setConfirmTarget({ orderId: order.id, businessName: order.businessName })
+                        }}
+                      >
+                        발주완료 →
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -1272,72 +1369,97 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                 )
                               })()}
                             </div>
-                            <button
-                              className="text-gray-300 hover:text-red-500 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                handleRemoveRow(order.id, idx)
-                              }}
-                            >
-                              <Trash2 className="h-3.5 w-3.5" />
-                            </button>
+                            {!readOnly && (
+                              <button
+                                className="text-gray-300 hover:text-red-500 transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  handleRemoveRow(order.id, idx)
+                                }}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
                           </div>
                           <div className="grid grid-cols-2 gap-2">
                             <div>
                               <label className="text-[10px] text-gray-400">모델명</label>
                               <div className="flex items-center gap-1">
-                                <Input value={item.componentModel || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)} placeholder="모델명" className="h-7 text-xs flex-1" />
-                                <button
-                                  type="button"
-                                  title="단가표에서 선택"
-                                  className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
-                                    setPriceSheetOpen(true)
-                                  }}
-                                >
-                                  <ClipboardList className="h-3.5 w-3.5" />
-                                </button>
+                                <Input value={item.componentModel || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)} placeholder="모델명" className="h-7 text-xs flex-1" readOnly={readOnly} tabIndex={readOnly ? -1 : undefined} />
+                                {!readOnly && (
+                                  <button
+                                    type="button"
+                                    title="단가표에서 선택"
+                                    className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                    onClick={(e) => {
+                                      e.stopPropagation()
+                                      setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
+                                      setPriceSheetOpen(true)
+                                    }}
+                                  >
+                                    <ClipboardList className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
                               </div>
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">구성품</label>
-                              <Input value={item.componentName || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)} placeholder="실외기" className="h-7 text-xs" />
+                              <Input value={item.componentName || ''} onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)} placeholder="실외기" className="h-7 text-xs" readOnly={readOnly} tabIndex={readOnly ? -1 : undefined} />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">수량</label>
-                              <Input type="text" inputMode="numeric" value={item.quantity > 0 ? item.quantity : ''} onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); handleItemChange(order.id, idx, 'quantity', val ? parseInt(val) : 0) }} className="h-7 text-xs" />
+                              <Input type="text" inputMode="numeric" value={item.quantity > 0 ? item.quantity : ''} onChange={(e) => { const val = e.target.value.replace(/\D/g, ''); handleItemChange(order.id, idx, 'quantity', val ? parseInt(val) : 0) }} className="h-7 text-xs" readOnly={readOnly} tabIndex={readOnly ? -1 : undefined} />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">매입처</label>
-                              <Input value={item.supplier || ''} onChange={(e) => handleItemChange(order.id, idx, 'supplier', e.target.value)} placeholder="삼성전자" className="h-7 text-xs" />
+                              <Input value={item.supplier || ''} onChange={(e) => handleItemChange(order.id, idx, 'supplier', e.target.value)} placeholder="삼성전자" className="h-7 text-xs" readOnly={readOnly} tabIndex={readOnly ? -1 : undefined} />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">주문번호</label>
-                              <Input value={item.orderNumber || ''} onChange={(e) => handleItemChange(order.id, idx, 'orderNumber', e.target.value)} placeholder="주문번호" className="h-7 text-xs font-mono" />
+                              <Input value={item.orderNumber || ''} onChange={(e) => handleItemChange(order.id, idx, 'orderNumber', e.target.value)} placeholder="주문번호" className="h-7 text-xs font-mono" readOnly={readOnly} tabIndex={readOnly ? -1 : undefined} />
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">배송요청일</label>
-                              <DateInput value={item.requestedDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'requestedDeliveryDate', val)} />
+                              {readOnly ? (
+                                <span className="text-xs text-gray-700">{item.requestedDeliveryDate || '-'}</span>
+                              ) : (
+                                <DateInput value={item.requestedDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'requestedDeliveryDate', val)} />
+                              )}
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">배송예정일</label>
-                              <DateInput value={item.scheduledDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'scheduledDeliveryDate', val)} />
+                              {readOnly ? (
+                                <span className="text-xs text-gray-700">{item.scheduledDeliveryDate || '-'}</span>
+                              ) : (
+                                <DateInput value={item.scheduledDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'scheduledDeliveryDate', val)} />
+                              )}
                             </div>
                             <div>
                               <label className="text-[10px] text-gray-400">배송확정일</label>
-                              <DateInput value={item.confirmedDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'confirmedDeliveryDate', val)} />
+                              {readOnly ? (
+                                <span className="text-xs text-gray-700">{item.confirmedDeliveryDate || '-'}</span>
+                              ) : (
+                                <DateInput value={item.confirmedDeliveryDate || ''} onChange={(val) => handleItemChange(order.id, idx, 'confirmedDeliveryDate', val)} />
+                              )}
                             </div>
                             <div className="col-span-2">
                               <label className="text-[10px] text-gray-400">창고</label>
-                              <WarehouseNameCell
-                                warehouseId={item.warehouseId}
-                                onPickerOpen={() => {
-                                  setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
-                                  setPickerOpen(true)
-                                }}
-                              />
+                              {readOnly ? (
+                                <span className="text-xs font-semibold text-gray-800">
+                                  {(() => {
+                                    const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                    return d ? `${d.name}_${d.managerName}` : '-'
+                                  })()}
+                                </span>
+                              ) : (
+                                <WarehouseNameCell
+                                  warehouseId={item.warehouseId}
+                                  onPickerOpen={() => {
+                                    setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
+                                    setPickerOpen(true)
+                                  }}
+                                />
+                              )}
                               {(() => {
                                 const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
                                 return d ? (
@@ -1355,45 +1477,47 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     })()}
                   </div>
 
-                  {/* 행추가 버튼 그룹 */}
-                  <div className="flex gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAddRow(order.id)
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      행추가
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAddRow(order.id, 3)
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      3행 추가[스탠드]
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="text-xs"
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleAddRow(order.id, 4)
-                      }}
-                    >
-                      <Plus className="h-3.5 w-3.5 mr-1" />
-                      4행 추가[벽걸이]
-                    </Button>
-                  </div>
+                  {/* 행추가 버튼 그룹 (readOnly 시 숨김) */}
+                  {!readOnly && (
+                    <div className="flex gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddRow(order.id)
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        행추가
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddRow(order.id, 3)
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        3행 추가[스탠드]
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleAddRow(order.id, 4)
+                        }}
+                      >
+                        <Plus className="h-3.5 w-3.5 mr-1" />
+                        4행 추가[벽걸이]
+                      </Button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -1472,14 +1596,39 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* 정산완료 확인 다이얼로그 */}
-      <AlertDialog open={!!settleTarget} onOpenChange={(open) => { if (!open) setSettleTarget(null) }}>
+      {/* 되돌리기 확인 다이얼로그 (진행중→발주대기) */}
+      <AlertDialog open={!!revertTarget} onOpenChange={(open) => { if (!open) setRevertTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>정산완료 처리</AlertDialogTitle>
+            <AlertDialogTitle>발주대기로 되돌리기</AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{settleTarget?.businessName}&rdquo;을(를) 정산완료로 처리하시겠습니까?
-              정산완료된 건은 배송관리 목록에서 사라집니다.
+              &ldquo;{revertTarget?.businessName}&rdquo;을(를) 발주대기로 되돌리시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-orange-500 hover:bg-orange-600 text-white"
+              onClick={() => {
+                if (revertTarget && onChangeStatus) {
+                  onChangeStatus(revertTarget.orderId, 'pending')
+                }
+                setRevertTarget(null)
+              }}
+            >
+              되돌리기
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 강제 배송완료 확인 다이얼로그 */}
+      <AlertDialog open={!!forceDeliveredTarget} onOpenChange={(open) => { if (!open) setForceDeliveredTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>강제 배송완료</AlertDialogTitle>
+            <AlertDialogDescription>
+              &ldquo;{forceDeliveredTarget?.businessName}&rdquo;의 모든 구성품 배송확정일을 오늘로 설정합니다. 계속하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -1487,13 +1636,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
             <AlertDialogAction
               className="bg-emerald-600 hover:bg-emerald-700 text-white"
               onClick={() => {
-                if (settleTarget && onSettle) {
-                  onSettle(settleTarget.orderId)
+                if (forceDeliveredTarget && onForceDelivered) {
+                  onForceDelivered(forceDeliveredTarget.orderId)
                 }
-                setSettleTarget(null)
+                setForceDeliveredTarget(null)
               }}
             >
-              정산완료
+              배송완료 처리
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

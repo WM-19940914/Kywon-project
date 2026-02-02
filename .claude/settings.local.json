@@ -71,7 +71,17 @@
       "Bash(cmd /c \"taskkill /PID 8400 /F\")",
       "Bash(cmd /c:*)",
       "Bash(npx next dev -p 3001)",
-      "Bash(npx next dev -p 3000)"
+      "Bash(npx next dev -p 3000)",
+      "Skill(keybindings-help)",
+      "Bash(npx next dev:*)",
+      "Bash(node:*)",
+      "Bash(start:*)",
+      "Bash(Start-Sleep -Seconds 8)",
+      "Bash(Select-Object -First 10)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(Get-Content C:UsersUserAppDataLocalTempclaudeC--Users-User-workspace-firsttasksbd00a5d.output -Tail 30)",
+      "Bash(ping:*)"
     ]
   }
 }

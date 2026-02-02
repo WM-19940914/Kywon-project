@@ -30,6 +30,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar'
 import { Separator } from '@/components/ui/separator'
 import { Button } from '@/components/ui/button'
 import { menuItems, settingsMenuItem } from '@/lib/menu-items'
+import { AlertProvider } from '@/components/ui/custom-alert'
 
 /** 각 역할 그룹별 색상 테마 */
 const GROUP_COLORS: Record<string, { label: string; bar: string; bg: string }> = {
@@ -48,6 +49,7 @@ export default function DashboardLayout({
   const pathname = usePathname()
 
   return (
+    <AlertProvider>
     <SidebarProvider>
       <Sidebar>
         {/* 사이드바 상단 로고 */}
@@ -178,5 +180,6 @@ export default function DashboardLayout({
         </main>
       </div>
     </SidebarProvider>
+    </AlertProvider>
   )
 }

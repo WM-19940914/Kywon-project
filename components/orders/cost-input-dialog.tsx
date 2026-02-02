@@ -28,6 +28,7 @@ import { EquipmentInputSection } from '@/components/orders/equipment-input-secti
 import { InstallationCostSection } from '@/components/orders/installation-cost-section'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import type { Order, EquipmentItem, InstallationCostItem } from '@/types/order'
+import { useAlert } from '@/components/ui/custom-alert'
 import type { ComponentDetail } from '@/lib/price-table'
 
 /**
@@ -49,6 +50,8 @@ export function CostInputDialog({
   onOpenChange,
   onSave
 }: CostInputDialogProps) {
+
+  const { showAlert } = useAlert()
 
   // 장비 항목 상태
   const [equipmentItems, setEquipmentItems] = useState<EquipmentItem[]>(
@@ -129,7 +132,7 @@ export function CostInputDialog({
 
       setEquipmentItems(autoEquipment)
 
-      alert(`${category} ${size} 모델의 구성품 ${components.length}개가 자동으로 입력되었습니다.\n주문번호를 입력해주세요.`)
+      showAlert(`${category} ${size} 모델의 구성품 ${components.length}개가 자동으로 입력되었습니다.\n주문번호를 입력해주세요.`, 'success')
     }
   }
 
@@ -147,7 +150,7 @@ export function CostInputDialog({
       totalAmount
     })
 
-    alert('원가 정보가 저장되었습니다!')
+    showAlert('원가 정보가 저장되었습니다!', 'success')
     onOpenChange(false)
   }
 

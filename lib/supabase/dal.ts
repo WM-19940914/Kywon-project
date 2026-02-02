@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Data Access Layer (DAL) — Supabase DB 조회/저장 함수 모음
  *
@@ -11,7 +12,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
-import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem } from '@/types/order'
+import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 
 // ============================================================
@@ -783,6 +784,72 @@ export async function deletePriceTableRow(id: string): Promise<boolean> {
 
   if (error) {
     console.error('단가표 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 💵 에스원 정산 (S1 Settlement)
+// ============================================================
+
+/**
+ * 개별 발주의 에스원 정산 상태 변경
+ * @param orderId - 발주 ID
+ * @param status - 새 정산 상태 (unsettled/in-progress/settled)
+ */
+export async function updateS1SettlementStatus(orderId: string, status: S1SettlementStatus): Promise<boolean> {
+  const supabase = createClient()
+  const updates: Record<string, unknown> = {
+    s1_settlement_status: status,
+    updated_at: new Date().toISOString()
+  }
+
+  // 정산 완료 시 정산 월 자동 입력
+  if (status === 'settled') {
+    const now = new Date()
+    updates.s1_settlement_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const { error } = await supabase
+    .from('orders')
+    .update(updates)
+    .eq('id', orderId)
+
+  if (error) {
+    console.error('에스원 정산 상태 변경 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 여러 발주의 에스원 정산 상태 일괄 변경
+ * @param orderIds - 발주 ID 배열
+ * @param status - 새 정산 상태
+ */
+export async function batchUpdateS1SettlementStatus(orderIds: string[], status: S1SettlementStatus): Promise<boolean> {
+  const supabase = createClient()
+  const updates: Record<string, unknown> = {
+    s1_settlement_status: status,
+    updated_at: new Date().toISOString()
+  }
+
+  // 정산 완료 시 정산 월 자동 입력
+  if (status === 'settled') {
+    const now = new Date()
+    updates.s1_settlement_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  }
+
+  const { error } = await supabase
+    .from('orders')
+    .update(updates)
+    .in('id', orderIds)
+
+  if (error) {
+    console.error('에스원 정산 일괄 변경 실패:', error.message)
     return false
   }
 

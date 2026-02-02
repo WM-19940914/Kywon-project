@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * 연간 단가표 페이지
  *
@@ -13,6 +14,7 @@ import { fetchPriceTable, createPriceTableRow, updatePriceTableRow, deletePriceT
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { useAlert } from '@/components/ui/custom-alert'
 import {
   Dialog,
   DialogContent,
@@ -21,13 +23,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+// Select 컴포넌트 (추후 필터 기능에서 사용 예정)
+// import {
+//   Select,
+//   SelectContent,
+//   SelectItem,
+//   SelectTrigger,
+//   SelectValue,
+// } from '@/components/ui/select'
 
 // 가격 포맷팅 함수
 function formatPrice(price: number): string {
@@ -50,6 +53,7 @@ function PriceTableDialog({
   externalOpen?: boolean
   onOpenChange?: (open: boolean) => void
 }) {
+  const { showAlert } = useAlert()
   const [internalOpen, setInternalOpen] = useState(false)
 
   // 외부에서 open을 제어하는 경우와 내부에서 제어하는 경우를 구분
@@ -104,7 +108,7 @@ function PriceTableDialog({
   // 저장
   const handleSave = async () => {
     if (!formData.category || !formData.model || !formData.size || !formData.price) {
-      alert('필수 항목을 모두 입력해주세요')
+      showAlert('필수 항목을 모두 입력해주세요', 'warning')
       return
     }
 
@@ -379,6 +383,7 @@ function EditButton({ data, onSave }: { data: any; onSave: (data: any) => void }
 
 export default function PriceTablePage() {
   // Supabase에서 단가표 데이터 가져오기
+  const { showAlert, showConfirm } = useAlert()
   const [priceTable, setPriceTable] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -480,9 +485,9 @@ export default function PriceTablePage() {
     const created = await createPriceTableRow(data)
     if (created) {
       await refreshPriceTable()
-      alert('장비가 추가되었습니다!')
+      showAlert('장비가 추가되었습니다!', 'success')
     } else {
-      alert('장비 추가에 실패했습니다.')
+      showAlert('장비 추가에 실패했습니다.', 'error')
     }
   }
 
@@ -491,21 +496,22 @@ export default function PriceTablePage() {
     const success = await updatePriceTableRow(data.id, data)
     if (success) {
       await refreshPriceTable()
-      alert('장비가 수정되었습니다!')
+      showAlert('장비가 수정되었습니다!', 'success')
     } else {
-      alert('장비 수정에 실패했습니다.')
+      showAlert('장비 수정에 실패했습니다.', 'error')
     }
   }
 
   // 장비 삭제 핸들러
   const handleDelete = async (id: string, model: string) => {
-    if (confirm(`"${model}" 제품을 삭제하시겠습니까?\n구성품도 함께 삭제됩니다.`)) {
+    const confirmed = await showConfirm(`"${model}" 제품을 삭제하시겠습니까?\n구성품도 함께 삭제됩니다.`)
+    if (confirmed) {
       const success = await deletePriceTableRow(id)
       if (success) {
         await refreshPriceTable()
-        alert('장비가 삭제되었습니다!')
+        showAlert('장비가 삭제되었습니다!', 'success')
       } else {
-        alert('장비 삭제에 실패했습니다.')
+        showAlert('장비 삭제에 실패했습니다.', 'error')
       }
     }
   }
@@ -669,7 +675,7 @@ export default function PriceTablePage() {
                                     </td>
                                     <td className="px-4 py-2 text-sm text-right font-bold text-blue-600">
                                       {row.components
-                                        .reduce((sum, comp) => sum + comp.salePrice, 0)
+                                        .reduce((sum: number, comp: any) => sum + comp.salePrice, 0)
                                         .toLocaleString()}원
                                     </td>
                                   </tr>

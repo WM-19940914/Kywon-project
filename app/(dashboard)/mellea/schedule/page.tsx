@@ -16,10 +16,11 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { fetchOrders, updateOrder as updateOrderDB } from '@/lib/supabase/dal'
-import type { Order, InstallScheduleStatus } from '@/types/order'
+import { fetchOrders, updateOrder as updateOrderDB, saveCustomerQuote } from '@/lib/supabase/dal'
+import type { Order, InstallScheduleStatus, CustomerQuote } from '@/types/order'
 import { ScheduleTable } from '@/components/schedule/schedule-table'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
+import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { CalendarCheck } from 'lucide-react'
@@ -51,6 +52,10 @@ export default function SchedulePage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [orderToView, setOrderToView] = useState<Order | null>(null)
 
+  // 견적서 작성/수정 모달
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
+  const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
+
   /**
    * 설치일정 정보 업데이트 핸들러
    * 설치예정일, 설치완료일, 메모 등을 수정합니다.
@@ -61,6 +66,27 @@ export default function SchedulePage() {
       if (order.id !== orderId) return order
       return { ...order, ...updates }
     }))
+  }
+
+  /**
+   * 견적서 작성/수정 모달 열기
+   */
+  const handleQuoteCreate = (order: Order) => {
+    setOrderForQuote(order)
+    setQuoteDialogOpen(true)
+  }
+
+  /**
+   * 견적서 저장 핸들러
+   * DB에 견적서 저장 후 로컬 상태 업데이트
+   */
+  const handleQuoteSave = async (orderId: string, quote: CustomerQuote) => {
+    await saveCustomerQuote(orderId, quote)
+    setOrders(prev => prev.map(order =>
+      order.id === orderId
+        ? { ...order, customerQuote: quote }
+        : order
+    ))
   }
 
   /**
@@ -201,6 +227,7 @@ export default function SchedulePage() {
           setOrderToView(order)
           setDetailDialogOpen(true)
         }}
+        onQuoteInput={handleQuoteCreate}
       />
 
       {/* 발주 상세 모달 (전체 페이지 공용) */}
@@ -208,6 +235,14 @@ export default function SchedulePage() {
         order={orderToView}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+      />
+
+      {/* 견적서 작성/수정 모달 */}
+      <QuoteCreateDialog
+        order={orderForQuote}
+        open={quoteDialogOpen}
+        onOpenChange={setQuoteDialogOpen}
+        onSave={handleQuoteSave}
       />
     </div>
   )

@@ -46,9 +46,10 @@ export function QuoteCreateDialog({
 }: QuoteCreateDialogProps) {
   const [equipmentItems, setEquipmentItems] = useState<QuoteLineItem[]>([])
   const [installationItems, setInstallationItems] = useState<QuoteLineItem[]>([])
-  const [roundingAdjustment, setRoundingAdjustment] = useState(0) // 단위절사
+  const [installRounding, setInstallRounding] = useState(0) // 단위절사 (설치비)
+  const [corporateProfit, setCorporateProfit] = useState(0) // 기업이윤
+  const [profitGuideMessage, setProfitGuideMessage] = useState('') // 기업이윤 자동계산 안내문구
   const [saveSuccess, setSaveSuccess] = useState(false) // 저장 성공 메시지
-  const [errorMessage, setErrorMessage] = useState('') // 에러 메시지
 
   const createEmptyItem = (): QuoteLineItem => ({
     id: `${Date.now()}-${Math.random()}`,
@@ -118,24 +119,26 @@ export function QuoteCreateDialog({
         setEquipmentItems(equipmentWithEmpty)
         setInstallationItems(installationWithEmpty)
 
-        // 단위절사 복원 (notes에서 추출)
-        // "공급가액: 1,200,000원 | VAT: 120,000원" 형식에서 역계산
+        // notes에서 저장된 값 복원
         if (quote.notes) {
-          const supplyMatch = quote.notes.match(/공급가액:\s*([\d,]+)/)
-          if (supplyMatch) {
-            const supplyAmount = parseInt(supplyMatch[1].replace(/,/g, ''))
-            const currentTotal = loadedEquipment.reduce((sum, item) => sum + item.amount, 0) +
-                                loadedInstallation.reduce((sum, item) => sum + item.amount, 0)
-            setRoundingAdjustment(currentTotal - supplyAmount)
-          }
+          // 설치비 단위절사 복원
+          const installRoundMatch = quote.notes.match(/설치비절사:\s*([\d,]+)/)
+          setInstallRounding(installRoundMatch ? parseInt(installRoundMatch[1].replace(/,/g, '')) : 0)
+          // 기업이윤 복원
+          const profitMatch = quote.notes.match(/기업이윤:\s*([\d,]+)/)
+          setCorporateProfit(profitMatch ? parseInt(profitMatch[1].replace(/,/g, '')) : 0)
         } else {
-          setRoundingAdjustment(0)
+          setInstallRounding(0)
+          setCorporateProfit(0)
         }
+        setProfitGuideMessage('')
       } else {
         // 저장된 견적서가 없으면 빈 화면 (장비 3개, 설치비 6개)
         setEquipmentItems(Array(3).fill(null).map(() => createEmptyItem()))
         setInstallationItems(Array(6).fill(null).map(() => createEmptyItem()))
-        setRoundingAdjustment(0)
+        setInstallRounding(0)
+        setCorporateProfit(0)
+        setProfitGuideMessage('')
       }
     }
   }, [open, order])
@@ -216,14 +219,6 @@ export function QuoteCreateDialog({
     const filledEquipment = equipmentItems.filter(i => i.product.trim())
     const filledInstallation = installationItems.filter(i => i.product.trim())
 
-    if (filledEquipment.length === 0 && filledInstallation.length === 0) {
-      setErrorMessage('최소 1개 이상의 항목을 입력해주세요')
-      setTimeout(() => {
-        setErrorMessage('')
-      }, 3000)
-      return
-    }
-
     // 2. QuoteLineItem → QuoteItem 형식으로 변환
     const quoteItems: QuoteItem[] = [
       // 장비 항목 변환 (품목 + 모델명을 합쳐서 항목명으로)
@@ -247,17 +242,20 @@ export function QuoteCreateDialog({
     ]
 
     // 3. 최종 견적 금액 계산
-    const subtotalAmount = total()                    // 총 합계
-    const supplyAmount = subtotalAmount - roundingAdjustment  // 공급가액 (단위절사 적용)
+    const supplyAmount = total() - installRounding + corporateProfit  // 공급가액 (설치비절사 + 기업이윤 반영)
     const vatAmount = Math.floor(supplyAmount * 0.1)  // VAT 10%
     const finalAmount = supplyAmount + vatAmount      // 최종 견적 (공급가액 + VAT)
 
-    // 4. CustomerQuote 객체 생성
+    // 4. CustomerQuote 객체 생성 (notes에 복원용 데이터 포함)
+    const noteParts = [`공급가액: ${supplyAmount.toLocaleString()}원`, `VAT: ${vatAmount.toLocaleString()}원`]
+    if (installRounding) noteParts.push(`설치비절사: ${installRounding.toLocaleString()}원`)
+    if (corporateProfit) noteParts.push(`기업이윤: ${corporateProfit.toLocaleString()}원`)
+
     const customerQuote: CustomerQuote = {
       items: quoteItems,
       totalAmount: finalAmount,
-      issuedDate: new Date().toISOString().split('T')[0],  // 오늘 날짜 (YYYY-MM-DD)
-      notes: `공급가액: ${supplyAmount.toLocaleString()}원 | VAT: ${vatAmount.toLocaleString()}원`
+      issuedDate: new Date().toISOString().split('T')[0],
+      notes: noteParts.join(' | ')
     }
 
     // 5. 부모 컴포넌트에 저장 요청
@@ -352,13 +350,14 @@ export function QuoteCreateDialog({
     </tr>
   )
 
-  /** 테이블 컴포넌트 (showPriceTable: 장비 섹션에서만 단가표 버튼 표시) */
+  /** 테이블 컴포넌트 (showPriceTable: 장비 섹션에서만 단가표 버튼 표시, showRounding: 설치비 단위절사) */
   const renderTable = (
     title: string,
     color: string,
     items: QuoteLineItem[],
     setItems: React.Dispatch<React.SetStateAction<QuoteLineItem[]>>,
-    showPriceTable = false
+    showPriceTable = false,
+    showRounding = false
   ) => (
     <div>
       {/* 섹션 헤더 */}
@@ -405,6 +404,29 @@ export function QuoteCreateDialog({
           </tbody>
         </table>
 
+        {/* 설치비 단위절사 (설치비 섹션에서만, 소계 위에 표시) */}
+        {showRounding && (
+          <div className="flex justify-end items-center px-4 py-2 border-t border-orange-100 bg-orange-50/30">
+            <span className="text-sm text-gray-600 mr-4">설치비 단위절사</span>
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-red-600 font-semibold">-</span>
+              <input
+                type="text"
+                className="w-28 px-2 py-1 text-sm text-right border border-orange-200 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 text-red-600 font-semibold"
+                placeholder="0"
+                value={installRounding ? installRounding.toLocaleString('ko-KR') : ''}
+                onChange={(e) => {
+                  const numericValue = e.target.value.replace(/,/g, '')
+                  if (!isNaN(Number(numericValue))) {
+                    setInstallRounding(Number(numericValue))
+                  }
+                }}
+              />
+              <span className="text-sm text-gray-400">원</span>
+            </div>
+          </div>
+        )}
+
         {/* 소계 */}
         <div className={`flex justify-end items-center px-4 py-2.5 border-t-2 ${
           color === 'bg-blue-500' ? 'border-blue-200 bg-blue-50/50' : 'border-orange-200 bg-orange-50/50'
@@ -416,7 +438,10 @@ export function QuoteCreateDialog({
           <span className={`text-base font-bold min-w-[120px] text-right ${
             color === 'bg-blue-500' ? 'text-blue-600' : 'text-orange-600'
           }`}>
-            {subtotal(items) > 0 ? `${subtotal(items).toLocaleString('ko-KR')}원` : '-'}
+            {showRounding
+              ? (subtotal(items) - installRounding > 0 ? `${(subtotal(items) - installRounding).toLocaleString('ko-KR')}원` : '-')
+              : (subtotal(items) > 0 ? `${subtotal(items).toLocaleString('ko-KR')}원` : '-')
+            }
           </span>
         </div>
       </div>
@@ -471,18 +496,6 @@ export function QuoteCreateDialog({
 
         {/* 본문 */}
         <div className="px-6 py-4 space-y-6">
-          {/* 에러 메시지만 배너로 표시 */}
-          {errorMessage && (
-            <div className="bg-red-50 border-2 border-red-500 rounded-lg p-4 animate-in fade-in slide-in-from-top-2 duration-300">
-              <div className="flex items-center justify-center gap-3">
-                <svg className="h-6 w-6 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-base font-semibold text-red-700">{errorMessage}</span>
-              </div>
-            </div>
-          )}
-
           {/* 발주 내역 요약 */}
           <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
             <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 발주 요청 내역</h3>
@@ -504,8 +517,8 @@ export function QuoteCreateDialog({
           {/* 장비 테이블 (단가표 버튼 포함) */}
           {renderTable('장비', 'bg-blue-500', equipmentItems, setEquipmentItems, true)}
 
-          {/* 설치비 테이블 */}
-          {renderTable('설치비', 'bg-orange-500', installationItems, setInstallationItems)}
+          {/* 설치비 테이블 (단위절사 포함) */}
+          {renderTable('설치비', 'bg-orange-500', installationItems, setInstallationItems, false, true)}
 
           {/* 총 견적 금액 */}
           <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
@@ -514,23 +527,48 @@ export function QuoteCreateDialog({
               <div className="flex justify-between items-center py-1.5">
                 <span className="text-sm text-gray-600">총 합계</span>
                 <span className="text-base font-semibold text-gray-900">
-                  {total().toLocaleString('ko-KR')}원
+                  {(total() - installRounding).toLocaleString('ko-KR')}원
                 </span>
               </div>
 
-              {/* 단위절사 (입력 가능) */}
+              {/* 기업이윤 (입력 가능, + 기호 + 자동계산 버튼) */}
               <div className="flex justify-between items-center py-1.5">
-                <span className="text-sm text-gray-600">단위절사</span>
                 <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">기업이윤</span>
+                  <button
+                    type="button"
+                    className="text-[10px] px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                    onClick={() => {
+                      // 1. 설치비 소계의 3%
+                      const installSubtotal = subtotal(installationItems) - installRounding
+                      const rawProfit = Math.floor(installSubtotal * 0.03)
+                      // 2. 총합계 + 3% 기업이윤 = 공급가액(절사 전)
+                      const totalSum = total() - installRounding
+                      const rawSupply = totalSum + rawProfit
+                      // 3. 공급가액 백원단위 절사 → 차액만큼 기업이윤에서 차감
+                      const remainder = rawSupply % 1000
+                      const adjustedProfit = rawProfit - remainder
+                      setCorporateProfit(adjustedProfit)
+                      setProfitGuideMessage(
+                        `설치비 소계 ${installSubtotal.toLocaleString('ko-KR')}원의 3% = ${rawProfit.toLocaleString('ko-KR')}원에서, 공급가액 백원단위 절사 (${remainder.toLocaleString('ko-KR')}원)를 위해 ${adjustedProfit.toLocaleString('ko-KR')}원이 적용됩니다.`
+                      )
+                    }}
+                  >
+                    자동계산 (3%)
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-blue-600 font-semibold">+</span>
                   <input
                     type="text"
-                    className="w-32 px-2 py-1 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-red-400 focus:ring-1 focus:ring-red-100 text-red-600 font-semibold"
+                    className="w-32 px-2 py-1 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-blue-600 font-semibold"
                     placeholder="0"
-                    value={roundingAdjustment ? roundingAdjustment.toLocaleString('ko-KR') : ''}
+                    value={corporateProfit ? corporateProfit.toLocaleString('ko-KR') : ''}
                     onChange={(e) => {
                       const numericValue = e.target.value.replace(/,/g, '')
                       if (!isNaN(Number(numericValue))) {
-                        setRoundingAdjustment(Number(numericValue))
+                        setCorporateProfit(Number(numericValue))
+                        setProfitGuideMessage('')
                       }
                     }}
                   />
@@ -538,11 +576,28 @@ export function QuoteCreateDialog({
                 </div>
               </div>
 
+              {/* 자동계산 안내 문구 */}
+              {profitGuideMessage && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
+                  <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  <span className="text-xs text-blue-700">{profitGuideMessage}</span>
+                  <button
+                    type="button"
+                    className="ml-auto text-[10px] text-blue-500 hover:text-blue-700"
+                    onClick={() => setProfitGuideMessage('')}
+                  >
+                    닫기
+                  </button>
+                </div>
+              )}
+
               {/* 공급가액 */}
               <div className="flex justify-between items-center py-1.5 bg-gray-50 -mx-4 px-4">
                 <span className="text-sm font-semibold text-gray-700">공급가액</span>
                 <span className="text-base font-bold text-gray-900">
-                  {(total() - roundingAdjustment).toLocaleString('ko-KR')}원
+                  {(total() - installRounding + corporateProfit).toLocaleString('ko-KR')}원
                 </span>
               </div>
 
@@ -552,7 +607,7 @@ export function QuoteCreateDialog({
               <div className="flex justify-between items-center py-1.5">
                 <span className="text-sm text-gray-600">VAT (10%)</span>
                 <span className="text-base font-semibold text-gray-700">
-                  {Math.floor((total() - roundingAdjustment) * 0.1).toLocaleString('ko-KR')}원
+                  {Math.floor((total() - installRounding + corporateProfit) * 0.1).toLocaleString('ko-KR')}원
                 </span>
               </div>
 
@@ -560,7 +615,7 @@ export function QuoteCreateDialog({
               <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-blue-500 bg-blue-50 -mx-4 px-4 py-3 rounded-b-lg">
                 <span className="text-base font-bold text-blue-900">최종 견적</span>
                 <span className="text-2xl font-bold text-blue-600">
-                  {Math.floor((total() - roundingAdjustment) * 1.1).toLocaleString('ko-KR')}원
+                  {Math.floor((total() - installRounding + corporateProfit) * 1.1).toLocaleString('ko-KR')}원
                 </span>
               </div>
             </div>

@@ -149,6 +149,19 @@ settlements (월별 정산)
 - **e 간격**: `paddingRight: 1.5px`로 L과의 간격 확보
 - **뱃지 형태**: `px-3 py-1.5 rounded-md shadow-sm`
 
+### 2026-02-01 작업 내용
+- **SET 모델 구성품 좌측 세로 컬러바 그룹핑** (`components/delivery/delivery-table.tsx`)
+  - `SET_GROUP_COLORS` 6색 순환 (blue, violet, emerald, amber, pink, cyan)
+  - `computeSetModelGroups()` 함수: 연속된 같은 setModel 행을 그룹으로 묶어 색상 할당
+  - 모델명 셀(`<td>`) 좌측에 `borderLeft: 4px solid {color}` 적용 (데스크톱)
+  - 모바일 카드는 카드 전체 좌측 borderLeft 적용
+  - setModel 없는 수동 입력 행은 컬러바 없음
+- **단가표 Sheet SET 모델명 전달** (`components/delivery/delivery-price-table-sheet.tsx`)
+  - `onSelectSet` 콜백에 `setModel` 파라미터 추가
+  - SET 선택 시 각 구성품에 `setModel` 필드 자동 저장
+- **아코디언 우측 삭제 버튼 제거** — 좌측 삭제 버튼만 유지
+- **행추가 버튼 개선** — `행추가` / `3행 추가[스탠드]` / `4행 추가[벽걸이]`
+
 ### 이어서 할 작업 (미정)
 - 배송중/입고완료 탭에도 MeLEA 또는 역할별 로고 뱃지 추가 검토
 - 배송정보 입력/수정 모달 개선

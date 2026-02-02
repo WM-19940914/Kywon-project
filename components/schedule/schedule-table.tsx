@@ -37,12 +37,15 @@ import {
   FileText,
   MapPin,
   Package,
+  CircleCheck,
 } from 'lucide-react'
 import type { Order, InstallScheduleStatus } from '@/types/order'
 import {
   WORK_TYPE_COLORS,
   ITEM_DELIVERY_STATUS_LABELS,
   ITEM_DELIVERY_STATUS_COLORS,
+  S1_SETTLEMENT_STATUS_LABELS,
+  S1_SETTLEMENT_STATUS_COLORS,
 } from '@/types/order'
 import {
   getScheduleUrgency,
@@ -382,21 +385,64 @@ function EquipmentAccordionMobile({ order }: { order: Order }) {
 
 /** 탭별 데스크톱 테이블 컬럼 수 계산 */
 function getColumnCount(activeTab: InstallScheduleStatus): number {
-  // 공통: 화살표(1) + 작업종류(1) + 현장명(1) + 발주서(1) + 현장주소(1) + 장비상태(1) = 6
-  let count = 6
+  // 공통: 화살표(1) + 작업종류(1) + 현장명(1) + 발주서(1) + 현장주소(1) + 장비상태(1) + 견적서(1) = 7
+  let count = 7
 
   if (activeTab === 'unscheduled') {
-    // + 발주등록일(1) + 설치요청일(1) + 설치예정일편집(1) + 메모(1) = 4
-    count += 4
+    // + 발주등록일(1) + 설치요청일(1) + 설치예정일편집(1) = 3
+    count += 3
   } else if (activeTab === 'scheduled') {
-    // + 설치예정일(1) + 담당자(1) + 일정변경(1) + 메모(1) + 버튼(1) = 5
-    count += 5
+    // + 설치예정일(1) + 담당자(1) + 일정변경(1) + 버튼(1) = 4
+    count += 4
   } else {
-    // completed: + 설치예정일(1) + 설치완료일(1) + 메모(1) = 3
+    // completed: + 설치예정일(1) + 설치완료일(1) + 정산(1) = 3
     count += 3
   }
 
   return count
+}
+
+/**
+ * 견적서 상태 표시 컴포넌트 — 미니 pill 뱃지 2개
+ *
+ * 장비(멜레아 담당)와 설치비(설치팀 담당)를 각각 pill 뱃지로 표시.
+ * 완료: 초록 뱃지 + 체크, 미작성: 회색 반투명 뱃지
+ * 클릭 시 견적서 모달 열기
+ */
+function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?: (order: Order) => void }) {
+  const quote = order.customerQuote
+
+  const hasEquipment = (quote?.items?.filter(i => i.category === 'equipment') || []).length > 0
+  const hasInstallation = (quote?.items?.filter(i => i.category === 'installation') || []).length > 0
+
+  return (
+    <button
+      className="inline-flex items-center gap-1 rounded-md p-1 -m-1 hover:bg-gray-100 transition-colors"
+      onClick={(e) => {
+        e.stopPropagation()
+        onQuoteInput?.(order)
+      }}
+    >
+      {/* 장비 뱃지 */}
+      <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
+        hasEquipment
+          ? 'bg-green-50 text-green-700 border-green-200'
+          : 'bg-gray-50 text-gray-400 border-gray-200'
+      }`}>
+        {hasEquipment && <CircleCheck className="h-2.5 w-2.5" />}
+        장비
+      </span>
+      {/* 설치비 뱃지 */}
+      <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
+        hasInstallation
+          ? 'bg-green-50 text-green-700 border-green-200'
+          : 'bg-gray-50 text-gray-400 border-gray-200'
+      }`}>
+        {hasInstallation && <CircleCheck className="h-2.5 w-2.5" />}
+        설치비
+      </span>
+    </button>
+  )
 }
 
 // ──────────────────────────────────────────────────
@@ -412,9 +458,11 @@ interface ScheduleTableProps {
   onUpdateOrder: (orderId: string, updates: Partial<Order>) => void
   /** 발주서 상세보기 콜백 */
   onViewDetail?: (order: Order) => void
+  /** 견적서 작성/수정 콜백 */
+  onQuoteInput?: (order: Order) => void
 }
 
-export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail }: ScheduleTableProps) {
+export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, onQuoteInput }: ScheduleTableProps) {
   // 아코디언 열림/닫힘 상태
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
@@ -532,14 +580,12 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail }
                 </th>
               )}
 
-              {/* 일정미정/설치예정 탭: 메모(편집) */}
-              {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap">메모</th>
-              )}
+              {/* 견적서 상태 (모든 탭 공통) */}
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>견적서</th>
 
-              {/* 설치완료 탭: 메모(읽기) */}
+              {/* 설치완료 탭: 에스원 정산 상태 */}
               {activeTab === 'completed' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap">메모</th>
+                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>정산</th>
               )}
 
               {/* 설치예정 탭: 설치완료 버튼 */}
@@ -656,22 +702,22 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail }
                       </td>
                     )}
 
-                    {/* 일정미정/설치예정: 메모(편집) */}
-                    {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
-                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                        <Input
-                          value={order.installMemo || ''}
-                          onChange={(e) => handleFieldChange(order.id, 'installMemo', e.target.value)}
-                          placeholder="메모 입력..."
-                          className="h-7 text-xs border-gray-200"
-                        />
-                      </td>
-                    )}
+                    {/* 견적서 상태 (모든 탭 공통) */}
+                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
+                    </td>
 
-                    {/* 설치완료: 메모(읽기) */}
+                    {/* 설치완료 탭: 에스원 정산 상태 뱃지 */}
                     {activeTab === 'completed' && (
                       <td className="p-3">
-                        <p className="text-xs text-gray-500">{order.installMemo || '-'}</p>
+                        {(() => {
+                          const status = order.s1SettlementStatus || 'unsettled'
+                          return (
+                            <Badge className={`${S1_SETTLEMENT_STATUS_COLORS[status]} text-[10px] border`}>
+                              {S1_SETTLEMENT_STATUS_LABELS[status]}
+                            </Badge>
+                          )
+                        })()}
                       </td>
                     )}
 
@@ -799,20 +845,25 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail }
                       />
                     </div>
                     <div>
-                      <label className="text-[10px] text-gray-400">메모</label>
-                      <Input
-                        value={order.installMemo || ''}
-                        onChange={(e) => handleFieldChange(order.id, 'installMemo', e.target.value)}
-                        placeholder="메모 입력..."
-                        className="h-7 text-xs border-gray-200"
-                      />
+                      <label className="text-[10px] text-gray-400">견적서</label>
+                      <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
                     </div>
                   </div>
                 )}
 
-                {/* 설치완료 탭: 메모 읽기 */}
-                {activeTab === 'completed' && order.installMemo && (
-                  <p className="text-xs text-gray-500">메모: {order.installMemo}</p>
+                {/* 설치완료 탭: 견적서 + 정산 상태 */}
+                {activeTab === 'completed' && (
+                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
+                    <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
+                    {(() => {
+                      const status = order.s1SettlementStatus || 'unsettled'
+                      return (
+                        <Badge className={`${S1_SETTLEMENT_STATUS_COLORS[status]} text-[10px] border`}>
+                          {S1_SETTLEMENT_STATUS_LABELS[status]}
+                        </Badge>
+                      )
+                    })()}
+                  </div>
                 )}
 
                 {/* 설치완료 버튼 (설치예정 탭) */}

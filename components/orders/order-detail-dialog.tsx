@@ -23,7 +23,8 @@ import {
   type Order,
   type OrderStatus
 } from '@/types/order'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, FileText, User, Phone, Calendar } from 'lucide-react'
+import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, User, Phone, Calendar, Undo2 } from 'lucide-react'
+import { useAlert } from '@/components/ui/custom-alert'
 
 /**
  * 컴포넌트가 받을 Props
@@ -35,7 +36,6 @@ interface OrderDetailDialogProps {
   onStatusChange?: (orderId: string, newStatus: OrderStatus) => void  // 상태 변경 함수
   onDelete?: (orderId: string) => void            // 삭제 함수
   onEdit?: (order: Order) => void                 // 수정 함수
-  onQuoteInput?: (order: Order) => void           // 견적 입력 함수
 }
 
 /**
@@ -50,6 +50,17 @@ const NEXT_STATUS_MAP: Record<OrderStatus, OrderStatus | null> = {
 }
 
 /**
+ * 이전 상태 전환 규칙
+ * 현재 상태 → 이전 단계로 되돌리기
+ */
+const PREV_STATUS_MAP: Record<OrderStatus, OrderStatus | null> = {
+  'received': null,                // 접수중 (더 이상 뒤로 갈 수 없음)
+  'in-progress': 'received',      // 진행중 → 접수중
+  'completed': 'in-progress',     // 완료 → 진행중
+  'settled': 'completed'          // 정산완료 → 완료
+}
+
+/**
  * 발주 상세보기 모달
  */
 export function OrderDetailDialog({
@@ -58,9 +69,10 @@ export function OrderDetailDialog({
   onOpenChange,
   onStatusChange,
   onDelete,
-  onEdit,
-  onQuoteInput
+  onEdit
 }: OrderDetailDialogProps) {
+
+  const { showAlert, showConfirm } = useAlert()
 
   // order가 없으면 모달 안 보여줌
   if (!order) return null
@@ -71,22 +83,38 @@ export function OrderDetailDialog({
     return dateString.replace(/-/g, '.')
   }
 
-  // 다음 상태 가져오기
+  // 다음/이전 상태 가져오기
   const nextStatus = NEXT_STATUS_MAP[order.status]
+  const prevStatus = PREV_STATUS_MAP[order.status]
 
-  // 상태 변경 버튼 클릭
+  // 다음 단계로 변경
   const handleStatusChange = () => {
     if (nextStatus && onStatusChange) {
       onStatusChange(order.id, nextStatus)
-      onOpenChange(false)  // 모달 닫기
+      onOpenChange(false)
+    }
+  }
+
+  // 이전 단계로 되돌리기
+  const handlePrevStatus = async () => {
+    if (!prevStatus || !onStatusChange) return
+
+    const confirmed = await showConfirm(
+      `"${ORDER_STATUS_LABELS[order.status]}" → "${ORDER_STATUS_LABELS[prevStatus]}"(으)로 되돌리시겠습니까?`
+    )
+
+    if (confirmed) {
+      onStatusChange(order.id, prevStatus)
+      showAlert(`${ORDER_STATUS_LABELS[prevStatus]}(으)로 변경되었습니다.`, 'success')
+      onOpenChange(false)
     }
   }
 
   // 삭제 확인 및 실행
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!onDelete) return
 
-    const confirmed = window.confirm(
+    const confirmed = await showConfirm(
       `"${order.documentNumber}" 발주를 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
     )
 
@@ -101,12 +129,6 @@ export function OrderDetailDialog({
     if (!onEdit) return
     onEdit(order)
     onOpenChange(false)  // 상세 모달 닫기
-  }
-
-  // 견적 입력 버튼 클릭
-  const handleQuoteInput = () => {
-    if (!onQuoteInput) return
-    onQuoteInput(order)
   }
 
   return (
@@ -126,18 +148,6 @@ export function OrderDetailDialog({
                 </Badge>
               )}
             </div>
-            {/* 우측 상단: 견적서 버튼 (X버튼과 살짝 간격) */}
-            {onQuoteInput && (
-              <Button
-                variant="default"
-                onClick={handleQuoteInput}
-                className="gap-1 bg-green-600 hover:bg-green-700 mr-2"
-                size="sm"
-              >
-                <FileText className="h-4 w-4" />
-                {order.customerQuote ? '견적서 보기' : '견적 입력'}
-              </Button>
-            )}
           </div>
           <DialogDescription>
             문서번호: {order.documentNumber}
@@ -173,10 +183,6 @@ export function OrderDetailDialog({
                   <Calendar className="h-3.5 w-3.5" />설치요청일
                 </span>
                 <span className="col-span-2">{formatDate(order.requestedInstallDate)}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500">주문번호</span>
-                <span className="col-span-2 font-mono text-sm">{order.samsungOrderNumber || '-'}</span>
               </div>
 
               {/* 담당자 정보 */}
@@ -330,8 +336,18 @@ export function OrderDetailDialog({
             )}
           </div>
 
-          {/* 오른쪽: 닫기 + 상태변경 (콜백이 있을 때만 표시) */}
+          {/* 오른쪽: 이전단계 + 닫기 + 다음단계 (콜백이 있을 때만 표시) */}
           <div className="flex gap-2">
+            {prevStatus && onStatusChange && (
+              <Button
+                variant="outline"
+                onClick={handlePrevStatus}
+                className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50 hover:text-orange-700"
+              >
+                <Undo2 className="h-4 w-4" />
+                {ORDER_STATUS_LABELS[prevStatus]}(으)로 되돌리기
+              </Button>
+            )}
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               닫기
             </Button>
