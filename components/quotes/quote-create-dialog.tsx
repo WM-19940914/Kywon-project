@@ -7,7 +7,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Order, CustomerQuote, QuoteItem } from '@/types/order'
 import {
   Dialog,
@@ -16,7 +16,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Plus, X } from 'lucide-react'
+import { Check, Plus, X } from 'lucide-react'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import { priceTable } from '@/lib/price-table'
 
@@ -52,7 +52,8 @@ export function QuoteCreateDialog({
   const [corporateProfit, setCorporateProfit] = useState(0) // 기업이윤 (추후 재구축 예정)
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profitGuideMessage, setProfitGuideMessage] = useState('') // 기업이윤 자동계산 안내문구
-  const [saveSuccess, setSaveSuccess] = useState(false) // 저장 성공 메시지
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle') // 자동 저장 상태
+  const isInitialLoad = useRef(true) // 초기 로드 시 자동 저장 방지
 
   const createEmptyItem = (): QuoteLineItem => ({
     id: `${Date.now()}-${Math.random()}`,
@@ -152,8 +153,37 @@ export function QuoteCreateDialog({
         setCorporateProfit(0)
         setProfitGuideMessage('')
       }
+      // 초기 로드 완료 → 잠시 후 자동 저장 활성화 (state 세팅 완료 대기)
+      setTimeout(() => { isInitialLoad.current = false }, 500)
+    } else {
+      // 모달 닫히면 초기 로드 플래그 리셋
+      isInitialLoad.current = true
+      setAutoSaveStatus('idle')
     }
   }, [open, order])
+
+  /**
+   * 데이터 변경 시 1초 debounce 자동 저장
+   * 초기 로드(useEffect에서 데이터 세팅) 시에는 저장하지 않음
+   */
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  useEffect(() => {
+    // 초기 로드 중이면 무시
+    if (isInitialLoad.current) return
+    // 모달이 닫혀있으면 무시
+    if (!open || !order) return
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+    debounceRef.current = setTimeout(() => {
+      handleSave()
+    }, 1000)
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [equipmentItems, installationItems, installRounding])
 
   if (!order) return null
 
@@ -276,13 +306,12 @@ export function QuoteCreateDialog({
 
     // 5. 부모 컴포넌트에 저장 요청
     if (onSave && order) {
+      setAutoSaveStatus('saving')
       onSave(order.id, customerQuote)
+      // 저장 완료 표시 (잠시 후 사라짐)
+      setTimeout(() => setAutoSaveStatus('saved'), 300)
+      setTimeout(() => setAutoSaveStatus('idle'), 2500)
     }
-
-    // 6. 저장 완료 확인 모달 표시
-    setSaveSuccess(true)
-
-    // 💡 견적서 작성 모달은 닫지 않고 계속 열어둠 (계속 수정 가능)
   }
 
   /**
@@ -549,9 +578,21 @@ export function QuoteCreateDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-0">
+      <DialogContent
+        className="max-w-4xl max-h-[90vh] overflow-y-auto p-0"
+        onInteractOutside={(e) => e.preventDefault()}
+        onEscapeKeyDown={(e) => e.preventDefault()}
+      >
         {/* 헤더 - 견적서 타이틀 */}
         <div className="sticky top-0 bg-white border-b px-6 py-4 z-10">
+          {/* 우측 상단 X 닫기 버튼 */}
+          <button
+            type="button"
+            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+            onClick={() => onOpenChange(false)}
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-gray-900">
               {order.affiliate} / {order.businessName} 견적서
@@ -659,54 +700,37 @@ export function QuoteCreateDialog({
         </div>
 
         {/* 하단 버튼 */}
-        <div className="sticky bottom-0 bg-white border-t px-6 py-3 flex justify-end gap-2">
+        <div className="sticky bottom-0 bg-white border-t px-6 py-3 flex justify-between items-center">
+          {/* 자동 저장 상태 표시 */}
+          <div className="text-xs text-gray-400">
+            {autoSaveStatus === 'saving' && (
+              <span className="inline-flex items-center gap-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+                저장 중...
+              </span>
+            )}
+            {autoSaveStatus === 'saved' && (
+              <span className="inline-flex items-center gap-1 text-green-600">
+                <Check className="h-3 w-3" />
+                자동 저장됨
+              </span>
+            )}
+            {autoSaveStatus === 'idle' && (
+              <span>입력 시 자동 저장</span>
+            )}
+          </div>
           <Button
             type="button"
             variant="outline"
             size="sm"
             onClick={() => onOpenChange(false)}
           >
-            취소
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            onClick={handleSave}
-          >
-            저장
+            닫기
           </Button>
         </div>
       </DialogContent>
       </Dialog>
 
-      {/* 저장 완료 확인 모달 */}
-      <Dialog open={saveSuccess} onOpenChange={setSaveSuccess}>
-        <DialogContent className="max-w-md">
-        <div className="flex flex-col items-center gap-4 py-6">
-          {/* 체크 아이콘 */}
-          <div className="rounded-full bg-green-100 p-4">
-            <svg className="h-12 w-12 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
-            </svg>
-          </div>
-
-          {/* 메시지 */}
-          <div className="text-center space-y-2">
-            <h3 className="text-2xl font-bold text-gray-900">저장 완료!</h3>
-            <p className="text-gray-600">견적서가 성공적으로 저장되었습니다.</p>
-          </div>
-
-          {/* 확인 버튼 */}
-          <Button
-            onClick={() => setSaveSuccess(false)}
-            className="w-full mt-2"
-            size="lg"
-          >
-            확인
-          </Button>
-        </div>
-        </DialogContent>
-      </Dialog>
     </>
   )
 }

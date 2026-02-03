@@ -172,6 +172,20 @@ export default function DeliveryPage() {
     showAlert('배송 정보가 저장되었습니다!', 'success')
   }
 
+  // 배송완료 탭 페이지네이션 (10개씩)
+  const DELIVERED_PAGE_SIZE = 10
+  const [deliveredPage, setDeliveredPage] = useState(1)
+
+  // 탭/검색/필터 변경 시 첫 페이지로 리셋
+  useEffect(() => { setDeliveredPage(1) }, [statusFilter, searchTerm, monthFilterEnabled, filterYear, filterMonth])
+
+  const deliveredTotalPages = statusFilter === 'delivered'
+    ? Math.max(1, Math.ceil(filteredOrders.length / DELIVERED_PAGE_SIZE))
+    : 1
+  const displayOrders = statusFilter === 'delivered'
+    ? filteredOrders.slice((deliveredPage - 1) * DELIVERED_PAGE_SIZE, deliveredPage * DELIVERED_PAGE_SIZE)
+    : filteredOrders
+
   /** 상태 탭 정의 (3단계: 발주대기/진행중/배송완료) */
   const statusTabs: { label: string; value: DeliveryStatus; count: number }[] = [
     { label: '발주대기', value: 'pending', count: statusCounts.pending },
@@ -294,7 +308,7 @@ export default function DeliveryPage() {
 
       {/* 메인 테이블 */}
       <DeliveryTable
-        orders={filteredOrders}
+        orders={displayOrders}
         onEditDelivery={handleEditDelivery}
         onViewDetail={handleViewDetail}
         onChangeStatus={handleChangeDeliveryStatus}
@@ -308,6 +322,33 @@ export default function DeliveryPage() {
         readOnly={false}
         currentTab={statusFilter}
       />
+
+      {/* 배송완료 탭 페이지네이션 */}
+      {statusFilter === 'delivered' && deliveredTotalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 mt-4">
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            disabled={deliveredPage <= 1}
+            onClick={() => setDeliveredPage(p => p - 1)}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-gray-600">
+            {deliveredPage} / {deliveredTotalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            className="h-8 px-2"
+            disabled={deliveredPage >= deliveredTotalPages}
+            onClick={() => setDeliveredPage(p => p + 1)}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
 
       {/* 배송정보 입력 모달 */}
       <DeliveryInputDialog

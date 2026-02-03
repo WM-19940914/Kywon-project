@@ -7,7 +7,7 @@
  * 주요 기능:
  * - 탭별 다른 컬럼 구성
  * - 긴급도별 행 왼쪽 보더 색상
- * - 장비상태 뱃지 (신규설치만)
+ * - 장비 상태 뱃지 (신규설치만)
  * - 설치예정일/메모 인라인 편집
  * - 설치완료 버튼 (AlertDialog 확인)
  * - 아코디언: 구성품 배송현황 읽기전용 미리보기
@@ -30,24 +30,38 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  Archive,
+  ArrowRightLeft,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
   ChevronRight,
+  Circle,
+  Clock,
   FileText,
   MapPin,
   Package,
   Pencil,
   Plus,
+  PlusCircle,
   CircleCheck,
+  RotateCcw,
+  StickyNote,
+  Trash2,
+  Undo2,
 } from 'lucide-react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import type { LucideIcon } from 'lucide-react'
 import type { Order, InstallScheduleStatus } from '@/types/order'
 import {
-  WORK_TYPE_COLORS,
+  sortWorkTypes,
+  getWorkTypeBadgeStyle,
   ITEM_DELIVERY_STATUS_LABELS,
   ITEM_DELIVERY_STATUS_COLORS,
-  S1_SETTLEMENT_STATUS_LABELS,
-  S1_SETTLEMENT_STATUS_COLORS,
 } from '@/types/order'
 import {
   getScheduleUrgency,
@@ -90,15 +104,19 @@ function DateInput({ value, onChange }: { value: string; onChange: (val: string)
   // blur/Enter 시 부모에 전달
   const commitValue = (v: string) => {
     const trimmed = v.trim()
-    if (trimmed) {
-      const normalized = normalizeDate(trimmed)
-      setLocalValue(normalized)
-      onChange(normalized)
+    if (!trimmed) {
+      // 빈 값이면 날짜 삭제
+      setLocalValue('')
+      onChange('')
+      return
     }
+    const normalized = normalizeDate(trimmed)
+    setLocalValue(normalized)
+    onChange(normalized)
   }
 
   return (
-    <div className="relative flex items-center">
+    <div className="relative flex items-center max-w-[120px]">
       <Input
         type="text"
         value={localValue}
@@ -117,7 +135,7 @@ function DateInput({ value, onChange }: { value: string; onChange: (val: string)
           onChange(normalized)
         }}
         placeholder="YYYY-MM-DD"
-        className="h-7 text-xs border-gray-200 pr-7"
+        className="h-5 !text-[10px] border-gray-200 pr-7 placeholder:!text-[9px]"
       />
       <button
         type="button"
@@ -143,11 +161,11 @@ function DateInput({ value, onChange }: { value: string; onChange: (val: string)
 }
 
 // ──────────────────────────────────────────────────
-// 장비상태 뱃지 컴포넌트
+// 장비 상태 뱃지 컴포넌트
 // ──────────────────────────────────────────────────
 
 /**
- * 장비상태 표시 (작업종류 뱃지와 다른 UI)
+ * 장비 상태 표시 (작업종류 뱃지와 다른 UI)
  *
  * - 미등록: 빨간 점 + 텍스트
  * - n/전체 입고: 프로그레스 바 + 텍스트
@@ -212,21 +230,36 @@ function EquipmentStatusBadge({ order }: { order: Order }) {
 // 작업종류 뱃지 컴포넌트
 // ──────────────────────────────────────────────────
 
-/** 발주건의 작업종류 목록을 뱃지로 표시 */
+/** 작업종류 아이콘 매핑 (lucide-react 컴포넌트) */
+const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
+  '신규설치': PlusCircle,
+  '이전설치': ArrowRightLeft,
+  '철거보관': Archive,
+  '철거폐기': Trash2,
+  '재고설치': Package,
+  '반납폐기': RotateCcw,
+}
+
+/** 발주건의 작업종류 목록을 아이콘 + 텍스트로 표시 */
 function WorkTypeBadges({ order }: { order: Order }) {
-  // 중복 제거
-  const types = Array.from(new Set(order.items.map(item => item.workType)))
+  // 중복 제거 + 정해진 순서대로 정렬
+  const types = sortWorkTypes(Array.from(new Set(order.items.map(item => item.workType))))
 
   return (
     <div className="flex flex-wrap gap-1">
-      {types.map(type => (
-        <Badge
-          key={type}
-          className={`${WORK_TYPE_COLORS[type] || 'bg-gray-100 text-gray-700'} text-xs border`}
-        >
-          {type}
-        </Badge>
-      ))}
+      {types.map(type => {
+        const Icon = WORK_TYPE_ICON_MAP[type]
+        const style = getWorkTypeBadgeStyle(type)
+        return (
+          <span
+            key={type}
+            className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-md px-1.5 py-0.5 whitespace-nowrap ${style.badge}`}
+          >
+            {Icon && <Icon className={`h-3 w-3 shrink-0 ${style.icon}`} />}
+            {type}
+          </span>
+        )
+      })}
     </div>
   )
 }
@@ -310,7 +343,7 @@ function EquipmentAccordion({ order }: { order: Order }) {
                 {/* 창고 */}
                 <td className="px-3 py-2">
                   <p className="text-xs text-gray-600 truncate">
-                    {whDetail ? `${whDetail.name}` : '-'}
+                    {whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}
                   </p>
                 </td>
               </tr>
@@ -383,7 +416,7 @@ function EquipmentAccordionMobile({ order }: { order: Order }) {
               </div>
               <div>
                 <span className="text-[10px] text-gray-400">창고</span>
-                <p className="text-gray-600 truncate">{whDetail ? whDetail.name : '-'}</p>
+                <p className="text-gray-600 truncate">{whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}</p>
               </div>
             </div>
           </div>
@@ -399,21 +432,80 @@ function EquipmentAccordionMobile({ order }: { order: Order }) {
 
 /** 탭별 데스크톱 테이블 컬럼 수 계산 */
 function getColumnCount(activeTab: InstallScheduleStatus): number {
-  // 공통: 화살표(1) + 작업종류(1) + 현장명(1) + 발주서(1) + 현장주소(1) + 장비상태(1) + 견적서(1) = 7
-  let count = 7
+  // 공통: 화살표(1) + 작업종류(1) + 현장명(1) + 발주서(1) + 현장주소(1) + 장비 상태(1) + 메모(1) + 견적서(1) + 설치(1) + 정산(1) + 버튼(1) = 11
+  let count = 11
 
   if (activeTab === 'unscheduled') {
     // + 발주등록일(1) + 설치요청일(1) + 설치예정일편집(1) = 3
     count += 3
   } else if (activeTab === 'scheduled') {
-    // + 설치예정일(1) + 담당자(1) + 일정변경(1) + 버튼(1) = 4
-    count += 4
-  } else {
-    // completed: + 설치예정일(1) + 설치완료일(1) + 정산(1) = 3
+    // + 설치예정일(1) + 담당자(1) + 일정변경(1) = 3
     count += 3
+  } else {
+    // completed: + 설치예정일(1) + 설치완료일(1) = 2
+    count += 2
   }
 
   return count
+}
+
+/**
+ * 메모 Popover 버튼 컴포넌트
+ *
+ * StickyNote 아이콘 클릭 시 Popover로 메모 입력/수정 가능.
+ * 메모 있으면 아이콘이 노란색 + 우상단 파란 dot 표시.
+ */
+function MemoPopover({
+  value,
+  onChange,
+}: {
+  value: string
+  onChange: (val: string) => void
+}) {
+  const [localValue, setLocalValue] = useState(value)
+
+  // 부모 value 동기화
+  useEffect(() => { setLocalValue(value) }, [value])
+
+  const hasMemo = !!value.trim()
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="relative p-1 rounded hover:bg-gray-100 transition-colors"
+          onClick={(e) => e.stopPropagation()}
+          title={hasMemo ? '메모 보기/수정' : '메모 추가'}
+        >
+          <StickyNote className={`h-4 w-4 ${hasMemo ? 'text-amber-500' : 'text-gray-300'}`} />
+          {hasMemo && (
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500" />
+          )}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-64 p-3"
+        side="bottom"
+        align="center"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="space-y-2">
+          <p className="text-xs font-medium text-gray-600">메모</p>
+          <textarea
+            className="w-full border border-gray-200 rounded-md p-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 placeholder:text-gray-300"
+            placeholder="설치 팀장이 누구인지 등 기억해야 할 메모를 자유롭게 적어주세요"
+            rows={4}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
+            onBlur={() => {
+              if (localValue !== value) onChange(localValue)
+            }}
+          />
+        </div>
+      </PopoverContent>
+    </Popover>
+  )
 }
 
 /**
@@ -432,7 +524,7 @@ function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?:
 
   return (
     <button
-      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors border ${
+      className={`inline-flex flex-col items-center justify-center rounded-md px-1.5 py-1 transition-colors border ${
         hasAny
           ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
           : 'bg-gray-50 border-dashed border-gray-300 hover:bg-gray-100'
@@ -445,26 +537,28 @@ function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?:
     >
       {hasAny ? (
         <>
-          {/* 작성된 견적서가 있을 때 */}
-          <Pencil className="h-3 w-3 text-blue-500" />
-          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
-            hasEquipment ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
-          }`}>
-            {hasEquipment && <CircleCheck className="h-2.5 w-2.5" />}
-            장비
-          </span>
-          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
+          {/* 작성된 견적서가 있을 때: 세로 2줄 pill */}
+          <div className="flex items-center gap-1">
+            <Pencil className="h-2.5 w-2.5 text-blue-500" />
+            <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0 rounded-full border ${
+              hasEquipment ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
+            }`}>
+              {hasEquipment && <CircleCheck className="h-2 w-2" />}
+              장비
+            </span>
+          </div>
+          <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0 rounded-full border ${
             hasInstallation ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
           }`}>
-            {hasInstallation && <CircleCheck className="h-2.5 w-2.5" />}
+            {hasInstallation && <CircleCheck className="h-2 w-2" />}
             설치비
           </span>
         </>
       ) : (
         <>
-          {/* 견적서 미작성 */}
-          <Plus className="h-3 w-3 text-gray-400" />
-          <span className="text-[11px] text-gray-400">견적서 작성</span>
+          {/* 견적서 미작성: +견적서 / 작성 세로 2줄 */}
+          <span className="text-[10px] text-gray-400 leading-tight">+견적서</span>
+          <span className="text-[10px] text-gray-400 leading-tight">작성</span>
         </>
       )}
     </button>
@@ -528,6 +622,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
    * - 유효한 날짜(YYYY-MM-DD)면 바로 저장 (탭 이동은 버튼으로)
    */
   const handleScheduleDateChange = (order: Order, val: string) => {
+    // 빈 값이면 날짜 삭제
+    if (val === '') {
+      handleFieldChange(order.id, 'installScheduleDate', '')
+      return
+    }
     const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(val)
     if (isValidDate) {
       handleFieldChange(order.id, 'installScheduleDate', val)
@@ -551,6 +650,33 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
     onUpdateOrder(orderId, { installCompleteDate: date })
   }
 
+  // 설치완료 → 되돌리기 확인 다이얼로그 상태
+  const [revertTarget, setRevertTarget] = useState<{
+    orderId: string
+    businessName: string
+    /** 되돌릴 탭: 'unscheduled' 또는 'scheduled' */
+    destination: 'unscheduled' | 'scheduled'
+  } | null>(null)
+
+  /** 설치완료 → 일정미정/설치예정으로 되돌리기 */
+  const handleRevert = () => {
+    if (!revertTarget) return
+    if (revertTarget.destination === 'unscheduled') {
+      // 일정미정: 설치완료일 제거 + 설치예정일 제거 + status를 received로
+      onUpdateOrder(revertTarget.orderId, {
+        installCompleteDate: '',
+        installScheduleDate: '',
+        status: 'received',
+      })
+    } else {
+      // 설치예정: 설치완료일만 제거 (예정일/status 유지)
+      onUpdateOrder(revertTarget.orderId, {
+        installCompleteDate: '',
+      })
+    }
+    setRevertTarget(null)
+  }
+
   // 빈 목록
   if (orders.length === 0) {
     return (
@@ -567,65 +693,69 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   return (
     <>
       {/* ─── 데스크톱 테이블 (md 이상) ─── */}
-      <div className="hidden md:block border rounded-lg overflow-hidden">
-        <table className="w-full table-fixed">
+      <div className="hidden md:block border rounded-lg overflow-x-auto">
+        <table className="min-w-[1450px] w-full" style={{ tableLayout: 'fixed' }}>
           <thead className="bg-muted/80">
             <tr>
               {/* 아코디언 화살표 컬럼 */}
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '40px' }}></th>
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '40px' }}></th>
 
               {/* 탭별 컬럼 헤더 */}
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '110px' }}>작업종류</th>
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '110px' }}>작업종류</th>
 
               {/* 일정미정 탭: 발주등록일 */}
               {activeTab === 'unscheduled' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '95px' }}>발주등록일</th>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>발주등록일</th>
               )}
 
               {/* 설치예정/설치완료 탭: 설치예정일 */}
               {(activeTab === 'scheduled' || activeTab === 'completed') && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '95px' }}>설치예정일</th>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>설치예정일</th>
               )}
 
               {/* 설치완료 탭: 설치완료일 */}
               {activeTab === 'completed' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '95px' }}>설치완료일</th>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>설치완료일</th>
               )}
 
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '220px' }}>현장명</th>
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '180px' }}>현장명</th>
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>교원 발주서</th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '200px' }}>현장주소</th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>장비상태</th>
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '180px' }}>현장주소</th>
 
               {/* 일정미정 탭: 설치요청일 */}
               {activeTab === 'unscheduled' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '95px' }}>설치요청일</th>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '95px' }}>설치요청일</th>
               )}
 
               {/* 설치예정 탭: 담당자 */}
               {activeTab === 'scheduled' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '160px' }}>담당자</th>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>담당자</th>
               )}
 
               {/* 일정미정/설치예정 탭: 설치예정일(편집) */}
               {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '155px' }}>
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>
                   {activeTab === 'unscheduled' ? '설치예정일' : '일정변경'}
                 </th>
               )}
 
+              {/* 메모 (모든 탭 공통) */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '50px' }}>메모</th>
+
               {/* 견적서 상태 (모든 탭 공통) */}
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>견적서</th>
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>견적서</th>
 
-              {/* 설치완료 탭: 에스원 정산 상태 */}
-              {activeTab === 'completed' && (
-                <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>정산</th>
-              )}
+              {/* 장비 상태 */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>장비 상태</th>
 
-              {/* 일정미정 탭: 설치예정 이동 버튼 / 설치예정 탭: 설치완료 버튼 */}
-              {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
-                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}></th>
-              )}
+              {/* 설치 상태 */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>설치 상태</th>
+
+              {/* 에스원 정산 상태 */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>정산 상태</th>
+
+              {/* 일정미정 탭: 설치예정 이동 버튼 / 설치예정 탭: 설치완료 버튼 / 설치완료 탭: 되돌리기 버튼 */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: activeTab === 'completed' ? '140px' : '80px' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -660,27 +790,34 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     {/* 일정미정: 발주등록일 */}
                     {activeTab === 'unscheduled' && (
                       <td className="p-3">
-                        <p className="text-sm">{formatShortDate(order.orderDate)}</p>
+                        <p className="text-[11px] text-gray-600">{formatShortDate(order.orderDate)}</p>
                       </td>
                     )}
 
                     {/* 설치예정/완료: 설치예정일 (읽기전용) */}
                     {(activeTab === 'scheduled' || activeTab === 'completed') && (
                       <td className="p-3">
-                        <p className="text-sm font-medium">{formatShortDate(order.installScheduleDate)}</p>
+                        <p className="text-xs font-medium">{formatShortDate(order.installScheduleDate)}</p>
                       </td>
                     )}
 
                     {/* 설치완료: 설치완료일 */}
                     {activeTab === 'completed' && (
                       <td className="p-3">
-                        <p className="text-sm">{formatShortDate(order.installCompleteDate)}</p>
+                        <p className="text-xs">{formatShortDate(order.installCompleteDate)}</p>
                       </td>
                     )}
 
-                    {/* 현장명 */}
+                    {/* 현장명 + 사전견적 뱃지 */}
                     <td className="p-3">
-                      <p className="font-semibold text-sm truncate">{order.businessName}</p>
+                      <div className="flex items-center gap-1.5">
+                        <p className="font-semibold text-xs truncate">{order.businessName}</p>
+                        {order.isPreliminaryQuote && (
+                          <Badge className="bg-red-50 text-red-600 border-red-200 text-[9px] px-1 py-0 leading-tight shrink-0">
+                            사전견적
+                          </Badge>
+                        )}
+                      </div>
                     </td>
 
                     {/* 발주서 보기 버튼 */}
@@ -700,29 +837,23 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 현장주소 */}
                     <td className="p-3">
-                      <p className="text-xs text-gray-600 truncate">{order.address}</p>
-                    </td>
-
-                    {/* 장비상태 뱃지 */}
-                    <td className="p-3">
-                      <EquipmentStatusBadge order={order} />
+                      <p className="text-[10px] text-gray-500 truncate">{order.address}</p>
                     </td>
 
                     {/* 일정미정: 설치요청일 */}
                     {activeTab === 'unscheduled' && (
                       <td className="p-3">
-                        <p className="text-sm text-gray-500">{formatShortDate(order.requestedInstallDate)}</p>
+                        <p className="text-[11px] text-gray-500">{formatShortDate(order.requestedInstallDate)}</p>
                       </td>
                     )}
 
-                    {/* 설치예정: 담당자 + 연락처 */}
+                    {/* 설치예정: 담당자 (이름 + 연락처 2줄) */}
                     {activeTab === 'scheduled' && (
                       <td className="p-3">
-                        <p className="text-sm text-gray-700">{order.contactName || '-'}
-                          {order.contactPhone && (
-                            <span className="text-xs text-gray-400 ml-1.5">{order.contactPhone}</span>
-                          )}
-                        </p>
+                        <p className="text-xs font-medium text-gray-700 whitespace-nowrap">{order.contactName || '-'}</p>
+                        {order.contactPhone && (
+                          <p className="text-[10px] text-gray-400 whitespace-nowrap">{order.contactPhone}</p>
+                        )}
                       </td>
                     )}
 
@@ -736,31 +867,87 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       </td>
                     )}
 
+                    {/* 메모 (모든 탭 공통) */}
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <MemoPopover
+                        value={order.installMemo || ''}
+                        onChange={(val) => handleFieldChange(order.id, 'installMemo', val)}
+                      />
+                    </td>
+
                     {/* 견적서 상태 (모든 탭 공통) */}
-                    <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                    <td className="p-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
                     </td>
 
-                    {/* 설치완료 탭: 에스원 정산 상태 뱃지 */}
-                    {activeTab === 'completed' && (
-                      <td className="p-3">
-                        {(() => {
-                          const status = order.s1SettlementStatus || 'unsettled'
+                    {/* 장비 상태 뱃지 */}
+                    <td className="p-3">
+                      <EquipmentStatusBadge order={order} />
+                    </td>
+
+                    {/* 설치 상태 (3단계: 컬러 도트 + 텍스트) */}
+                    <td className="p-3 whitespace-nowrap">
+                      {(() => {
+                        if (order.installCompleteDate) {
                           return (
-                            <Badge className={`${S1_SETTLEMENT_STATUS_COLORS[status]} text-[10px] border`}>
-                              {S1_SETTLEMENT_STATUS_LABELS[status]}
-                            </Badge>
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                              설치완료
+                            </span>
                           )
-                        })()}
-                      </td>
-                    )}
+                        }
+                        if (order.status === 'in-progress' && order.installScheduleDate) {
+                          return (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                              설치예정
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                            <span className="h-2 w-2 shrink-0 rounded-full border border-gray-400 bg-white" />
+                            일정미정
+                          </span>
+                        )
+                      })()}
+                    </td>
+
+                    {/* 정산 상태 (아이콘 + 텍스트) */}
+                    <td className="p-3 whitespace-nowrap">
+                      {(() => {
+                        const status = order.s1SettlementStatus || 'unsettled'
+                        if (status === 'settled') {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                              <CircleCheck className="h-3.5 w-3.5 shrink-0" />
+                              정산완료
+                            </span>
+                          )
+                        }
+                        if (status === 'in-progress') {
+                          return (
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600">
+                              <Clock className="h-3.5 w-3.5 shrink-0" />
+                              진행중
+                            </span>
+                          )
+                        }
+                        return (
+                          <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+                            <Circle className="h-3.5 w-3.5 shrink-0" />
+                            미정산
+                          </span>
+                        )
+                      })()}
+                    </td>
 
                     {/* 일정미정: 설치예정 이동 버튼 */}
                     {activeTab === 'unscheduled' && (
                       <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-7"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 h-6"
                           onClick={() => handleMoveToScheduled(order)}
                         >
                           설치예정 →
@@ -773,10 +960,25 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 h-7"
+                          className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
                           onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                         >
                           설치완료
+                        </Button>
+                      </td>
+                    )}
+
+                    {/* 설치완료: 되돌리기 버튼 (일정미정 / 설치예정) */}
+                    {activeTab === 'completed' && (
+                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-orange-700 hover:border-orange-300 hover:bg-orange-50"
+                          onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
+                        >
+                          <Undo2 className="h-2.5 w-2.5 mr-0.5" />
+                          일정미정
                         </Button>
                       </td>
                     )}
@@ -821,7 +1023,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                 className={`p-4 space-y-3 ${canExpand ? 'cursor-pointer' : ''}`}
                 onClick={() => canExpand && toggleRow(order.id)}
               >
-                {/* 상단: 작업종류 + 장비상태 + 화살표 */}
+                {/* 상단: 작업종류 + 장비 상태 + 화살표 */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     {canExpand && (
@@ -837,7 +1039,14 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                 {/* 현장 정보 + 발주서 보기 */}
                 <div>
                   <div className="flex items-center gap-1.5">
-                    <h3 className="font-semibold text-sm flex-1">{order.businessName}</h3>
+                    <h3 className="font-semibold text-sm flex-1">
+                      {order.businessName}
+                      {order.isPreliminaryQuote && (
+                        <Badge className="bg-red-50 text-red-600 border-red-200 text-[9px] px-1 py-0 leading-tight ml-1.5 align-middle">
+                          사전견적
+                        </Badge>
+                      )}
+                    </h3>
                     {onViewDetail && (
                       <button
                         className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
@@ -891,25 +1100,80 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                         onChange={(val) => handleScheduleDateChange(order, val)}
                       />
                     </div>
-                    <div>
-                      <label className="text-[10px] text-gray-400">견적서</label>
-                      <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
+                    <div className="flex items-end gap-2">
+                      <div className="flex-1">
+                        <label className="text-[10px] text-gray-400">견적서</label>
+                        <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
+                      </div>
+                      <MemoPopover
+                        value={order.installMemo || ''}
+                        onChange={(val) => handleFieldChange(order.id, 'installMemo', val)}
+                      />
                     </div>
                   </div>
                 )}
 
-                {/* 설치완료 탭: 견적서 + 정산 상태 */}
-                {activeTab === 'completed' && (
-                  <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-                    <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
-                    {(() => {
-                      const status = order.s1SettlementStatus || 'unsettled'
+                {/* 설치 상태 + 정산 상태 (모든 탭 공통, 도트/아이콘 스타일) */}
+                <div className="flex items-center gap-3">
+                  {(() => {
+                    if (order.installCompleteDate) {
                       return (
-                        <Badge className={`${S1_SETTLEMENT_STATUS_COLORS[status]} text-[10px] border`}>
-                          {S1_SETTLEMENT_STATUS_LABELS[status]}
-                        </Badge>
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+                          <span className="h-2 w-2 rounded-full bg-green-500" />
+                          설치완료
+                        </span>
                       )
-                    })()}
+                    }
+                    if (order.status === 'in-progress' && order.installScheduleDate) {
+                      return (
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+                          <span className="h-2 w-2 rounded-full bg-blue-500" />
+                          설치예정
+                        </span>
+                      )
+                    }
+                    return (
+                      <span className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-500">
+                        <span className="h-2 w-2 rounded-full bg-gray-400" />
+                        일정미정
+                      </span>
+                    )
+                  })()}
+                  {(() => {
+                    const status = order.s1SettlementStatus || 'unsettled'
+                    if (status === 'settled') {
+                      return (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                          <CircleCheck className="h-3.5 w-3.5" />
+                          정산완료
+                        </span>
+                      )
+                    }
+                    if (status === 'in-progress') {
+                      return (
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600">
+                          <Clock className="h-3.5 w-3.5" />
+                          진행중
+                        </span>
+                      )
+                    }
+                    return (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+                        <Circle className="h-3.5 w-3.5" />
+                        미정산
+                      </span>
+                    )
+                  })()}
+                </div>
+
+                {/* 설치완료 탭: 견적서 + 메모 */}
+                {activeTab === 'completed' && (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <QuoteStatusCell order={order} onQuoteInput={onQuoteInput} />
+                    <MemoPopover
+                      value={order.installMemo || ''}
+                      onChange={(val) => handleFieldChange(order.id, 'installMemo', val)}
+                    />
                   </div>
                 )}
 
@@ -918,10 +1182,25 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 h-7"
+                      className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
                       onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                     >
                       설치완료
+                    </Button>
+                  </div>
+                )}
+
+                {/* 되돌리기 버튼 (설치완료 탭) */}
+                {activeTab === 'completed' && (
+                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-orange-700 hover:border-orange-300 hover:bg-orange-50"
+                      onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
+                    >
+                      <Undo2 className="h-2.5 w-2.5 mr-0.5" />
+                      일정미정
                     </Button>
                   </div>
                 )}
@@ -978,6 +1257,42 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               }}
             >
               확인
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── 설치완료 → 되돌리기 확인 다이얼로그 ─── */}
+      <AlertDialog open={!!revertTarget} onOpenChange={(open) => { if (!open) setRevertTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>설치완료 되돌리기</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>
+                  &ldquo;{revertTarget?.businessName}&rdquo; 현장을
+                  <span className={`font-semibold mx-1 ${revertTarget?.destination === 'unscheduled' ? 'text-orange-600' : 'text-blue-600'}`}>
+                    {revertTarget?.destination === 'unscheduled' ? '일정미정' : '설치예정'}
+                  </span>
+                  탭으로 되돌리시겠습니까?
+                </p>
+                <p className="text-xs text-gray-500">
+                  {revertTarget?.destination === 'unscheduled'
+                    ? '설치완료일과 설치예정일이 모두 초기화됩니다.'
+                    : '설치완료일이 초기화되고 설치예정 탭으로 이동합니다.'}
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>취소</AlertDialogCancel>
+            <AlertDialogAction
+              className={revertTarget?.destination === 'unscheduled'
+                ? 'bg-orange-600 hover:bg-orange-700 text-white'
+                : 'bg-blue-600 hover:bg-blue-700 text-white'}
+              onClick={handleRevert}
+            >
+              되돌리기
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -9,8 +9,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, updateOrderStatus } from '@/lib/supabase/dal'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB } from '@/lib/supabase/dal'
 import { type Order, type OrderStatus } from '@/types/order'
+import { computeKanbanStatus } from '@/lib/order-status-utils'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -112,22 +113,6 @@ export default function OrdersPage() {
   }
 
   /**
-   * 진행상태 변경 핸들러
-   */
-  const handleStatusChange = async (orderId: string, newStatus: OrderStatus) => {
-    // DB에 상태 변경 반영
-    const success = await updateOrderStatus(orderId, newStatus)
-    if (success) {
-      setOrders(orders.map(o =>
-        o.id === orderId ? { ...o, status: newStatus } : o
-      ))
-      showAlert('진행상태가 변경되었습니다!', 'success')
-    } else {
-      showAlert('상태 변경에 실패했습니다.', 'error')
-    }
-  }
-
-  /**
    * 발주 삭제 핸들러
    */
   const handleDelete = async (orderId: string) => {
@@ -184,8 +169,8 @@ export default function OrdersPage() {
    */
   const filteredOrders = orders
     .filter((order) => {
-      // 1. 정산완료 제외
-      if (order.status === 'settled') return false
+      // 1. 정산완료(과거내역)는 칸반보드에서 제외 (별도 패널)
+      if (computeKanbanStatus(order) === 'settled') return false
 
       // 2. 계열사 필터
       if (affiliateFilter !== 'all' && order.affiliate !== affiliateFilter) {
@@ -214,13 +199,14 @@ export default function OrdersPage() {
     })
 
   /**
-   * 진행상태별로 그룹화 (3단계)
+   * 진행상태별로 그룹화 (자동 분류!)
+   * order.status 대신 computeKanbanStatus()로 계산된 상태 사용
    */
   const groupedOrders: Record<OrderStatus, Order[]> = {
-    'received': filteredOrders.filter(o => o.status === 'received'),
-    'in-progress': filteredOrders.filter(o => o.status === 'in-progress'),
-    'completed': filteredOrders.filter(o => o.status === 'completed'),
-    'settled': [] // 정산완료는 별도 페이지
+    'received': filteredOrders.filter(o => computeKanbanStatus(o) === 'received'),
+    'in-progress': filteredOrders.filter(o => computeKanbanStatus(o) === 'in-progress'),
+    'completed': filteredOrders.filter(o => computeKanbanStatus(o) === 'completed'),
+    'settled': [] // 과거내역은 별도 패널
   }
 
   /**
@@ -370,7 +356,6 @@ export default function OrdersPage() {
         order={orderToView}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
-        onStatusChange={handleStatusChange}
         onDelete={handleDelete}
         onEdit={handleEdit}
       />
@@ -439,9 +424,9 @@ function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps)
   const style = columnStyles[status]
 
   return (
-    <div className={`flex-shrink-0 w-80 ${style.bg} ${style.stripe} rounded-xl p-4`}>
+    <div className={`flex-shrink-0 w-72 ${style.bg} ${style.stripe} rounded-xl p-3`}>
       {/* 컬럼 헤더 */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-3">
         <h2 className="font-semibold text-base">{title}</h2>
         <Badge variant="outline" className="bg-white">
           {orders.length}건
@@ -449,7 +434,7 @@ function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps)
       </div>
 
       {/* 카드 리스트 */}
-      <div className="space-y-3 max-h-[calc(100vh-400px)] overflow-y-auto">
+      <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
         {orders.length === 0 ? (
           <p className="text-sm text-gray-400 text-center py-8">
             발주가 없습니다

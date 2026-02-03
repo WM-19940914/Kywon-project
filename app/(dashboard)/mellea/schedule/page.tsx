@@ -23,7 +23,8 @@ import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
 import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { CalendarCheck } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { CalendarCheck, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   filterOrdersByScheduleStatus,
   sortOrdersByScheduleTab,
@@ -129,6 +130,32 @@ export default function SchedulePage() {
     return sortOrdersByScheduleTab(result, activeTab)
   }, [orders, activeTab, searchTerm])
 
+  /**
+   * 설치완료 탭: 미정산/정산진행중 vs 정산완료 분리
+   */
+  const completedUnsettled = useMemo(() => {
+    if (activeTab !== 'completed') return []
+    return filteredOrders.filter(o => (o.s1SettlementStatus || 'unsettled') !== 'settled')
+  }, [filteredOrders, activeTab])
+
+  const completedSettled = useMemo(() => {
+    if (activeTab !== 'completed') return []
+    return filteredOrders.filter(o => (o.s1SettlementStatus || 'unsettled') === 'settled')
+  }, [filteredOrders, activeTab])
+
+  // 정산완료 테이블 페이지네이션 (10개씩)
+  const SETTLED_PAGE_SIZE = 10
+  const [settledPage, setSettledPage] = useState(1)
+
+  // 데이터가 바뀌면 첫 페이지로 리셋
+  useEffect(() => { setSettledPage(1) }, [completedSettled.length, searchTerm])
+
+  const settledTotalPages = Math.max(1, Math.ceil(completedSettled.length / SETTLED_PAGE_SIZE))
+  const settledPagedOrders = useMemo(() => {
+    const start = (settledPage - 1) * SETTLED_PAGE_SIZE
+    return completedSettled.slice(start, start + SETTLED_PAGE_SIZE)
+  }, [completedSettled, settledPage])
+
   /** 탭 정의 */
   const tabs: { label: string; value: InstallScheduleStatus; count: number }[] = [
     { label: '일정미정', value: 'unscheduled', count: tabCounts.unscheduled },
@@ -219,16 +246,83 @@ export default function SchedulePage() {
       </p>
 
       {/* 설치일정 테이블 */}
-      <ScheduleTable
-        orders={filteredOrders}
-        activeTab={activeTab}
-        onUpdateOrder={handleUpdateOrder}
-        onViewDetail={(order) => {
-          setOrderToView(order)
-          setDetailDialogOpen(true)
-        }}
-        onQuoteInput={handleQuoteCreate}
-      />
+      {activeTab !== 'completed' ? (
+        <ScheduleTable
+          orders={filteredOrders}
+          activeTab={activeTab}
+          onUpdateOrder={handleUpdateOrder}
+          onViewDetail={(order) => {
+            setOrderToView(order)
+            setDetailDialogOpen(true)
+          }}
+          onQuoteInput={handleQuoteCreate}
+        />
+      ) : (
+        <div className="space-y-8">
+          {/* 미정산 / 정산진행중 테이블 */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Badge variant="secondary" className="bg-gray-100 text-gray-600 text-xs">미정산 · 정산진행중</Badge>
+              <span className="text-xs text-gray-400">{completedUnsettled.length}건</span>
+            </h3>
+            <ScheduleTable
+              orders={completedUnsettled}
+              activeTab={activeTab}
+              onUpdateOrder={handleUpdateOrder}
+              onViewDetail={(order) => {
+                setOrderToView(order)
+                setDetailDialogOpen(true)
+              }}
+              onQuoteInput={handleQuoteCreate}
+            />
+          </div>
+
+          {/* 정산완료 테이블 (페이지네이션 적용) */}
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700 mb-2 flex items-center gap-2">
+              <Badge variant="secondary" className="bg-green-50 text-green-700 border-green-200 text-xs border">정산완료</Badge>
+              <span className="text-xs text-gray-400">{completedSettled.length}건</span>
+            </h3>
+            <ScheduleTable
+              orders={settledPagedOrders}
+              activeTab={activeTab}
+              onUpdateOrder={handleUpdateOrder}
+              onViewDetail={(order) => {
+                setOrderToView(order)
+                setDetailDialogOpen(true)
+              }}
+              onQuoteInput={handleQuoteCreate}
+            />
+
+            {/* 페이지네이션 컨트롤 */}
+            {settledTotalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 mt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={settledPage <= 1}
+                  onClick={() => setSettledPage(p => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-gray-600">
+                  {settledPage} / {settledTotalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-2"
+                  disabled={settledPage >= settledTotalPages}
+                  onClick={() => setSettledPage(p => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* 발주 상세 모달 (전체 페이지 공용) */}
       <OrderDetailDialog

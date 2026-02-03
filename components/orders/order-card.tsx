@@ -11,8 +11,10 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Calendar, User } from 'lucide-react'
+import { MapPin, Calendar, User, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import type { Order } from '@/types/order'
+import { WORK_TYPE_ORDER, getWorkTypeBadgeStyle } from '@/types/order'
 
 /**
  * 컴포넌트가 받을 Props
@@ -22,17 +24,15 @@ interface OrderCardProps {
   onClick?: (order: Order) => void       // 카드 클릭 시 (상세보기 모달 열기)
 }
 
-/**
- * 작업종류별 뱃지 색상 매핑
- * 신규설치가 가장 눈에 띄게, 나머지도 구분 가능하도록
- */
-const WORK_TYPE_STYLES: Record<string, string> = {
-  '신규설치': 'bg-blue-100 text-blue-800 border-blue-300',
-  '이전설치': 'bg-purple-100 text-purple-800 border-purple-300',
-  '철거보관': 'bg-orange-100 text-orange-800 border-orange-300',
-  '철거폐기': 'bg-red-100 text-red-700 border-red-300',
+/** 작업종류 아이콘 매핑 */
+const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
+  '신규설치': PlusCircle,
+  '이전설치': ArrowRightLeft,
+  '철거보관': Archive,
+  '철거폐기': Trash2,
+  '재고설치': Package,
+  '반납폐기': RotateCcw,
 }
-const DEFAULT_WORK_TYPE_STYLE = 'bg-gray-100 text-gray-700 border-gray-300'
 
 /**
  * 주소 짧게 자르기
@@ -55,65 +55,60 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
 
   return (
     <Card
-      className="hover:shadow-lg hover:border-blue-300 hover:-translate-y-0.5 transition-all duration-200 cursor-pointer"
+      className="hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer"
       onClick={() => onClick?.(order)}
     >
-      <CardContent className="p-4 space-y-2">
-        {/* 계열사 + 사전견적 Badge */}
+      <CardContent className="px-3 py-2.5 space-y-1">
+        {/* 상단: 계열사 + 발주일 + 사전견적 */}
         <div className="flex items-center justify-between">
-          <p className="text-[11px] uppercase tracking-wider text-muted-foreground font-medium">
-            {order.affiliate}
-          </p>
+          <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+            <span className="uppercase tracking-wider font-medium">{order.affiliate}</span>
+            <span>{formatDate(order.orderDate)}</span>
+          </div>
           {order.isPreliminaryQuote && (
-            <Badge className="bg-red-50 text-red-600 border-red-200 font-semibold text-[10px] px-1.5 py-0">
-              사전견적건
+            <Badge className="bg-red-50 text-red-600 border-red-200 font-semibold text-[9px] px-1 py-0 leading-tight">
+              사전견적
             </Badge>
           )}
         </div>
 
-        {/* 사업자명 (가장 크게 강조!) - 최대 2줄까지만 표시 */}
-        <h3 className="text-lg font-bold text-foreground leading-tight line-clamp-2">
+        {/* 사업자명 — 1줄만 */}
+        <h3 className="text-sm font-bold text-foreground leading-snug truncate">
           {order.businessName}
         </h3>
 
-        {/* 작업종류 뱃지 (신규설치/이전설치/철거보관 등 강조 표시) */}
-        <div className="flex flex-wrap items-center gap-1.5">
+        {/* 작업종류 뱃지 */}
+        <div className="flex flex-wrap items-center gap-1">
           {order.isPreliminaryQuote ? (
-            <span className="text-sm font-medium text-primary">사전견적 요청건</span>
+            <span className="text-xs font-medium text-primary">사전견적 요청건</span>
           ) : order.items.length === 0 ? (
-            <span className="text-sm font-medium text-primary">요청건</span>
+            <span className="text-xs font-medium text-primary">요청건</span>
           ) : (
-            order.items.map((item, idx) => (
-              <Badge
-                key={idx}
-                className={`${WORK_TYPE_STYLES[item.workType] || DEFAULT_WORK_TYPE_STYLE} text-xs font-bold border px-2 py-0.5`}
-              >
-                {item.workType} {item.quantity}대
-              </Badge>
-            ))
+            [...order.items].sort((a, b) => {
+              const ai = WORK_TYPE_ORDER.indexOf(a.workType)
+              const bi = WORK_TYPE_ORDER.indexOf(b.workType)
+              return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+            }).map((item, idx) => {
+              const Icon = WORK_TYPE_ICON_MAP[item.workType]
+              const style = getWorkTypeBadgeStyle(item.workType)
+              return (
+                <span
+                  key={idx}
+                  className={`inline-flex items-center gap-0.5 text-[10px] font-medium border rounded px-1 py-px whitespace-nowrap ${style.badge}`}
+                >
+                  {Icon && <Icon className={`h-2.5 w-2.5 shrink-0 ${style.icon}`} />}
+                  {item.workType} {item.quantity}대
+                </span>
+              )
+            })
           )}
         </div>
 
-        {/* 주소 */}
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <MapPin className="h-3 w-3 flex-shrink-0" />
-          {shortenAddress(order.address, 35)}
+        {/* 주소 (1줄) */}
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+          <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
+          {shortenAddress(order.address, 30)}
         </p>
-
-        {/* 발주일 */}
-        <p className="text-xs text-muted-foreground flex items-center gap-1">
-          <Calendar className="h-3 w-3 flex-shrink-0" />
-          {formatDate(order.orderDate)}
-        </p>
-
-        {/* 담당자 정보 */}
-        {order.contactName && (
-          <p className="text-xs text-muted-foreground flex items-center gap-1">
-            <User className="h-3 w-3 flex-shrink-0" />
-            {order.contactName}
-            {order.contactPhone && ` · ${order.contactPhone}`}
-          </p>
-        )}
       </CardContent>
     </Card>
   )

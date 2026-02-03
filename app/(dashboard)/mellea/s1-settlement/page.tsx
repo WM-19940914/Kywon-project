@@ -10,38 +10,347 @@
 'use client'
 
 import React, { useState, useEffect, useMemo } from 'react'
-import { fetchOrders, updateS1SettlementStatus, batchUpdateS1SettlementStatus } from '@/lib/supabase/dal'
+import { fetchOrders, updateOrder, updateS1SettlementStatus, batchUpdateS1SettlementStatus } from '@/lib/supabase/dal'
 import type { Order, S1SettlementStatus } from '@/types/order'
 import {
   S1_SETTLEMENT_STATUS_LABELS,
   S1_SETTLEMENT_STATUS_COLORS,
-  WORK_TYPE_COLORS,
+  sortWorkTypes,
+  getWorkTypeBadgeStyle,
 } from '@/types/order'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Receipt, ArrowRight, Undo2, CheckCircle2, Clock, CircleDot, ChevronDown, Pencil, StickyNote } from 'lucide-react'
+import { Receipt, ArrowRight, Undo2, CheckCircle2, Clock, CircleDot, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, Pencil, StickyNote, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import type { CustomerQuote } from '@/types/order'
 import { saveCustomerQuote } from '@/lib/supabase/dal'
 
+/** 작업종류 아이콘 매핑 */
+const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
+  '신규설치': PlusCircle,
+  '이전설치': ArrowRightLeft,
+  '철거보관': Archive,
+  '철거폐기': Trash2,
+  '재고설치': Package,
+  '반납폐기': RotateCcw,
+}
+
 /** 탭 정의 */
 type S1Tab = 'unsettled' | 'in-progress' | 'settled'
 
 const TAB_CONFIG: { key: S1Tab; label: string; icon: React.ReactNode; color: string }[] = [
-  { key: 'unsettled', label: '설치완료(미정산)', icon: <CircleDot className="h-4 w-4" />, color: 'text-gray-700' },
-  { key: 'in-progress', label: '금월 정산 진행중', icon: <Clock className="h-4 w-4" />, color: 'text-orange-600' },
-  { key: 'settled', label: '정산 완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-green-600' },
+  { key: 'unsettled', label: '미정산', icon: <CircleDot className="h-4 w-4" />, color: 'text-gray-700' },
+  { key: 'in-progress', label: '정산진행중', icon: <Clock className="h-4 w-4" />, color: 'text-orange-600' },
+  { key: 'settled', label: '정산완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-green-600' },
 ]
 
 /** 탭 안내 문구 */
 const TAB_DESCRIPTIONS: Record<S1Tab, string> = {
-  'unsettled': '설치 관리/견적 관리 페이지에서 설치완료 되어진 현장들만 조회되어 보여집니다.',
+  'unsettled': '설치예정 및 설치완료된 현장 중 미정산 건이 표시됩니다. 일정미정 건은 제외됩니다.',
   'in-progress': '현재 정산 작업이 진행중인 건입니다. 확인이 끝나면 정산 완료 처리하세요.',
   'settled': '정산이 완료된 건입니다.',
+}
+
+/** 정산완료 월별 그룹 페이지 사이즈 */
+const SETTLED_PAGE_SIZE = 10
+
+/**
+ * 정산완료 월별 그룹 컴포넌트
+ *
+ * - 최신 1개월만 기본 펼침, 나머지 접힘
+ * - 펼친 상태에서 10개씩 페이지네이션
+ * - 접힌 상태에서는 헤더(월/건수/합계)만 표시
+ */
+function SettledMonthGroup({
+  monthKey,
+  monthOrders,
+  defaultOpen,
+  selectedIds,
+  setSelectedIds,
+  expandedIds,
+  onToggleExpand,
+}: {
+  monthKey: string
+  monthOrders: Order[]
+  defaultOpen: boolean
+  selectedIds: Set<string>
+  setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
+  expandedIds: Set<string>
+  onToggleExpand: (orderId: string) => void
+}) {
+  const [isOpen, setIsOpen] = useState(defaultOpen)
+  const [page, setPage] = useState(1)
+
+  // 월 라벨 (예: "2026년 2월")
+  const monthLabel = monthKey !== '미지정'
+    ? `${monthKey.split('-')[0]}년 ${parseInt(monthKey.split('-')[1])}월`
+    : '미지정'
+
+  // 해당 월 설치비 합계
+  const monthTotal = monthOrders.reduce((total, order) => {
+    const items = order.customerQuote?.items?.filter(i => i.category === 'installation') || []
+    const notesStr = order.customerQuote?.notes || ''
+    const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
+    const rounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
+    return total + items.reduce((sum, i) => sum + i.totalPrice, 0) - rounding
+  }, 0)
+
+  // 페이지네이션 계산
+  const totalPages = Math.max(1, Math.ceil(monthOrders.length / SETTLED_PAGE_SIZE))
+  const pagedOrders = monthOrders.slice((page - 1) * SETTLED_PAGE_SIZE, page * SETTLED_PAGE_SIZE)
+
+  return (
+    <div>
+      {/* 월별 헤더 (클릭하면 접기/펼치기) */}
+      <button
+        className={`w-full flex items-center justify-between px-4 py-3 rounded-lg transition-colors ${
+          isOpen ? 'bg-green-50 border border-green-200' : 'bg-gray-50 border border-gray-200 hover:bg-gray-100'
+        }`}
+        onClick={() => setIsOpen(prev => !prev)}
+      >
+        <div className="flex items-center gap-2">
+          <ChevronDown className={`h-4 w-4 text-gray-500 transition-transform ${isOpen ? '' : '-rotate-90'}`} />
+          <h3 className="text-base font-bold text-gray-800">{monthLabel} 정산</h3>
+          <span className="text-sm text-gray-500">({monthOrders.length}건)</span>
+        </div>
+        <span className="text-base font-extrabold text-gray-900">
+          {monthTotal.toLocaleString('ko-KR')} 원
+        </span>
+      </button>
+
+      {/* 펼침 시: 테이블 + 페이지네이션 */}
+      {isOpen && (
+        <div className="mt-2">
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-muted/80">
+                <tr>
+                  <th className="p-3 text-center" style={{ width: '45px' }}>
+                    <Checkbox
+                      checked={pagedOrders.every(o => selectedIds.has(o.id))}
+                      onCheckedChange={() => {
+                        const allSelected = pagedOrders.every(o => selectedIds.has(o.id))
+                        setSelectedIds(prev => {
+                          const next = new Set(prev)
+                          pagedOrders.forEach(o => {
+                            if (allSelected) next.delete(o.id)
+                            else next.add(o.id)
+                          })
+                          return next
+                        })
+                      }}
+                    />
+                  </th>
+                  <th className="text-left p-3 text-sm font-medium" style={{ width: '110px' }}>작업종류</th>
+                  <th className="text-left p-3 text-sm font-medium" style={{ width: '95px' }}>설치완료일</th>
+                  <th className="text-center p-3 text-sm font-medium">현장명</th>
+                  <th className="text-center p-3 text-sm font-medium" style={{ width: '200px' }}>주소</th>
+                  <th className="text-center p-3 text-sm font-medium" style={{ width: '130px' }}>설치비 소계</th>
+                  <th className="text-center p-3 text-sm font-medium" style={{ width: '110px' }}>정산</th>
+                  <th className="text-center p-3 text-sm font-medium" style={{ width: '90px' }}>정산월</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pagedOrders.map(order => {
+                  const quote = order.customerQuote
+                  const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType))))
+                  const installItems = quote?.items?.filter(i => i.category === 'installation') || []
+                  const isExpanded = expandedIds.has(order.id)
+
+                  return (
+                    <React.Fragment key={order.id}>
+                      <tr
+                        className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer ${isExpanded ? 'bg-green-50/40' : ''}`}
+                        onClick={() => onToggleExpand(order.id)}
+                      >
+                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                          <Checkbox
+                            checked={selectedIds.has(order.id)}
+                            onCheckedChange={() => {
+                              setSelectedIds(prev => {
+                                const next = new Set(prev)
+                                if (next.has(order.id)) next.delete(order.id)
+                                else next.add(order.id)
+                                return next
+                              })
+                            }}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-wrap gap-1">
+                            {workTypes.map(type => {
+                              const Icon = WORK_TYPE_ICON_MAP[type]
+                              return (
+                                <span key={type} className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-md px-1.5 py-0.5 whitespace-nowrap ${getWorkTypeBadgeStyle(type).badge}`}>
+                                  {Icon && <Icon className={`h-3 w-3 shrink-0 ${getWorkTypeBadgeStyle(type).icon}`} />}
+                                  {type}
+                                </span>
+                              )
+                            })}
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">{formatShortDate(order.installCompleteDate)}</td>
+                        <td className="p-3 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            <p className="font-semibold text-sm truncate">{order.businessName}</p>
+                          </div>
+                        </td>
+                        <td className="p-3 text-center">
+                          <p className="text-xs text-gray-600 truncate">{order.address}</p>
+                        </td>
+                        <td className="p-3 text-center">
+                          <p className="text-sm font-semibold">
+                            {(() => {
+                              const items = quote?.items?.filter(i => i.category === 'installation') || []
+                              const notesStr = quote?.notes || ''
+                              const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
+                              const rounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
+                              const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0) - rounding
+                              return subtotal > 0 ? `${subtotal.toLocaleString('ko-KR')}원` : <span className="text-gray-400">-</span>
+                            })()}
+                          </p>
+                        </td>
+                        <td className="p-3 text-center">
+                          <Badge className={`${S1_SETTLEMENT_STATUS_COLORS['settled']} text-[10px] border`}>
+                            {S1_SETTLEMENT_STATUS_LABELS['settled']}
+                          </Badge>
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="text-xs font-medium text-green-700">
+                            {order.s1SettlementMonth
+                              ? `${order.s1SettlementMonth.split('-')[0]}년 ${parseInt(order.s1SettlementMonth.split('-')[1])}월`
+                              : '-'
+                            }
+                          </span>
+                        </td>
+                      </tr>
+
+                      {/* 아코디언: 설치비 견적서 */}
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={8} className="p-0">
+                            <div className="mx-4 my-3">
+                              <div className="border border-green-200 rounded-lg overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
+                                <div className="flex items-center gap-2 px-3 py-2 bg-green-600">
+                                  <Receipt className="h-3.5 w-3.5 text-white" />
+                                  <span className="text-xs font-bold text-white tracking-wide">설치비 견적서</span>
+                                </div>
+                                {(() => {
+                                  const notesStr = quote?.notes || ''
+                                  const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
+                                  const installRounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
+                                  const rawSubtotal = installItems.reduce((sum, i) => sum + i.totalPrice, 0)
+                                  const finalSubtotal = rawSubtotal - installRounding
+
+                                  return installItems.length > 0 ? (
+                                    <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
+                                      <colgroup>
+                                        <col style={{ width: '36px' }} />
+                                        <col style={{ width: '140px' }} />
+                                        <col style={{ width: '160px' }} />
+                                        <col style={{ width: '50px' }} />
+                                        <col style={{ width: '100px' }} />
+                                        <col style={{ width: '100px' }} />
+                                        <col style={{ width: '140px' }} />
+                                      </colgroup>
+                                      <thead>
+                                        <tr className="bg-green-50 border-b border-green-200 text-green-900">
+                                          <th className="text-center py-2 px-2 font-semibold">No.</th>
+                                          <th className="text-center py-2 px-2 font-semibold">품목</th>
+                                          <th className="text-center py-2 px-2 font-semibold">규격</th>
+                                          <th className="text-center py-2 px-2 font-semibold">수량</th>
+                                          <th className="text-right py-2 px-2 font-semibold">단가</th>
+                                          <th className="text-right py-2 px-2 font-semibold">금액</th>
+                                          <th className="text-center py-2 px-2 font-semibold">비고</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {installItems.map((item, idx) => {
+                                          const hasModel = item.itemName.includes('|||')
+                                          const displayName = hasModel ? item.itemName.split('|||')[0] : item.itemName
+                                          const displayModel = hasModel ? item.itemName.split('|||')[1] : '-'
+                                          return (
+                                            <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-green-50/30">
+                                              <td className="py-2 px-2 text-center text-gray-400">{idx + 1}</td>
+                                              <td className="py-2 px-2 text-center text-gray-800 font-medium truncate">{displayName}</td>
+                                              <td className="py-2 px-2 text-center text-gray-500 truncate">{displayModel}</td>
+                                              <td className="py-2 px-2 text-center text-gray-600">{item.quantity}</td>
+                                              <td className="py-2 px-2 text-right text-gray-600">{item.unitPrice.toLocaleString('ko-KR')}</td>
+                                              <td className="py-2 px-2 text-right font-semibold text-gray-800">{item.totalPrice.toLocaleString('ko-KR')}</td>
+                                              <td className="py-2 px-2 text-center text-gray-500 truncate">{item.description || ''}</td>
+                                            </tr>
+                                          )
+                                        })}
+                                      </tbody>
+                                      <tfoot>
+                                        {installRounding > 0 && (
+                                          <tr className="border-t border-gray-200">
+                                            <td colSpan={5} className="py-1.5 px-1.5 text-right text-gray-500">단위절사</td>
+                                            <td className="py-1.5 px-1.5 text-right text-red-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
+                                            <td></td>
+                                          </tr>
+                                        )}
+                                        <tr className="bg-green-50 border-t border-green-200">
+                                          <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-green-800">설치비 소계</td>
+                                          <td className="py-2 px-1.5 text-right font-bold text-green-800">{finalSubtotal.toLocaleString('ko-KR')}</td>
+                                          <td></td>
+                                        </tr>
+                                      </tfoot>
+                                    </table>
+                                  ) : (
+                                    <div className="px-3 py-5 text-center">
+                                      <p className="text-xs text-gray-400">견적서에 설치비 항목이 없습니다.</p>
+                                    </div>
+                                  )
+                                })()}
+                              </div>
+                            </div>
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* 페이지네이션 (10개 초과 시) */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                disabled={page <= 1}
+                onClick={() => setPage(p => p - 1)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-gray-600">
+                {page} / {totalPages}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2"
+                disabled={page >= totalPages}
+                onClick={() => setPage(p => p + 1)}
+              >
+                <ChevronRightIcon className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function S1SettlementPage() {
@@ -68,8 +377,7 @@ export default function S1SettlementPage() {
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
   const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
 
-  // 메모 상태 (orderId → 메모 텍스트)
-  const [memos, setMemos] = useState<Record<string, string>>({})
+  // 메모는 order.installMemo 필드로 DB 연동 (로컬 상태 불필요)
 
   // 정산 월 (기본값: 현재 년월, 수동 변경 가능)
   const now = new Date()
@@ -86,23 +394,24 @@ export default function S1SettlementPage() {
   }, [activeTab])
 
   /**
-   * 설치 완료건만 필터링 (설치완료일이 있는 발주)
+   * 정산 대상 필터링 (설치예정 + 설치완료 건)
+   * 일정미정(installScheduleDate 없음)은 아직 정산 대상이 아니므로 제외
    */
-  const completedOrders = useMemo(() => {
-    return orders.filter(order => !!order.installCompleteDate)
+  const settlementTargetOrders = useMemo(() => {
+    return orders.filter(order => !!order.installScheduleDate)
   }, [orders])
 
   /** 탭별 필터링된 발주 목록 */
   const filteredOrders = useMemo(() => {
-    return completedOrders.filter(order => {
+    return settlementTargetOrders.filter(order => {
       const status = order.s1SettlementStatus || 'unsettled'
       return status === activeTab
     })
-  }, [completedOrders, activeTab])
+  }, [settlementTargetOrders, activeTab])
 
   /** 정산 완료 탭: 월별 그룹핑 (예: { "2026-02": [order1, order2], "2026-01": [order3] }) */
   const settledByMonth = useMemo(() => {
-    const settled = completedOrders.filter(o => (o.s1SettlementStatus || 'unsettled') === 'settled')
+    const settled = settlementTargetOrders.filter(o => (o.s1SettlementStatus || 'unsettled') === 'settled')
     const grouped: Record<string, Order[]> = {}
     settled.forEach(order => {
       const month = order.s1SettlementMonth || '미지정'
@@ -112,17 +421,17 @@ export default function S1SettlementPage() {
     // 최신 월이 위로 오도록 정렬
     const sorted = Object.entries(grouped).sort((a, b) => b[0].localeCompare(a[0]))
     return sorted
-  }, [completedOrders])
+  }, [settlementTargetOrders])
 
   /** 탭별 건수 */
   const tabCounts = useMemo(() => {
     const counts: Record<S1Tab, number> = { 'unsettled': 0, 'in-progress': 0, 'settled': 0 }
-    completedOrders.forEach(order => {
+    settlementTargetOrders.forEach(order => {
       const status = (order.s1SettlementStatus || 'unsettled') as S1Tab
       counts[status] = (counts[status] || 0) + 1
     })
     return counts
-  }, [completedOrders])
+  }, [settlementTargetOrders])
 
   /** 아코디언 토글 (현장 클릭 시 설치비 상세 펼침/접기) */
   const handleToggleExpand = (orderId: string) => {
@@ -151,9 +460,14 @@ export default function S1SettlementPage() {
     ))
   }
 
-  /** 메모 변경 */
-  const handleMemoChange = (orderId: string, text: string) => {
-    setMemos(prev => ({ ...prev, [orderId]: text }))
+  /** 메모 변경 (order.installMemo로 DB 저장) */
+  const handleMemoChange = async (orderId: string, text: string) => {
+    // 로컬 상태 즉시 반영
+    setOrders(prev => prev.map(order =>
+      order.id === orderId ? { ...order, installMemo: text } : order
+    ))
+    // DB 저장
+    await updateOrder(orderId, { installMemo: text })
   }
 
   /** 전체 선택/해제 */
@@ -381,7 +695,7 @@ export default function S1SettlementPage() {
       )}
 
       {/* ============================================ */}
-      {/* 정산 완료 탭: 월별 그룹 UI */}
+      {/* 정산 완료 탭: 월별 그룹 UI (접기/펼치기 + 페이지네이션) */}
       {/* ============================================ */}
       {activeTab === 'settled' && !isLoading && (
         settledByMonth.length === 0 ? (
@@ -392,224 +706,19 @@ export default function S1SettlementPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="space-y-6">
-            {settledByMonth.map(([monthKey, monthOrders]) => {
-              // "2026-02" → "2026년 2월"
-              const monthLabel = monthKey !== '미지정'
-                ? `${monthKey.split('-')[0]}년 ${parseInt(monthKey.split('-')[1])}월`
-                : '미지정'
-
-              // 해당 월 설치비 합계
-              const monthTotal = monthOrders.reduce((total, order) => {
-                const items = order.customerQuote?.items?.filter(i => i.category === 'installation') || []
-                const notesStr = order.customerQuote?.notes || ''
-                const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
-                const rounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
-                return total + items.reduce((sum, i) => sum + i.totalPrice, 0) - rounding
-              }, 0)
-
-              return (
-                <div key={monthKey}>
-                  {/* 월별 헤더 */}
-                  <div className="flex items-center justify-between mb-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <h3 className="text-base font-bold text-gray-800">{monthLabel} 정산</h3>
-                      <span className="text-sm text-gray-500">({monthOrders.length}건)</span>
-                    </div>
-                    <span className="text-base font-extrabold text-gray-900">
-                      {monthTotal.toLocaleString('ko-KR')} 원
-                    </span>
-                  </div>
-
-                  {/* 해당 월 현장 테이블 */}
-                  <div className="border rounded-lg overflow-hidden">
-                    <table className="w-full">
-                      <thead className="bg-muted/80">
-                        <tr>
-                          <th className="p-3 text-center" style={{ width: '45px' }}>
-                            <Checkbox
-                              checked={monthOrders.every(o => selectedIds.has(o.id))}
-                              onCheckedChange={() => {
-                                const allSelected = monthOrders.every(o => selectedIds.has(o.id))
-                                setSelectedIds(prev => {
-                                  const next = new Set(prev)
-                                  monthOrders.forEach(o => {
-                                    if (allSelected) next.delete(o.id)
-                                    else next.add(o.id)
-                                  })
-                                  return next
-                                })
-                              }}
-                            />
-                          </th>
-                          <th className="text-left p-3 text-sm font-medium" style={{ width: '110px' }}>작업종류</th>
-                          <th className="text-left p-3 text-sm font-medium" style={{ width: '95px' }}>설치완료일</th>
-                          <th className="text-center p-3 text-sm font-medium">현장명</th>
-                          <th className="text-center p-3 text-sm font-medium" style={{ width: '200px' }}>주소</th>
-                          <th className="text-center p-3 text-sm font-medium" style={{ width: '130px' }}>설치비 소계</th>
-                          <th className="text-center p-3 text-sm font-medium" style={{ width: '110px' }}>정산</th>
-                          <th className="text-center p-3 text-sm font-medium" style={{ width: '90px' }}>정산월</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {monthOrders.map(order => {
-                          const quote = order.customerQuote
-                          const workTypes = Array.from(new Set(order.items.map(i => i.workType)))
-                          const installItems = quote?.items?.filter(i => i.category === 'installation') || []
-                          const isExpanded = expandedIds.has(order.id)
-
-                          return (
-                            <React.Fragment key={order.id}>
-                              <tr
-                                className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer ${isExpanded ? 'bg-green-50/40' : ''}`}
-                                onClick={() => handleToggleExpand(order.id)}
-                              >
-                                <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                                  <Checkbox
-                                    checked={selectedIds.has(order.id)}
-                                    onCheckedChange={() => handleSelectToggle(order.id)}
-                                  />
-                                </td>
-                                <td className="p-3">
-                                  <div className="flex flex-wrap gap-1">
-                                    {workTypes.map(type => (
-                                      <Badge key={type} className={`${WORK_TYPE_COLORS[type] || 'bg-gray-100 text-gray-700'} text-xs border`}>
-                                        {type}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </td>
-                                <td className="p-3 text-sm">{formatShortDate(order.installCompleteDate)}</td>
-                                <td className="p-3 text-center">
-                                  <div className="flex items-center justify-center gap-1.5">
-                                    <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                                    <p className="font-semibold text-sm truncate">{order.businessName}</p>
-                                  </div>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <p className="text-xs text-gray-600 truncate">{order.address}</p>
-                                </td>
-                                <td className="p-3 text-center">
-                                  <p className="text-sm font-semibold">
-                                    {(() => {
-                                      const items = quote?.items?.filter(i => i.category === 'installation') || []
-                                      const notesStr = quote?.notes || ''
-                                      const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
-                                      const rounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
-                                      const subtotal = items.reduce((sum, i) => sum + i.totalPrice, 0) - rounding
-                                      return subtotal > 0 ? `${subtotal.toLocaleString('ko-KR')}원` : <span className="text-gray-400">-</span>
-                                    })()}
-                                  </p>
-                                </td>
-                                {/* 정산 상태 */}
-                                <td className="p-3 text-center">
-                                  <Badge className={`${S1_SETTLEMENT_STATUS_COLORS['settled']} text-[10px] border`}>
-                                    {S1_SETTLEMENT_STATUS_LABELS['settled']}
-                                  </Badge>
-                                </td>
-                                {/* 정산월 */}
-                                <td className="p-3 text-center">
-                                  <span className="text-xs font-medium text-green-700">
-                                    {order.s1SettlementMonth
-                                      ? `${order.s1SettlementMonth.split('-')[0]}년 ${parseInt(order.s1SettlementMonth.split('-')[1])}월`
-                                      : '-'
-                                    }
-                                  </span>
-                                </td>
-                              </tr>
-
-                              {/* 아코디언: 설치비 견적서 */}
-                              {isExpanded && (
-                                <tr>
-                                  <td colSpan={8} className="p-0">
-                                    <div className="mx-4 my-3">
-                                      <div className="border border-green-200 rounded-lg overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
-                                        <div className="flex items-center gap-2 px-3 py-2 bg-green-600">
-                                          <Receipt className="h-3.5 w-3.5 text-white" />
-                                          <span className="text-xs font-bold text-white tracking-wide">설치비 견적서</span>
-                                        </div>
-                                        {(() => {
-                                          const notesStr = quote?.notes || ''
-                                          const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
-                                          const installRounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
-                                          const rawSubtotal = installItems.reduce((sum, i) => sum + i.totalPrice, 0)
-                                          const finalSubtotal = rawSubtotal - installRounding
-
-                                          return installItems.length > 0 ? (
-                                            <table className="w-full text-sm" style={{ tableLayout: 'fixed' }}>
-                                              <colgroup>
-                                                <col style={{ width: '36px' }} />
-                                                <col style={{ width: '140px' }} />
-                                                <col style={{ width: '160px' }} />
-                                                <col style={{ width: '50px' }} />
-                                                <col style={{ width: '100px' }} />
-                                                <col style={{ width: '100px' }} />
-                                                <col style={{ width: '140px' }} />
-                                              </colgroup>
-                                              <thead>
-                                                <tr className="bg-green-50 border-b border-green-200 text-green-900">
-                                                  <th className="text-center py-2 px-2 font-semibold">No.</th>
-                                                  <th className="text-center py-2 px-2 font-semibold">품목</th>
-                                                  <th className="text-center py-2 px-2 font-semibold">규격</th>
-                                                  <th className="text-center py-2 px-2 font-semibold">수량</th>
-                                                  <th className="text-right py-2 px-2 font-semibold">단가</th>
-                                                  <th className="text-right py-2 px-2 font-semibold">금액</th>
-                                                  <th className="text-center py-2 px-2 font-semibold">비고</th>
-                                                </tr>
-                                              </thead>
-                                              <tbody>
-                                                {installItems.map((item, idx) => {
-                                                  const hasModel = item.itemName.includes('|||')
-                                                  const displayName = hasModel ? item.itemName.split('|||')[0] : item.itemName
-                                                  const displayModel = hasModel ? item.itemName.split('|||')[1] : '-'
-                                                  return (
-                                                    <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-green-50/30">
-                                                      <td className="py-2 px-2 text-center text-gray-400">{idx + 1}</td>
-                                                      <td className="py-2 px-2 text-center text-gray-800 font-medium truncate">{displayName}</td>
-                                                      <td className="py-2 px-2 text-center text-gray-500 truncate">{displayModel}</td>
-                                                      <td className="py-2 px-2 text-center text-gray-600">{item.quantity}</td>
-                                                      <td className="py-2 px-2 text-right text-gray-600">{item.unitPrice.toLocaleString('ko-KR')}</td>
-                                                      <td className="py-2 px-2 text-right font-semibold text-gray-800">{item.totalPrice.toLocaleString('ko-KR')}</td>
-                                                      <td className="py-2 px-2 text-center text-gray-500 truncate">{item.description || ''}</td>
-                                                    </tr>
-                                                  )
-                                                })}
-                                              </tbody>
-                                              <tfoot>
-                                                {installRounding > 0 && (
-                                                  <tr className="border-t border-gray-200">
-                                                    <td colSpan={5} className="py-1.5 px-1.5 text-right text-gray-500">단위절사</td>
-                                                    <td className="py-1.5 px-1.5 text-right text-red-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
-                                                    <td></td>
-                                                  </tr>
-                                                )}
-                                                <tr className="bg-green-50 border-t border-green-200">
-                                                  <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-green-800">설치비 소계</td>
-                                                  <td className="py-2 px-1.5 text-right font-bold text-green-800">{finalSubtotal.toLocaleString('ko-KR')}</td>
-                                                  <td></td>
-                                                </tr>
-                                              </tfoot>
-                                            </table>
-                                          ) : (
-                                            <div className="px-3 py-5 text-center">
-                                              <p className="text-xs text-gray-400">견적서에 설치비 항목이 없습니다.</p>
-                                            </div>
-                                          )
-                                        })()}
-                                      </div>
-                                    </div>
-                                  </td>
-                                </tr>
-                              )}
-                            </React.Fragment>
-                          )
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="space-y-4">
+            {settledByMonth.map(([monthKey, monthOrders], groupIdx) => (
+              <SettledMonthGroup
+                key={monthKey}
+                monthKey={monthKey}
+                monthOrders={monthOrders}
+                defaultOpen={groupIdx === 0}
+                selectedIds={selectedIds}
+                setSelectedIds={setSelectedIds}
+                expandedIds={expandedIds}
+                onToggleExpand={handleToggleExpand}
+              />
+            ))}
           </div>
         )
       )}
@@ -647,6 +756,7 @@ export default function S1SettlementPage() {
                     </th>
                   )}
                   <th className="text-left p-3 text-sm font-medium" style={{ width: '110px' }}>작업종류</th>
+                  <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>설치상태</th>
                   <th className="text-left p-3 text-sm font-medium" style={{ width: '95px' }}>설치완료일</th>
                   <th className="text-center p-3 text-sm font-medium" style={{ width: '220px' }}>현장명</th>
                   <th className="text-center p-3 text-sm font-medium" style={{ width: '200px' }}>주소</th>
@@ -668,16 +778,16 @@ export default function S1SettlementPage() {
                   const quote = order.customerQuote
                   const installItems = quote?.items?.filter(i => i.category === 'installation') || []
                   const isExpanded = expandedIds.has(order.id)
-                  const workTypes = Array.from(new Set(order.items.map(i => i.workType)))
+                  const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType))))
 
                   {/* 테이블 컬럼 수 (아코디언 colspan용) */}
-                  const colCount = 1 + 6 + (activeTab === 'in-progress' ? 2 : 0)
+                  const colCount = 1 + 7 + (activeTab === 'in-progress' ? 2 : 0)
 
                   return (
                     <React.Fragment key={order.id}>
                       {/* 현장 행 (클릭하면 아코디언 열림) */}
                       <tr
-                        className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer ${isExpanded ? 'bg-orange-50/40' : ''}`}
+                        className={`border-b border-gray-100 hover:bg-gray-50/50 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-50/60' : ''}`}
                         onClick={() => handleToggleExpand(order.id)}
                       >
                         {/* 체크박스 */}
@@ -693,15 +803,31 @@ export default function S1SettlementPage() {
                         {/* 작업종류 뱃지 */}
                         <td className="p-3">
                           <div className="flex flex-wrap gap-1">
-                            {workTypes.map(type => (
-                              <Badge
-                                key={type}
-                                className={`${WORK_TYPE_COLORS[type] || 'bg-gray-100 text-gray-700'} text-xs border`}
-                              >
-                                {type}
-                              </Badge>
-                            ))}
+                            {workTypes.map(type => {
+                              const Icon = WORK_TYPE_ICON_MAP[type]
+                              return (
+                                <span key={type} className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-md px-1.5 py-0.5 whitespace-nowrap ${getWorkTypeBadgeStyle(type).badge}`}>
+                                  {Icon && <Icon className={`h-3 w-3 shrink-0 ${getWorkTypeBadgeStyle(type).icon}`} />}
+                                  {type}
+                                </span>
+                              )
+                            })}
                           </div>
+                        </td>
+
+                        {/* 설치상태 (도트 + 텍스트) */}
+                        <td className="p-3 whitespace-nowrap">
+                          {order.installCompleteDate ? (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                              설치완료
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                              설치예정
+                            </span>
+                          )}
                         </td>
 
                         {/* 설치완료일 */}
@@ -779,9 +905,9 @@ export default function S1SettlementPage() {
                           <td colSpan={colCount} className="p-0">
                             <div className="mx-4 my-3 flex gap-3">
                               {/* ===== 좌측: 설치비 견적서 ===== */}
-                              <div className="flex-shrink-0 border border-orange-200 rounded-lg overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
+                              <div className="flex-shrink-0 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
                                 {/* 견적서 헤더 + 수정 버튼 */}
-                                <div className="flex items-center justify-between px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-400">
+                                <div className="flex items-center justify-between px-3 py-2 bg-slate-700">
                                   <div className="flex items-center gap-2">
                                     <Receipt className="h-3.5 w-3.5 text-white" />
                                     <span className="text-xs font-bold text-white tracking-wide">설치비 견적서</span>
@@ -813,7 +939,7 @@ export default function S1SettlementPage() {
                                       <col style={{ width: '140px' }} />
                                     </colgroup>
                                     <thead>
-                                      <tr className="bg-orange-50 border-b border-orange-200 text-orange-900">
+                                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-700">
                                         <th className="text-center py-2 px-2 font-semibold">No.</th>
                                         <th className="text-center py-2 px-2 font-semibold">품목</th>
                                         <th className="text-center py-2 px-2 font-semibold">규격</th>
@@ -829,7 +955,7 @@ export default function S1SettlementPage() {
                                         const displayName = hasModel ? item.itemName.split('|||')[0] : item.itemName
                                         const displayModel = hasModel ? item.itemName.split('|||')[1] : '-'
                                         return (
-                                        <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-orange-50/30">
+                                        <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-slate-50/50">
                                           <td className="py-2 px-2 text-center text-gray-400">{idx + 1}</td>
                                           <td className="py-2 px-2 text-center text-gray-800 font-medium truncate">{displayName}</td>
                                           <td className="py-2 px-2 text-center text-gray-500 truncate">{displayModel}</td>
@@ -849,9 +975,9 @@ export default function S1SettlementPage() {
                                           <td></td>
                                         </tr>
                                       )}
-                                      <tr className="bg-orange-50 border-t border-orange-200">
-                                        <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-orange-800">설치비 소계</td>
-                                        <td className="py-2 px-1.5 text-right font-bold text-orange-800">
+                                      <tr className="bg-slate-50 border-t border-slate-200">
+                                        <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-slate-800">설치비 소계</td>
+                                        <td className="py-2 px-1.5 text-right font-bold text-slate-800">
                                           {finalSubtotal.toLocaleString('ko-KR')}
                                         </td>
                                         <td></td>
@@ -868,15 +994,24 @@ export default function S1SettlementPage() {
 
                               {/* ===== 우측: 메모 영역 ===== */}
                               <div className="flex-1 min-w-[200px] border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm flex flex-col">
-                                <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-amber-100 to-yellow-50 border-b border-amber-200">
-                                  <StickyNote className="h-3.5 w-3.5 text-amber-600" />
-                                  <span className="text-xs font-bold text-amber-800 tracking-wide">메모</span>
+                                <div className="flex items-center gap-2 px-3 py-2 bg-gray-100 border-b border-gray-200">
+                                  <StickyNote className="h-3.5 w-3.5 text-gray-500" />
+                                  <span className="text-xs font-bold text-gray-700 tracking-wide">메모</span>
                                 </div>
                                 <textarea
-                                  className="flex-1 w-full p-3 text-sm text-gray-700 resize-none focus:outline-none placeholder:text-gray-300 bg-amber-50/30"
-                                  placeholder="자유롭게 메모를 입력하세요..."
-                                  value={memos[order.id] || ''}
-                                  onChange={(e) => handleMemoChange(order.id, e.target.value)}
+                                  className="flex-1 w-full p-3 text-sm text-gray-700 resize-none focus:outline-none placeholder:text-gray-300 bg-gray-50/30"
+                                  placeholder="설치 팀장이 누구인지 등 기억해야 할 메모를 자유롭게 적어주세요"
+                                  value={order.installMemo || ''}
+                                  onChange={(e) => {
+                                    // 로컬 상태만 즉시 반영 (타이핑 중)
+                                    setOrders(prev => prev.map(o =>
+                                      o.id === order.id ? { ...o, installMemo: e.target.value } : o
+                                    ))
+                                  }}
+                                  onBlur={(e) => {
+                                    // blur 시 DB 저장
+                                    handleMemoChange(order.id, e.target.value)
+                                  }}
                                   onClick={(e) => e.stopPropagation()}
                                   rows={6}
                                 />
@@ -912,12 +1047,12 @@ export default function S1SettlementPage() {
           <div className="md:hidden space-y-3">
             {filteredOrders.map(order => {
               const s1Status = order.s1SettlementStatus || 'unsettled'
-              const workTypes = Array.from(new Set(order.items.map(i => i.workType)))
+              const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType))))
               const installItems = order.customerQuote?.items?.filter(i => i.category === 'installation') || []
               const isExpanded = expandedIds.has(order.id)
 
               return (
-                <div key={order.id} className={`border rounded-lg bg-white overflow-hidden ${isExpanded ? 'border-orange-200' : ''}`}>
+                <div key={order.id} className={`border rounded-lg bg-white overflow-hidden ${isExpanded ? 'border-slate-300' : ''}`}>
                   {/* 카드 본문 (클릭하면 아코디언 토글) */}
                   <div
                     className="p-4 space-y-3 cursor-pointer"
@@ -935,14 +1070,15 @@ export default function S1SettlementPage() {
                           </div>
                         )}
                         <div className="flex flex-wrap gap-1">
-                          {workTypes.map(type => (
-                            <Badge
-                              key={type}
-                              className={`${WORK_TYPE_COLORS[type] || 'bg-gray-100 text-gray-700'} text-xs border`}
-                            >
-                              {type}
-                            </Badge>
-                          ))}
+                          {workTypes.map(type => {
+                            const Icon = WORK_TYPE_ICON_MAP[type]
+                            return (
+                              <span key={type} className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-md px-1.5 py-0.5 whitespace-nowrap ${getWorkTypeBadgeStyle(type).badge}`}>
+                                {Icon && <Icon className={`h-3 w-3 shrink-0 ${getWorkTypeBadgeStyle(type).icon}`} />}
+                                {type}
+                              </span>
+                            )
+                          })}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
@@ -959,9 +1095,22 @@ export default function S1SettlementPage() {
                       <p className="text-xs text-gray-500 mt-0.5 truncate">{order.address}</p>
                     </div>
 
-                    {/* 날짜 + 설치비 */}
+                    {/* 설치상태 + 날짜 + 설치비 */}
                     <div className="flex items-center justify-between text-xs text-gray-500">
-                      <span>설치완료: {formatShortDate(order.installCompleteDate)}</span>
+                      <div className="flex items-center gap-2">
+                        {order.installCompleteDate ? (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                            설치완료
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                            설치예정
+                          </span>
+                        )}
+                        {order.installCompleteDate && <span>{formatShortDate(order.installCompleteDate)}</span>}
+                      </div>
                       <span className="font-medium text-gray-700">
                         {order.installationCost?.totalAmount
                           ? `${order.installationCost.totalAmount.toLocaleString('ko-KR')}원`
@@ -988,9 +1137,9 @@ export default function S1SettlementPage() {
 
                   {/* 아코디언: 설치비 상세 */}
                   {isExpanded && (
-                    <div className="mx-3 mb-3 border border-orange-200 rounded-lg overflow-hidden bg-white shadow-sm">
+                    <div className="mx-3 mb-3 border border-gray-200 rounded-lg overflow-hidden bg-white shadow-sm">
                       {/* 견적서 헤더 */}
-                      <div className="flex items-center gap-2 px-3 py-2 bg-gradient-to-r from-orange-500 to-orange-400">
+                      <div className="flex items-center gap-2 px-3 py-2 bg-slate-700">
                         <Receipt className="h-3.5 w-3.5 text-white" />
                         <span className="text-xs font-bold text-white tracking-wide">설치비 견적서</span>
                       </div>
@@ -1029,9 +1178,9 @@ export default function S1SettlementPage() {
                             </div>
                           )}
                           {/* 소계 */}
-                          <div className="flex items-center justify-between px-3 py-2.5 bg-orange-50">
-                            <span className="text-sm font-bold text-orange-800">설치비 소계</span>
-                            <span className="text-sm font-bold text-orange-800">{finalSubtotal.toLocaleString('ko-KR')}</span>
+                          <div className="flex items-center justify-between px-3 py-2.5 bg-slate-50">
+                            <span className="text-sm font-bold text-slate-800">설치비 소계</span>
+                            <span className="text-sm font-bold text-slate-800">{finalSubtotal.toLocaleString('ko-KR')}</span>
                           </div>
                         </div>
                       ) : (

@@ -2,7 +2,7 @@
  * 발주 상세보기 모달
  *
  * 카드 클릭 시 열리는 모달로, 발주의 모든 정보를 자세히 보여줍니다.
- * 여기서 진행상태도 변경할 수 있어요!
+ * 진행상태는 배송/설치/정산 데이터 기반으로 자동 계산되어 읽기전용 뱃지로 표시됩니다.
  */
 
 'use client'
@@ -20,44 +20,22 @@ import { Separator } from '@/components/ui/separator'
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
-  type Order,
-  type OrderStatus
+  type Order
 } from '@/types/order'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, User, Phone, Calendar, Undo2 } from 'lucide-react'
+import { computeKanbanStatus } from '@/lib/order-status-utils'
+import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, User, Phone, Calendar } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 
 /**
  * 컴포넌트가 받을 Props
+ * (자동 분류이므로 onStatusChange 제거됨)
  */
 interface OrderDetailDialogProps {
   order: Order | null                              // 보여줄 발주 (null이면 모달 안 열림)
   open: boolean                                    // 모달 열림/닫힘 상태
   onOpenChange: (open: boolean) => void           // 모달 닫기 함수
-  onStatusChange?: (orderId: string, newStatus: OrderStatus) => void  // 상태 변경 함수
   onDelete?: (orderId: string) => void            // 삭제 함수
   onEdit?: (order: Order) => void                 // 수정 함수
-}
-
-/**
- * 상태 전환 규칙 (3단계)
- * 현재 상태 → 다음 가능한 상태
- */
-const NEXT_STATUS_MAP: Record<OrderStatus, OrderStatus | null> = {
-  'received': 'in-progress',      // 접수중 → 진행중
-  'in-progress': 'completed',     // 진행중 → 완료
-  'completed': 'settled',         // 완료 → 정산완료
-  'settled': null                 // 정산완료 (더 이상 변경 없음)
-}
-
-/**
- * 이전 상태 전환 규칙
- * 현재 상태 → 이전 단계로 되돌리기
- */
-const PREV_STATUS_MAP: Record<OrderStatus, OrderStatus | null> = {
-  'received': null,                // 접수중 (더 이상 뒤로 갈 수 없음)
-  'in-progress': 'received',      // 진행중 → 접수중
-  'completed': 'in-progress',     // 완료 → 진행중
-  'settled': 'completed'          // 정산완료 → 완료
 }
 
 /**
@@ -67,47 +45,22 @@ export function OrderDetailDialog({
   order,
   open,
   onOpenChange,
-  onStatusChange,
   onDelete,
   onEdit
 }: OrderDetailDialogProps) {
 
-  const { showAlert, showConfirm } = useAlert()
+  const { showConfirm } = useAlert()
 
   // order가 없으면 모달 안 보여줌
   if (!order) return null
+
+  // 자동 계산된 칸반 상태
+  const kanbanStatus = computeKanbanStatus(order)
 
   // 날짜 포맷팅 (2024-01-15 → 2024.01.15)
   const formatDate = (dateString?: string) => {
     if (!dateString) return '-'
     return dateString.replace(/-/g, '.')
-  }
-
-  // 다음/이전 상태 가져오기
-  const nextStatus = NEXT_STATUS_MAP[order.status]
-  const prevStatus = PREV_STATUS_MAP[order.status]
-
-  // 다음 단계로 변경
-  const handleStatusChange = () => {
-    if (nextStatus && onStatusChange) {
-      onStatusChange(order.id, nextStatus)
-      onOpenChange(false)
-    }
-  }
-
-  // 이전 단계로 되돌리기
-  const handlePrevStatus = async () => {
-    if (!prevStatus || !onStatusChange) return
-
-    const confirmed = await showConfirm(
-      `"${ORDER_STATUS_LABELS[order.status]}" → "${ORDER_STATUS_LABELS[prevStatus]}"(으)로 되돌리시겠습니까?`
-    )
-
-    if (confirmed) {
-      onStatusChange(order.id, prevStatus)
-      showAlert(`${ORDER_STATUS_LABELS[prevStatus]}(으)로 변경되었습니다.`, 'success')
-      onOpenChange(false)
-    }
   }
 
   // 삭제 확인 및 실행
@@ -139,8 +92,8 @@ export function OrderDetailDialog({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <DialogTitle>발주 상세</DialogTitle>
-              <Badge className={ORDER_STATUS_COLORS[order.status]}>
-                {ORDER_STATUS_LABELS[order.status]}
+              <Badge className={ORDER_STATUS_COLORS[kanbanStatus]}>
+                {ORDER_STATUS_LABELS[kanbanStatus]}
               </Badge>
               {order.isPreliminaryQuote && (
                 <Badge className="bg-red-50 text-red-600 border-red-200">
@@ -314,9 +267,9 @@ export function OrderDetailDialog({
           )}
         </div>
 
-        {/* 하단 버튼 */}
+        {/* 하단 버튼 (수동 상태 전환 버튼 제거 — 자동 분류!) */}
         <div className="flex justify-between items-center pt-6 border-t mt-6">
-          {/* 왼쪽: 삭제 + 수정 (콜백이 있을 때만 표시) */}
+          {/* 왼쪽: 삭제 + 수정 */}
           <div className="flex gap-2">
             {onDelete && (
               <Button
@@ -336,27 +289,10 @@ export function OrderDetailDialog({
             )}
           </div>
 
-          {/* 오른쪽: 이전단계 + 닫기 + 다음단계 (콜백이 있을 때만 표시) */}
-          <div className="flex gap-2">
-            {prevStatus && onStatusChange && (
-              <Button
-                variant="outline"
-                onClick={handlePrevStatus}
-                className="gap-1 text-orange-600 border-orange-300 hover:bg-orange-50 hover:text-orange-700"
-              >
-                <Undo2 className="h-4 w-4" />
-                {ORDER_STATUS_LABELS[prevStatus]}(으)로 되돌리기
-              </Button>
-            )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              닫기
-            </Button>
-            {nextStatus && onStatusChange && (
-              <Button onClick={handleStatusChange}>
-                {ORDER_STATUS_LABELS[nextStatus]}(으)로 변경
-              </Button>
-            )}
-          </div>
+          {/* 오른쪽: 닫기만 (자동 분류이므로 상태 전환 버튼 없음) */}
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            닫기
+          </Button>
         </div>
       </DialogContent>
     </Dialog>

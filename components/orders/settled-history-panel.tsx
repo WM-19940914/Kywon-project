@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { SettledHistoryCard } from './settled-history-card'
 import { Archive } from 'lucide-react'
 import type { Order } from '@/types/order'
+import { computeKanbanStatus } from '@/lib/order-status-utils'
 
 /**
  * 컴포넌트가 받을 Props
@@ -35,7 +36,7 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
 
   // 년도 목록 생성 (실제 데이터 기준 + 현재 년도)
   const years = useMemo(() => {
-    const settledOrders = orders.filter(o => o.status === 'settled')
+    const settledOrders = orders.filter(o => computeKanbanStatus(o) === 'settled')
     const yearSet = new Set<number>()
 
     // 정산완료된 발주들의 년도 추출
@@ -61,8 +62,8 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
    */
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
-      // 1. 정산완료 상태만
-      if (order.status !== 'settled') return false
+      // 1. 정산완료 상태만 (자동 분류 기준)
+      if (computeKanbanStatus(order) !== 'settled') return false
 
       // 2. 검색어 필터 (사업자명, 계열사, 주소)
       if (searchTerm) {

@@ -180,15 +180,68 @@ export const AFFILIATE_OPTIONS = [
 ] as const
 
 /**
- * 작업종류별 뱃지 색상
+ * 작업종류 표시 순서
+ * 설치 계열 먼저 → 철거 계열 순서로 정렬
  */
+export const WORK_TYPE_ORDER: string[] = [
+  '신규설치',
+  '이전설치',
+  '재고설치',
+  '철거보관',
+  '철거폐기',
+  '반납폐기',
+]
+
+/** 작업종류를 정해진 순서대로 정렬하는 헬퍼 함수 */
+export function sortWorkTypes(types: string[]): string[] {
+  return [...types].sort((a, b) => {
+    const ai = WORK_TYPE_ORDER.indexOf(a)
+    const bi = WORK_TYPE_ORDER.indexOf(b)
+    // 목록에 없는 항목은 맨 뒤로
+    return (ai === -1 ? 999 : ai) - (bi === -1 ? 999 : bi)
+  })
+}
+
+/**
+ * 작업종류별 뱃지 스타일
+ * - 신규설치만 파란 강조, 나머지 회색
+ */
+export const WORK_TYPE_BADGE_STYLES: Record<string, { badge: string; icon: string }> = {
+  '신규설치': { badge: 'text-blue-700 bg-blue-50 border-blue-200', icon: 'text-blue-500' },
+  '이전설치': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+  '철거보관': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+  '철거폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+  '재고설치': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+  '반납폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+}
+const DEFAULT_BADGE_STYLE = { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' }
+export function getWorkTypeBadgeStyle(type: string) {
+  return WORK_TYPE_BADGE_STYLES[type] || DEFAULT_BADGE_STYLE
+}
+
+/** @deprecated WORK_TYPE_BADGE_STYLES 사용 권장 */
 export const WORK_TYPE_COLORS: Record<string, string> = {
-  '신규설치': 'bg-blue-100 text-blue-800 border-blue-200',
-  '이전설치': 'bg-purple-100 text-purple-800 border-purple-200',
-  '철거보관': 'bg-amber-100 text-amber-800 border-amber-200',
-  '철거폐기': 'bg-red-100 text-red-800 border-red-200',
-  '재고설치': 'bg-teal-100 text-teal-800 border-teal-200',
-  '반납폐기': 'bg-rose-100 text-rose-800 border-rose-200',
+  '신규설치': 'bg-blue-50 text-blue-700 border-blue-200',
+  '이전설치': 'bg-gray-100 text-gray-700 border-gray-200',
+  '철거보관': 'bg-gray-100 text-gray-700 border-gray-200',
+  '철거폐기': 'bg-gray-100 text-gray-700 border-gray-200',
+  '재고설치': 'bg-gray-100 text-gray-700 border-gray-200',
+  '반납폐기': 'bg-gray-100 text-gray-700 border-gray-200',
+}
+
+/**
+ * 작업종류별 아이콘 이름 매핑
+ *
+ * - 설치 계열: PlusCircle(신규) / ArrowRightLeft(이전) / Package(재고)
+ * - 철거 계열: Archive(보관) / Trash2(폐기) / RotateCcw(반납폐기)
+ */
+export const WORK_TYPE_ICONS: Record<string, string> = {
+  '신규설치': 'plus-circle',
+  '이전설치': 'arrow-right-left',
+  '철거보관': 'archive',
+  '철거폐기': 'trash-2',
+  '재고설치': 'package',
+  '반납폐기': 'rotate-ccw',
 }
 
 /**
@@ -350,9 +403,9 @@ export type S1SettlementStatus = 'unsettled' | 'in-progress' | 'settled'
 
 /** 에스원 정산 상태 한글 표시용 */
 export const S1_SETTLEMENT_STATUS_LABELS: Record<S1SettlementStatus, string> = {
-  'unsettled': '설치완료(미정산)',
-  'in-progress': '금월 정산 진행중',
-  'settled': '정산 완료'
+  'unsettled': '미정산',
+  'in-progress': '정산진행중',
+  'settled': '정산완료'
 }
 
 /** 에스원 정산 상태 색상 (뱃지용) */

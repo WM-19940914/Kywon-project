@@ -201,20 +201,12 @@ export function OrderForm({
         // 도로명 주소 (순수 주소만)
         const roadAddr = data.roadAddress || data.jibunAddress
 
-        // 상세주소 자동 조합: 건물명, 동/리 이름 등
-        const details: string[] = []
-        if (data.buildingName) details.push(data.buildingName)  // 건물명 (예: 인성빌딩)
-        if (data.bname && !data.buildingName?.includes(data.bname)) {
-          details.push(data.bname)  // 법정동/리 (예: 인창동) — 건물명에 이미 포함되면 제외
-        }
-        const autoDetail = details.join(', ')
-
         if (type === 'base') {
           setBaseAddress(roadAddr)
-          setBaseDetailAddress(autoDetail)
+          setBaseDetailAddress('')
         } else {
           setRelocationAddress(roadAddr)
-          setRelocationDetailAddress(autoDetail)
+          setRelocationDetailAddress('')
         }
       }
     }).open()
