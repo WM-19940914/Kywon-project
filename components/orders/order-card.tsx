@@ -48,7 +48,8 @@ function shortenAddress(address: string, maxLength: number = 30): string {
  */
 export function OrderCard({ order, onClick }: OrderCardProps) {
   // 날짜 포맷팅 (2024-01-15 → 2024.01.15)
-  const formatDate = (dateString: string) => {
+  const formatDate = (dateString: string | null | undefined) => {
+    if (!dateString) return '-'
     return dateString.replace(/-/g, '.')
   }
 

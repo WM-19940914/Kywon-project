@@ -15,7 +15,7 @@
 
 'use client'
 
-import { Fragment, useRef, useState } from 'react'
+import { Fragment, useEffect, useRef, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -37,6 +37,8 @@ import {
   FileText,
   MapPin,
   Package,
+  Pencil,
+  Plus,
   CircleCheck,
 } from 'lucide-react'
 import type { Order, InstallScheduleStatus } from '@/types/order'
@@ -80,27 +82,39 @@ function normalizeDate(raw: string): string {
 /** 날짜 입력 컴포넌트 (텍스트 직접 입력 + 달력 버튼) */
 function DateInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
   const dateRef = useRef<HTMLInputElement>(null)
+  const [localValue, setLocalValue] = useState(value)
+
+  // 부모 value가 바뀌면 동기화 (다이얼로그 확인 후 등)
+  useEffect(() => { setLocalValue(value) }, [value])
+
+  // blur/Enter 시 부모에 전달
+  const commitValue = (v: string) => {
+    const trimmed = v.trim()
+    if (trimmed) {
+      const normalized = normalizeDate(trimmed)
+      setLocalValue(normalized)
+      onChange(normalized)
+    }
+  }
 
   return (
     <div className="relative flex items-center">
       <Input
         type="text"
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={(e) => {
-          const v = e.target.value.trim()
-          if (v) onChange(normalizeDate(v))
-        }}
+        value={localValue}
+        onChange={(e) => setLocalValue(e.target.value)}
+        onBlur={(e) => commitValue(e.target.value)}
         onKeyDown={(e) => {
           if (e.key === 'Enter') {
-            const v = (e.target as HTMLInputElement).value.trim()
-            if (v) onChange(normalizeDate(v))
+            commitValue((e.target as HTMLInputElement).value)
           }
         }}
         onPaste={(e) => {
           e.preventDefault()
           const pasted = e.clipboardData.getData('text').trim()
-          onChange(normalizeDate(pasted))
+          const normalized = normalizeDate(pasted)
+          setLocalValue(normalized)
+          onChange(normalized)
         }}
         placeholder="YYYY-MM-DD"
         className="h-7 text-xs border-gray-200 pr-7"
@@ -414,33 +428,45 @@ function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?:
 
   const hasEquipment = (quote?.items?.filter(i => i.category === 'equipment') || []).length > 0
   const hasInstallation = (quote?.items?.filter(i => i.category === 'installation') || []).length > 0
+  const hasAny = hasEquipment || hasInstallation
 
   return (
     <button
-      className="inline-flex items-center gap-1 rounded-md p-1 -m-1 hover:bg-gray-100 transition-colors"
+      className={`inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 transition-colors border ${
+        hasAny
+          ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+          : 'bg-gray-50 border-dashed border-gray-300 hover:bg-gray-100'
+      }`}
       onClick={(e) => {
         e.stopPropagation()
         onQuoteInput?.(order)
       }}
+      title="클릭하여 견적서 작성/수정"
     >
-      {/* 장비 뱃지 */}
-      <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
-        hasEquipment
-          ? 'bg-green-50 text-green-700 border-green-200'
-          : 'bg-gray-50 text-gray-400 border-gray-200'
-      }`}>
-        {hasEquipment && <CircleCheck className="h-2.5 w-2.5" />}
-        장비
-      </span>
-      {/* 설치비 뱃지 */}
-      <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
-        hasInstallation
-          ? 'bg-green-50 text-green-700 border-green-200'
-          : 'bg-gray-50 text-gray-400 border-gray-200'
-      }`}>
-        {hasInstallation && <CircleCheck className="h-2.5 w-2.5" />}
-        설치비
-      </span>
+      {hasAny ? (
+        <>
+          {/* 작성된 견적서가 있을 때 */}
+          <Pencil className="h-3 w-3 text-blue-500" />
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
+            hasEquipment ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
+          }`}>
+            {hasEquipment && <CircleCheck className="h-2.5 w-2.5" />}
+            장비
+          </span>
+          <span className={`inline-flex items-center gap-0.5 text-[10px] font-medium px-1.5 py-0.5 rounded-full border ${
+            hasInstallation ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
+          }`}>
+            {hasInstallation && <CircleCheck className="h-2.5 w-2.5" />}
+            설치비
+          </span>
+        </>
+      ) : (
+        <>
+          {/* 견적서 미작성 */}
+          <Plus className="h-3 w-3 text-gray-400" />
+          <span className="text-[11px] text-gray-400">견적서 작성</span>
+        </>
+      )}
     </button>
   )
 }
@@ -499,17 +525,25 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
   /**
    * 설치예정일 입력 핸들러
-   * - 일정미정 탭: 확인 다이얼로그를 띄움 (실수 방지)
-   * - 설치예정 탭: 바로 저장 (이미 예정 상태이므로)
+   * - 유효한 날짜(YYYY-MM-DD)면 바로 저장 (탭 이동은 버튼으로)
    */
   const handleScheduleDateChange = (order: Order, val: string) => {
-    if (activeTab === 'unscheduled' && val) {
-      // 일정미정 → 확인 다이얼로그
-      setScheduleTarget({ orderId: order.id, businessName: order.businessName, date: val })
-    } else {
-      // 설치예정 탭에서는 바로 저장
+    const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(val)
+    if (isValidDate) {
       handleFieldChange(order.id, 'installScheduleDate', val)
     }
+  }
+
+  /**
+   * "설치예정 →" 버튼 클릭 핸들러
+   * 설치예정일이 있어야 이동 가능, 확인 다이얼로그 띄움
+   */
+  const handleMoveToScheduled = (order: Order) => {
+    if (!order.installScheduleDate) {
+      alert('설치예정일을 먼저 입력해주세요')
+      return
+    }
+    setScheduleTarget({ orderId: order.id, businessName: order.businessName, date: order.installScheduleDate })
   }
 
   /** 설치완료 처리 (수동 입력된 날짜 사용) */
@@ -588,8 +622,8 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                 <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>정산</th>
               )}
 
-              {/* 설치예정 탭: 설치완료 버튼 */}
-              {activeTab === 'scheduled' && (
+              {/* 일정미정 탭: 설치예정 이동 버튼 / 설치예정 탭: 설치완료 버튼 */}
+              {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
                 <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}></th>
               )}
             </tr>
@@ -721,13 +755,26 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       </td>
                     )}
 
+                    {/* 일정미정: 설치예정 이동 버튼 */}
+                    {activeTab === 'unscheduled' && (
+                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <Button
+                          size="sm"
+                          className="bg-blue-600 hover:bg-blue-700 text-white text-xs px-3 h-7"
+                          onClick={() => handleMoveToScheduled(order)}
+                        >
+                          설치예정 →
+                        </Button>
+                      </td>
+                    )}
+
                     {/* 설치예정: 설치완료 버튼 */}
                     {activeTab === 'scheduled' && (
                       <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
                           className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 h-7"
-                          onClick={() => { setCompleteDate(new Date().toISOString().split('T')[0]); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
+                          onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                         >
                           설치완료
                         </Button>
@@ -872,7 +919,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white text-xs px-3 h-7"
-                      onClick={() => { setCompleteDate(new Date().toISOString().split('T')[0]); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
+                      onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                     >
                       설치완료
                     </Button>
@@ -921,7 +968,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               className="bg-blue-600 hover:bg-blue-700 text-white"
               onClick={() => {
                 if (scheduleTarget) {
-                  handleFieldChange(scheduleTarget.orderId, 'installScheduleDate', scheduleTarget.date)
+                  // 설치예정일 저장 + status를 in-progress로 변경 → 설치예정 탭으로 이동
+                  onUpdateOrder(scheduleTarget.orderId, {
+                    installScheduleDate: scheduleTarget.date,
+                    status: 'in-progress'
+                  })
                 }
                 setScheduleTarget(null)
               }}
@@ -943,9 +994,20 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">설치완료일</label>
                   <Input
-                    type="date"
+                    type="text"
                     value={completeDate}
                     onChange={(e) => setCompleteDate(e.target.value)}
+                    onBlur={(e) => {
+                      const v = e.target.value.trim()
+                      if (v) setCompleteDate(normalizeDate(v))
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        const v = (e.target as HTMLInputElement).value.trim()
+                        if (v) setCompleteDate(normalizeDate(v))
+                      }
+                    }}
+                    placeholder="yyyy-mm-dd"
                     className="max-w-[200px]"
                   />
                 </div>

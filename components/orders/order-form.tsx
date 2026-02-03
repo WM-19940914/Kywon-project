@@ -31,8 +31,8 @@ import {
   type OrderItem,
   parseAddress
 } from '@/types/order'
-import { PriceTableSheet } from '@/components/orders/price-table-dialog'
-import { SIZE_OPTIONS } from '@/lib/price-table'
+// import { PriceTableSheet } from '@/components/orders/price-table-dialog'
+
 import { useAlert } from '@/components/ui/custom-alert'
 
 /**
@@ -72,7 +72,7 @@ function createEmptyItem(): OrderItem {
   return {
     id: `temp-${Date.now()}`,
     workType: '신규설치',
-    category: '시스템에어컨',
+    category: '스탠드에어컨',
     model: '',
     size: '',
     quantity: 1
@@ -131,12 +131,14 @@ export function OrderForm({
   const [baseDetailAddress, setBaseDetailAddress] = useState('') // 기본 상세주소
   const [relocationAddress, setRelocationAddress] = useState('') // 이전 목적지 (Step 3, 조건부)
   const [relocationDetailAddress, setRelocationDetailAddress] = useState('') // 이전 목적지 상세주소
+  const [isInBuildingMove, setIsInBuildingMove] = useState(false) // 건물 내 이동 여부
   const [businessName, setBusinessName] = useState(initialData?.businessName || '')
   const [contactName, setContactName] = useState('') // 담당자 성함
   const [contactPhone, setContactPhone] = useState('') // 담당자 연락처
   const [buildingManagerPhone, setBuildingManagerPhone] = useState('') // 건물관리인 연락처 (선택)
   const [documentNumber, setDocumentNumber] = useState('') // 문서번호 (자동 생성, 수정 가능)
-  const [requestedInstallDate, setRequestedInstallDate] = useState('') // 설치요청일
+  const [orderDate, setOrderDate] = useState(initialData?.orderDate || new Date().toISOString().split('T')[0]) // 발주일 (기본값: 오늘)
+  const [requestedInstallDate, setRequestedInstallDate] = useState('') // 설치요청일 (선택)
   const [notes, setNotes] = useState(initialData?.notes || '') // 설치기사님 전달사항
 
   /**
@@ -167,6 +169,7 @@ export function OrderForm({
       setContactPhone(initialData.contactPhone || '')
       setBuildingManagerPhone(initialData.buildingManagerPhone || '')
       setDocumentNumber(initialData.documentNumber || '')
+      setOrderDate(initialData.orderDate || new Date().toISOString().split('T')[0])
       setRequestedInstallDate(initialData.requestedInstallDate || '')
       setNotes(initialData.notes || '')
 
@@ -195,15 +198,23 @@ export function OrderForm({
     new window.daum.Postcode({
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oncomplete: function(data: any) {
-        // 도로명 주소 또는 지번 주소
-        const fullAddress = data.roadAddress || data.jibunAddress
+        // 도로명 주소 (순수 주소만)
+        const roadAddr = data.roadAddress || data.jibunAddress
+
+        // 상세주소 자동 조합: 건물명, 동/리 이름 등
+        const details: string[] = []
+        if (data.buildingName) details.push(data.buildingName)  // 건물명 (예: 인성빌딩)
+        if (data.bname && !data.buildingName?.includes(data.bname)) {
+          details.push(data.bname)  // 법정동/리 (예: 인창동) — 건물명에 이미 포함되면 제외
+        }
+        const autoDetail = details.join(', ')
 
         if (type === 'base') {
-          setBaseAddress(fullAddress)
-          setBaseDetailAddress('')
+          setBaseAddress(roadAddr)
+          setBaseDetailAddress(autoDetail)
         } else {
-          setRelocationAddress(fullAddress)
-          setRelocationDetailAddress('')
+          setRelocationAddress(roadAddr)
+          setRelocationDetailAddress(autoDetail)
         }
       }
     }).open()
@@ -237,14 +248,6 @@ export function OrderForm({
     ))
   }
 
-  /**
-   * 발주내역 항목 여러 필드 한번에 수정 (단가표 자동입력용)
-   */
-  const handleItemChangeMultiple = (itemId: string, updates: Partial<OrderItem>) => {
-    setItems(items.map(item =>
-      item.id === itemId ? { ...item, ...updates } : item
-    ))
-  }
 
   /**
    * 이전설치 여부 확인
@@ -280,10 +283,6 @@ export function OrderForm({
         showAlert('담당자 연락처를 입력해주세요', 'warning')
         return
       }
-      if (!requestedInstallDate) {
-        showAlert('설치요청일을 선택해주세요', 'warning')
-        return
-      }
 
       // 🔥 사전견적이면 Step 3 건너뛰기
       if (isPreliminaryQuote) {
@@ -311,7 +310,7 @@ export function OrderForm({
         return
       }
 
-      if (isRelocation && !relocationAddress) {
+      if (isRelocation && !isInBuildingMove && !relocationAddress) {
         showAlert('이전할 주소를 검색해주세요', 'warning')
         return
       }
@@ -347,10 +346,6 @@ export function OrderForm({
       showAlert('문서번호를 입력해주세요', 'warning')
       return
     }
-    if (!requestedInstallDate) {
-      alert('설치요청일을 선택해주세요')
-      return
-    }
 
     // 🔥 사전견적이 아닐 때만 items 검증
     if (!isPreliminaryQuote && items.length === 0) {
@@ -358,18 +353,21 @@ export function OrderForm({
       return
     }
 
-    // 오늘 날짜
-    const orderDate = new Date().toISOString().split('T')[0]
-
     // 주소 생성
     let finalAddress = ''
     if (isRelocation) {
-      // 이전설치 있음: 작업장소 + 이전목적지
       const baseFull = baseDetailAddress ? `${baseAddress}, ${baseDetailAddress}` : baseAddress
-      const relocationFull = relocationDetailAddress
-        ? `${relocationAddress}, ${relocationDetailAddress}`
-        : relocationAddress
-      finalAddress = `작업장소: ${baseFull} / 이전목적지: ${relocationFull}`
+      if (isInBuildingMove) {
+        // 건물 내 이동: 같은 주소 + 이동할 층/호실
+        const moveTo = relocationDetailAddress ? relocationDetailAddress : ''
+        finalAddress = `작업장소: ${baseFull} / 건물내이동: ${moveTo || '상세 미입력'}`
+      } else {
+        // 다른 건물로 이전
+        const relocationFull = relocationDetailAddress
+          ? `${relocationAddress}, ${relocationDetailAddress}`
+          : relocationAddress
+        finalAddress = `작업장소: ${baseFull} / 이전목적지: ${relocationFull}`
+      }
     } else {
       // 신규/철거만: 작업장소만
       finalAddress = baseDetailAddress ? `${baseAddress}, ${baseDetailAddress}` : baseAddress
@@ -458,6 +456,25 @@ export function OrderForm({
               </Card>
             ))}
           </div>
+
+          {/* 발주일 (오늘 날짜 기본, 수정 가능) */}
+          <Card>
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-2">
+                <CalendarDays className="h-5 w-5 text-blue-600" />
+                <h3 className="font-bold text-base">발주일</h3>
+              </div>
+              <Input
+                type="date"
+                value={orderDate}
+                onChange={(e) => setOrderDate(e.target.value)}
+                className="max-w-xs"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                오늘 날짜가 기본으로 들어갑니다. 필요하면 수정하세요.
+              </p>
+            </CardContent>
+          </Card>
 
           {/* 사전견적 요청 체크박스 */}
           <Card className="border-blue-300 bg-blue-50/50">
@@ -618,7 +635,7 @@ export function OrderForm({
 
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  희망 설치일 <span className="text-red-500">*</span>
+                  희망 설치일 <span className="text-gray-500 text-xs">(선택)</span>
                 </label>
                 <Input
                   type="date"
@@ -693,27 +710,9 @@ export function OrderForm({
                       </Badge>
                     </div>
 
-                    <div className="mb-4">
-                      <PriceTableSheet
-                        onSelect={(model, size, category) => {
-                          // 품목은 매핑 필요 (벽걸이형 → 벽걸이에어컨)
-                          const categoryMap: Record<string, string> = {
-                            '벽걸이형': '벽걸이에어컨',
-                            '스탠드형': '스탠드에어컨'
-                          }
-                          // 단가표에서 선택한 값으로 자동 입력 (한번에 업데이트!)
-                          handleItemChangeMultiple(item.id!, {
-                            model: model,
-                            size: size,
-                            category: categoryMap[category] || category
-                          })
-                        }}
-                      />
-                    </div>
-
                     <div className="space-y-4">
-                      {/* 작업종류 + 품목 */}
-                      <div className="grid grid-cols-2 gap-3">
+                      {/* 작업종류 + 품목 + 모델명 + 수량 (한 줄) */}
+                      <div className="grid grid-cols-4 gap-3">
                         <div>
                           <label className="block text-sm font-medium mb-2">
                             작업종류 <span className="text-red-500">*</span>
@@ -759,45 +758,19 @@ export function OrderForm({
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
 
-                      {/* 모델명 + 평형 + 수량 */}
-                      <div className="grid grid-cols-3 gap-3">
                         <div>
                           <label className="block text-sm font-medium mb-2">
                             모델명 {isRemovalWork && <span className="text-gray-500 text-xs">(선택)</span>}
                           </label>
                           <Input
-                            placeholder={isRemovalWork ? "미확인" : "AR-123"}
+                            placeholder={isRemovalWork ? "미확인" : "예: 냉난방 40평"}
                             value={item.model}
                             onChange={(e) =>
                               handleItemChange(item.id!, 'model', e.target.value)
                             }
                             className="bg-white"
                           />
-                        </div>
-
-                        <div>
-                          <label className="block text-sm font-medium mb-2">
-                            평형 {isRemovalWork && <span className="text-gray-500 text-xs">(선택)</span>}
-                          </label>
-                          <Select
-                            value={item.size || ''}
-                            onValueChange={(value) =>
-                              handleItemChange(item.id!, 'size', value)
-                            }
-                          >
-                            <SelectTrigger className="bg-white">
-                              <SelectValue placeholder={isRemovalWork ? "미확인" : "선택하세요"} />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {SIZE_OPTIONS.map(size => (
-                                <SelectItem key={size} value={size}>
-                                  {size}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
 
                         <div>
@@ -820,12 +793,12 @@ export function OrderForm({
                       {isRemovalWork ? (
                         <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
                           <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          철거 작업의 경우 모델명과 평형을 모르면 &quot;미확인&quot;으로 선택하세요
+                          철거 작업의 경우 모델명을 모르면 빈칸으로 두세요
                         </p>
                       ) : (
                         <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
                           <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          모델명을 모르는 경우 공란으로 두고, 평형은 반드시 선택해주세요
+                          모델명에 냉난방/냉방 + 평형수를 같이 적어주세요 (예: 냉난방 40평)
                         </p>
                       )}
                     </div>
@@ -858,41 +831,85 @@ export function OrderForm({
                   </p>
                 </div>
 
-                {/* 이전할 주소 검색 */}
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    이전할 주소 <span className="text-red-500">*</span>
-                  </label>
-                  <div className="flex gap-2">
-                    <Input
-                      value={relocationAddress}
-                      placeholder="주소 검색 버튼을 눌러주세요"
-                      readOnly
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      onClick={() => handleSearchAddress('relocation')}
-                      className="gap-2"
-                    >
-                      <MapPin className="h-4 w-4" />
-                      주소 검색
-                    </Button>
+                {/* 건물 내 이동 체크박스 */}
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-blue-200 bg-white">
+                  <input
+                    type="checkbox"
+                    checked={isInBuildingMove}
+                    onChange={(e) => {
+                      setIsInBuildingMove(e.target.checked)
+                      if (e.target.checked) {
+                        // 건물 내 이동이면 주소를 같은 건물로 설정
+                        setRelocationAddress(baseAddress)
+                        setRelocationDetailAddress('')
+                      } else {
+                        // 체크 해제 시 주소 초기화
+                        setRelocationAddress('')
+                        setRelocationDetailAddress('')
+                      }
+                    }}
+                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                  />
+                  <div>
+                    <p className="font-semibold text-sm">같은 건물 내 이동</p>
+                    <p className="text-xs text-gray-500">같은 건물 안에서 다른 층/호실로 옮기는 경우</p>
                   </div>
-                </div>
+                </label>
 
-                {/* 이전할 상세 주소 (선택) */}
-                {relocationAddress && (
+                {/* 건물 내 이동이면 → 상세주소(층/호실)만 입력 */}
+                {isInBuildingMove ? (
                   <div>
                     <label className="block text-sm font-medium mb-2">
-                      상세 주소 (선택)
+                      이동할 층/호실
                     </label>
                     <Input
                       value={relocationDetailAddress}
-                      placeholder="예: 102동 1002호"
+                      placeholder="예: 3층 302호"
                       onChange={(e) => setRelocationDetailAddress(e.target.value)}
                     />
+                    <p className="text-xs text-gray-500 mt-1">
+                      같은 건물 내 어디로 옮기는지 적어주세요
+                    </p>
                   </div>
+                ) : (
+                  <>
+                    {/* 다른 건물로 이동 → 주소 검색 */}
+                    <div>
+                      <label className="block text-sm font-medium mb-2">
+                        이전할 주소 <span className="text-red-500">*</span>
+                      </label>
+                      <div className="flex gap-2">
+                        <Input
+                          value={relocationAddress}
+                          placeholder="주소 검색 버튼을 눌러주세요"
+                          readOnly
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          onClick={() => handleSearchAddress('relocation')}
+                          className="gap-2"
+                        >
+                          <MapPin className="h-4 w-4" />
+                          주소 검색
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* 이전할 상세 주소 (선택) */}
+                    {relocationAddress && (
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          상세 주소 (선택)
+                        </label>
+                        <Input
+                          value={relocationDetailAddress}
+                          placeholder="예: 102동 1002호"
+                          onChange={(e) => setRelocationDetailAddress(e.target.value)}
+                        />
+                      </div>
+                    )}
+                  </>
                 )}
 
                 <p className="text-xs text-blue-600">
@@ -932,11 +949,19 @@ export function OrderForm({
                 />
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  설치요청일
-                </label>
-                <p className="font-semibold text-sm">{requestedInstallDate ? requestedInstallDate.replace(/-/g, '.') : '-'}</p>
+              <div className="grid grid-cols-2 gap-x-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    발주일
+                  </label>
+                  <p className="font-semibold text-sm">{orderDate ? orderDate.replace(/-/g, '.') : '-'}</p>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    설치요청일
+                  </label>
+                  <p className="font-semibold text-sm">{requestedInstallDate ? requestedInstallDate.replace(/-/g, '.') : '-'}</p>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -1044,7 +1069,6 @@ export function OrderForm({
                         </p>
                         <p className="text-xs text-gray-600">
                           {item.model && `${item.model} · `}
-                          {item.size && `${item.size} · `}
                           {item.quantity}대
                         </p>
                       </div>

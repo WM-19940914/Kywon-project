@@ -33,6 +33,7 @@ interface QuoteLineItem {
   product: string    // 품목
   model: string      // 모델명
   quantity: number   // 수량
+  unit: string       // 단위 (대, m, 식, EA 등)
   price: number      // 단가
   amount: number     // 금액
   notes: string      // 비고
@@ -47,7 +48,9 @@ export function QuoteCreateDialog({
   const [equipmentItems, setEquipmentItems] = useState<QuoteLineItem[]>([])
   const [installationItems, setInstallationItems] = useState<QuoteLineItem[]>([])
   const [installRounding, setInstallRounding] = useState(0) // 단위절사 (설치비)
-  const [corporateProfit, setCorporateProfit] = useState(0) // 기업이윤
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [corporateProfit, setCorporateProfit] = useState(0) // 기업이윤 (추후 재구축 예정)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profitGuideMessage, setProfitGuideMessage] = useState('') // 기업이윤 자동계산 안내문구
   const [saveSuccess, setSaveSuccess] = useState(false) // 저장 성공 메시지
 
@@ -56,6 +59,7 @@ export function QuoteCreateDialog({
     product: '',
     model: '',
     quantity: 0,
+    unit: '',
     price: 0,
     amount: 0,
     notes: ''
@@ -87,6 +91,7 @@ export function QuoteCreateDialog({
               product: product || item.itemName,  // 분리 실패 시 전체 사용
               model: model || '',
               quantity: item.quantity,
+              unit: item.unit || '',
               price: item.unitPrice,
               amount: item.totalPrice,
               notes: item.description || ''
@@ -94,17 +99,24 @@ export function QuoteCreateDialog({
           })
 
         // QuoteItem → QuoteLineItem 변환 (설치비)
+        // 규격이 "품목|||규격" 형태로 저장되어 있으면 분리
         const loadedInstallation: QuoteLineItem[] = quote.items
           .filter(item => item.category === 'installation')
-          .map(item => ({
-            id: `${Date.now()}-${Math.random()}`,
-            product: item.itemName,
-            model: '',
-            quantity: item.quantity,
-            price: item.unitPrice,
-            amount: item.totalPrice,
-            notes: item.description || ''
-          }))
+          .map(item => {
+            const hasModel = item.itemName.includes('|||')
+            const product = hasModel ? item.itemName.split('|||')[0] : item.itemName
+            const model = hasModel ? item.itemName.split('|||')[1] : ''
+            return {
+              id: `${Date.now()}-${Math.random()}`,
+              product,
+              model,
+              quantity: item.quantity,
+              unit: item.unit || '',
+              price: item.unitPrice,
+              amount: item.totalPrice,
+              notes: item.description || ''
+            }
+          })
 
         // 최소 3개 장비, 6개 설치비 행 유지
         const equipmentWithEmpty = [
@@ -186,6 +198,7 @@ export function QuoteCreateDialog({
           product,
           model,
           quantity: 1,
+          unit: '대',
           price,
           amount: price,
         }
@@ -196,6 +209,7 @@ export function QuoteCreateDialog({
           product,
           model,
           quantity: 1,
+          unit: '대',
           price,
           amount: price,
           notes: ''
@@ -226,15 +240,17 @@ export function QuoteCreateDialog({
         itemName: `${item.product} ${item.model}`.trim(), // "벽걸이형 냉난방 16평 AR-123"
         category: 'equipment' as const,
         quantity: item.quantity,
+        unit: item.unit || undefined,
         unitPrice: item.price,
         totalPrice: item.amount,
         description: item.notes || undefined  // 비고가 있으면 추가
       })),
-      // 설치비 항목 변환 (품목명만 사용)
+      // 설치비 항목 변환 (품목명 + 규격을 함께 저장)
       ...filledInstallation.map(item => ({
-        itemName: item.product,  // "기본설치비", "배관추가" 등
+        itemName: item.model ? `${item.product}|||${item.model}` : item.product,  // 규격이 있으면 구분자로 합쳐서 저장
         category: 'installation' as const,
         quantity: item.quantity,
+        unit: item.unit || undefined,
         unitPrice: item.price,
         totalPrice: item.amount,
         description: item.notes || undefined
@@ -242,14 +258,14 @@ export function QuoteCreateDialog({
     ]
 
     // 3. 최종 견적 금액 계산
-    const supplyAmount = total() - installRounding + corporateProfit  // 공급가액 (설치비절사 + 기업이윤 반영)
+    const supplyAmount = total() - installRounding  // 공급가액 (설치비절사 반영)
     const vatAmount = Math.floor(supplyAmount * 0.1)  // VAT 10%
     const finalAmount = supplyAmount + vatAmount      // 최종 견적 (공급가액 + VAT)
 
     // 4. CustomerQuote 객체 생성 (notes에 복원용 데이터 포함)
     const noteParts = [`공급가액: ${supplyAmount.toLocaleString()}원`, `VAT: ${vatAmount.toLocaleString()}원`]
     if (installRounding) noteParts.push(`설치비절사: ${installRounding.toLocaleString()}원`)
-    if (corporateProfit) noteParts.push(`기업이윤: ${corporateProfit.toLocaleString()}원`)
+    // 기업이윤 기능 임시 비활성화
 
     const customerQuote: CustomerQuote = {
       items: quoteItems,
@@ -267,6 +283,72 @@ export function QuoteCreateDialog({
     setSaveSuccess(true)
 
     // 💡 견적서 작성 모달은 닫지 않고 계속 열어둠 (계속 수정 가능)
+  }
+
+  /**
+   * 엑셀 붙여넣기 처리
+   *
+   * 엑셀에서 여러 셀을 복사하면 클립보드에 이렇게 저장됨:
+   *   "벽걸이 설치\t\t1\t50000\n배관 연장\t\t2\t30000"
+   *   → \t = 탭(셀 구분), \n = 줄바꿈(행 구분)
+   *
+   * 이걸 파싱해서 각 행에 자동으로 나눠서 넣어줌
+   */
+  const handlePaste = (
+    e: React.ClipboardEvent<HTMLInputElement>,
+    index: number,
+    fieldIndex: number, // 0=품목, 1=모델명, 2=수량, 3=단위, 4=단가, 5=비고
+    items: QuoteLineItem[],
+    setItems: React.Dispatch<React.SetStateAction<QuoteLineItem[]>>
+  ) => {
+    const pasteText = e.clipboardData.getData('text')
+
+    // 줄바꿈(\n) 또는 탭(\t)이 있으면 → 엑셀에서 복사한 것
+    const rows = pasteText.split(/\r?\n/).filter(row => row.trim())
+    const hasTab = pasteText.includes('\t')
+    if (rows.length <= 1 && !hasTab) return // 단순 텍스트면 기본 붙여넣기 동작 사용
+
+    // 여러 줄이면 기본 동작 막고 직접 처리
+    e.preventDefault()
+
+    const fieldMap: (keyof QuoteLineItem)[] = ['product', 'model', 'quantity', 'unit', 'price', 'notes']
+    const newItems = [...items]
+
+    rows.forEach((row, rowOffset) => {
+      const cells = row.split('\t') // 탭으로 셀 구분
+      const targetIndex = index + rowOffset
+
+      // 행이 부족하면 빈 행 추가
+      while (newItems.length <= targetIndex) {
+        newItems.push(createEmptyItem())
+      }
+
+      // 현재 필드 위치부터 셀 데이터를 순서대로 채움
+      cells.forEach((cellValue, cellOffset) => {
+        const targetField = fieldIndex + cellOffset
+        if (targetField >= fieldMap.length) return // 필드 범위 초과 시 무시
+
+        const field = fieldMap[targetField]
+        const trimmed = cellValue.trim()
+
+        if (field === 'quantity') {
+          const num = parseInt(trimmed.replace(/,/g, '')) || 0
+          newItems[targetIndex] = { ...newItems[targetIndex], quantity: num }
+        } else if (field === 'price') {
+          const num = parseInt(trimmed.replace(/,/g, '')) || 0
+          newItems[targetIndex] = { ...newItems[targetIndex], price: num }
+        } else if (field === 'unit') {
+          newItems[targetIndex] = { ...newItems[targetIndex], unit: trimmed }
+        } else {
+          newItems[targetIndex] = { ...newItems[targetIndex], [field]: trimmed }
+        }
+      })
+
+      // 수량 × 단가 = 금액 자동 계산
+      newItems[targetIndex].amount = newItems[targetIndex].quantity * newItems[targetIndex].price
+    })
+
+    setItems(newItems)
   }
 
   /** 테이블 행 렌더링 */
@@ -288,6 +370,7 @@ export function QuoteCreateDialog({
           placeholder="품목"
           value={item.product}
           onChange={(e) => updateItem(items, setItems, index, 'product', e.target.value)}
+          onPaste={(e) => handlePaste(e, index, 0, items, setItems)}
         />
       </td>
       {/* 모델명 */}
@@ -297,6 +380,7 @@ export function QuoteCreateDialog({
           placeholder="모델명"
           value={item.model}
           onChange={(e) => updateItem(items, setItems, index, 'model', e.target.value)}
+          onPaste={(e) => handlePaste(e, index, 1, items, setItems)}
         />
       </td>
       {/* 수량 */}
@@ -307,6 +391,17 @@ export function QuoteCreateDialog({
           className="w-full px-2 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
           value={item.quantity || ''}
           onChange={(e) => updateItem(items, setItems, index, 'quantity', e.target.value)}
+          onPaste={(e) => handlePaste(e, index, 2, items, setItems)}
+        />
+      </td>
+      {/* 단위 */}
+      <td className="py-1.5 px-1 w-14">
+        <input
+          className="w-full px-1.5 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+          placeholder="단위"
+          value={item.unit}
+          onChange={(e) => updateItem(items, setItems, index, 'unit', e.target.value)}
+          onPaste={(e) => handlePaste(e, index, 3, items, setItems)}
         />
       </td>
       {/* 단가 (쉼표 포맷팅) */}
@@ -322,6 +417,7 @@ export function QuoteCreateDialog({
               updateItem(items, setItems, index, 'price', numericValue)
             }
           }}
+          onPaste={(e) => handlePaste(e, index, 4, items, setItems)}
         />
       </td>
       {/* 금액 (자동계산, 쉼표 포맷팅) */}
@@ -335,6 +431,7 @@ export function QuoteCreateDialog({
           placeholder="비고"
           value={item.notes}
           onChange={(e) => updateItem(items, setItems, index, 'notes', e.target.value)}
+          onPaste={(e) => handlePaste(e, index, 5, items, setItems)}
         />
       </td>
       {/* 삭제 */}
@@ -393,6 +490,7 @@ export function QuoteCreateDialog({
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-left">품목</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-left">모델명</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-center w-16">수량</th>
+              <th className="py-2 px-2 text-xs font-medium text-gray-500 text-center w-14">단위</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">단가</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">금액</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-left w-32">비고</th>
@@ -531,73 +629,11 @@ export function QuoteCreateDialog({
                 </span>
               </div>
 
-              {/* 기업이윤 (입력 가능, + 기호 + 자동계산 버튼) */}
-              <div className="flex justify-between items-center py-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-gray-600">기업이윤</span>
-                  <button
-                    type="button"
-                    className="text-[10px] px-1.5 py-0.5 rounded border border-blue-200 bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                    onClick={() => {
-                      // 1. 설치비 소계의 3%
-                      const installSubtotal = subtotal(installationItems) - installRounding
-                      const rawProfit = Math.floor(installSubtotal * 0.03)
-                      // 2. 총합계 + 3% 기업이윤 = 공급가액(절사 전)
-                      const totalSum = total() - installRounding
-                      const rawSupply = totalSum + rawProfit
-                      // 3. 공급가액 백원단위 절사 → 차액만큼 기업이윤에서 차감
-                      const remainder = rawSupply % 1000
-                      const adjustedProfit = rawProfit - remainder
-                      setCorporateProfit(adjustedProfit)
-                      setProfitGuideMessage(
-                        `설치비 소계 ${installSubtotal.toLocaleString('ko-KR')}원의 3% = ${rawProfit.toLocaleString('ko-KR')}원에서, 공급가액 백원단위 절사 (${remainder.toLocaleString('ko-KR')}원)를 위해 ${adjustedProfit.toLocaleString('ko-KR')}원이 적용됩니다.`
-                      )
-                    }}
-                  >
-                    자동계산 (3%)
-                  </button>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-blue-600 font-semibold">+</span>
-                  <input
-                    type="text"
-                    className="w-32 px-2 py-1 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100 text-blue-600 font-semibold"
-                    placeholder="0"
-                    value={corporateProfit ? corporateProfit.toLocaleString('ko-KR') : ''}
-                    onChange={(e) => {
-                      const numericValue = e.target.value.replace(/,/g, '')
-                      if (!isNaN(Number(numericValue))) {
-                        setCorporateProfit(Number(numericValue))
-                        setProfitGuideMessage('')
-                      }
-                    }}
-                  />
-                  <span className="text-sm text-gray-400">원</span>
-                </div>
-              </div>
-
-              {/* 자동계산 안내 문구 */}
-              {profitGuideMessage && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-blue-50 border border-blue-200 rounded-md">
-                  <svg className="h-4 w-4 text-blue-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span className="text-xs text-blue-700">{profitGuideMessage}</span>
-                  <button
-                    type="button"
-                    className="ml-auto text-[10px] text-blue-500 hover:text-blue-700"
-                    onClick={() => setProfitGuideMessage('')}
-                  >
-                    닫기
-                  </button>
-                </div>
-              )}
-
               {/* 공급가액 */}
               <div className="flex justify-between items-center py-1.5 bg-gray-50 -mx-4 px-4">
                 <span className="text-sm font-semibold text-gray-700">공급가액</span>
                 <span className="text-base font-bold text-gray-900">
-                  {(total() - installRounding + corporateProfit).toLocaleString('ko-KR')}원
+                  {(total() - installRounding).toLocaleString('ko-KR')}원
                 </span>
               </div>
 
@@ -607,7 +643,7 @@ export function QuoteCreateDialog({
               <div className="flex justify-between items-center py-1.5">
                 <span className="text-sm text-gray-600">VAT (10%)</span>
                 <span className="text-base font-semibold text-gray-700">
-                  {Math.floor((total() - installRounding + corporateProfit) * 0.1).toLocaleString('ko-KR')}원
+                  {Math.floor((total() - installRounding) * 0.1).toLocaleString('ko-KR')}원
                 </span>
               </div>
 
@@ -615,7 +651,7 @@ export function QuoteCreateDialog({
               <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-blue-500 bg-blue-50 -mx-4 px-4 py-3 rounded-b-lg">
                 <span className="text-base font-bold text-blue-900">최종 견적</span>
                 <span className="text-2xl font-bold text-blue-600">
-                  {Math.floor((total() - installRounding + corporateProfit) * 1.1).toLocaleString('ko-KR')}원
+                  {Math.floor((total() - installRounding) * 1.1).toLocaleString('ko-KR')}원
                 </span>
               </div>
             </div>

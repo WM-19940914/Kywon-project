@@ -11,7 +11,7 @@
  */
 export interface OrderItem {
   id?: string                  // 항목 고유번호 (수정 시 필요)
-  workType: '신규설치' | '이전설치' | '철거보관' | '철거폐기'  // 작업 종류
+  workType: '신규설치' | '이전설치' | '철거보관' | '철거폐기' | '재고설치' | '반납폐기'  // 작업 종류
   category: string             // 품목 (시스템에어컨, 벽걸이에어컨 등)
   model: string                // 모델명 (예: AR-123)
   size: string                 // 평형 (예: 18평)
@@ -19,24 +19,27 @@ export interface OrderItem {
 }
 
 /**
- * 배송상태 타입 (Order 레벨 — 2단계)
+ * 배송상태 타입 (Order 레벨 — 3단계, 수동 전환)
  * pending: 발주대기 (아직 삼성에 발주 안 넣음)
- * ordered: 발주완료 (삼성에 발주 넣음)
+ * ordered: 진행중 (삼성에 발주 넣음)
+ * delivered: 배송완료 (모든 구성품 입고 확인)
  *
  * 구성품별 세부 배송상태는 ItemDeliveryStatus로 별도 관리
  */
-export type DeliveryStatus = 'pending' | 'ordered'
+export type DeliveryStatus = 'pending' | 'ordered' | 'delivered'
 
 /** 배송상태 한글 표시용 (Order 레벨) */
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
   'pending': '발주대기',
-  'ordered': '진행중'
+  'ordered': '진행중',
+  'delivered': '배송완료'
 }
 
 /** 배송상태별 색상 (Order 레벨 배지용) */
 export const DELIVERY_STATUS_COLORS: Record<DeliveryStatus, string> = {
   'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'ordered': 'bg-blue-50 text-blue-700 border-blue-200'
+  'ordered': 'bg-blue-50 text-blue-700 border-blue-200',
+  'delivered': 'bg-green-50 text-green-700 border-green-200'
 }
 
 /**
@@ -184,17 +187,17 @@ export const WORK_TYPE_COLORS: Record<string, string> = {
   '이전설치': 'bg-purple-100 text-purple-800 border-purple-200',
   '철거보관': 'bg-amber-100 text-amber-800 border-amber-200',
   '철거폐기': 'bg-red-100 text-red-800 border-red-200',
+  '재고설치': 'bg-teal-100 text-teal-800 border-teal-200',
+  '반납폐기': 'bg-rose-100 text-rose-800 border-rose-200',
 }
 
 /**
  * 품목 목록 (드롭다운용)
  */
 export const CATEGORY_OPTIONS = [
-  '시스템에어컨',
-  '벽걸이에어컨',
   '스탠드에어컨',
-  '천장형에어컨',
-  '기타'
+  '벽걸이에어컨',
+  '단가계약 외'
 ] as const
 
 /**
@@ -203,6 +206,7 @@ export const CATEGORY_OPTIONS = [
 export const WORK_TYPE_OPTIONS = [
   '신규설치',
   '이전설치',
+  '재고설치',
   '철거보관',
   '철거폐기'
 ] as const
@@ -296,6 +300,7 @@ export interface QuoteItem {
   itemName: string                      // 항목명 (예: "벽걸이형 16평 1대", "기본설치비")
   category: 'equipment' | 'installation' // 장비 or 설치비
   quantity: number                      // 수량
+  unit?: string                         // 단위 (예: 대, m, 식, EA 등 — 직접 입력)
   unitPrice: number                     // 판매 단가 (소비자에게 보여줄 가격)
   totalPrice: number                    // 판매 금액 (수량 × 단가)
   description?: string                  // 추가 설명
@@ -345,9 +350,9 @@ export type S1SettlementStatus = 'unsettled' | 'in-progress' | 'settled'
 
 /** 에스원 정산 상태 한글 표시용 */
 export const S1_SETTLEMENT_STATUS_LABELS: Record<S1SettlementStatus, string> = {
-  'unsettled': '미정산',
-  'in-progress': '진행중',
-  'settled': '완료'
+  'unsettled': '설치완료(미정산)',
+  'in-progress': '금월 정산 진행중',
+  'settled': '정산 완료'
 }
 
 /** 에스원 정산 상태 색상 (뱃지용) */

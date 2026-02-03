@@ -2,9 +2,9 @@
  * 배송관리 페이지 (멜레아 전용)
  *
  * 삼성전자에 발주한 장비의 배송 현황을 관리합니다.
- * - 상태 탭 필터: 발주대기 / 진행중 / 배송완료 (3단계)
+ * - 상태 탭 필터: 발주대기 / 진행중 / 배송완료 (3단계, 수동 전환)
  * - 테이블 리스트: 현장별 행 + 아코디언 구성품 상세
- * - 배송완료: 모든 구성품의 배송확정일이 오늘 이전이면 자동 전환 (읽기전용)
+ * - 각 탭에서 앞/뒤 상태로 버튼 클릭으로 이동
  */
 
 'use client'
@@ -22,25 +22,6 @@ import { Badge } from '@/components/ui/badge'
 import { Truck, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAlert } from '@/components/ui/custom-alert'
-
-/** 배송관리 탭 필터 타입 */
-type DeliveryTabFilter = DeliveryStatus | 'delivered'
-
-/**
- * 배송완료 여부 판정
- *
- * 조건: 유효한 구성품(이름 또는 모델명이 있는 행)이 1개 이상 있고,
- *       모든 유효 구성품의 배송확정일이 오늘 이하(과거 또는 오늘)일 때 true
- */
-function isAllItemsDelivered(order: Order): boolean {
-  const items = (order.equipmentItems || []).filter(item =>
-    (item.componentName && item.componentName.trim()) ||
-    (item.componentModel && item.componentModel.trim())
-  )
-  if (items.length === 0) return false
-  const today = new Date().toISOString().slice(0, 10)
-  return items.every(item => item.confirmedDeliveryDate && item.confirmedDeliveryDate <= today)
-}
 
 export default function DeliveryPage() {
   const { showAlert } = useAlert()
@@ -62,9 +43,9 @@ export default function DeliveryPage() {
   const [searchTerm, setSearchTerm] = useState('')
 
   // 상태 탭 필터 (발주대기 기본 선택)
-  const [statusFilter, setStatusFilter] = useState<DeliveryTabFilter>('pending')
+  const [statusFilter, setStatusFilter] = useState<DeliveryStatus>('pending')
 
-  // 배송완료 탭 년/월 필터 (null이면 전체 표시)
+  // 배송완료 탭 년/월 필터
   const now = new Date()
   const [filterYear, setFilterYear] = useState<number>(now.getFullYear())
   const [filterMonth, setFilterMonth] = useState<number>(now.getMonth() + 1)
@@ -82,20 +63,24 @@ export default function DeliveryPage() {
    * 배송 대상 발주만 필터링 (deliveryStatus가 있는 발주)
    */
   const deliveryOrders = useMemo(() => {
-    return orders.filter(order => order.deliveryStatus)
+    return orders.filter(order => {
+      if (!order.deliveryStatus) return false
+      // 배송관리는 신규설치 건만 표시 (장비 발주가 필요한 작업만)
+      const hasNewInstall = order.items.some(item => item.workType === '신규설치')
+      return hasNewInstall
+    })
   }, [orders])
 
   /**
    * 상태별 건수 계산 (탭 표시용)
-   * 배송완료는 구성품 배송확정일 기반으로 자동 판정
+   * deliveryStatus 값 기준으로 단순 카운트 (자동 로직 없음)
    */
   const statusCounts = useMemo(() => {
     const counts = { pending: 0, ordered: 0, delivered: 0 }
     deliveryOrders.forEach(order => {
-      if (isAllItemsDelivered(order)) {
-        counts.delivered++
-      } else if (order.deliveryStatus) {
-        counts[order.deliveryStatus]++
+      const status = order.deliveryStatus as DeliveryStatus
+      if (status && counts[status] !== undefined) {
+        counts[status]++
       }
     })
     return counts
@@ -103,6 +88,7 @@ export default function DeliveryPage() {
 
   /**
    * 검색 + 상태탭 필터 적용
+   * deliveryStatus 값으로만 필터 (자동 판정 없음)
    */
   const filteredOrders = useMemo(() => {
     return deliveryOrders.filter(order => {
@@ -118,12 +104,9 @@ export default function DeliveryPage() {
         if (!matchesSearch) return false
       }
 
-      const delivered = isAllItemsDelivered(order)
-
-      // 배송완료 탭: 자동 판정된 건만 + 년/월 필터
+      // 배송완료 탭: 년/월 필터
       if (statusFilter === 'delivered') {
-        if (!delivered) return false
-        // 년/월 필터가 활성화된 경우: 구성품 중 해당 월에 배송확정된 건이 있으면 표시
+        if (order.deliveryStatus !== 'delivered') return false
         if (monthFilterEnabled) {
           const prefix = `${filterYear}-${String(filterMonth).padStart(2, '0')}`
           const hasMatchingDate = (order.equipmentItems || []).some(
@@ -134,11 +117,8 @@ export default function DeliveryPage() {
         return true
       }
 
-      // 발주대기/진행중 탭: 배송완료가 아닌 건 중 deliveryStatus 일치
-      if (delivered) return false
-      if (order.deliveryStatus !== statusFilter) return false
-
-      return true
+      // 발주대기/진행중 탭: deliveryStatus 값 일치
+      return order.deliveryStatus === statusFilter
     })
   }, [deliveryOrders, searchTerm, statusFilter, monthFilterEnabled, filterYear, filterMonth])
 
@@ -152,7 +132,7 @@ export default function DeliveryPage() {
 
   /**
    * 배송상태 수동 전환 핸들러
-   * 발주대기 ↔ 진행중 양방향
+   * 발주대기 ↔ 진행중 ↔ 배송완료 양방향 이동
    */
   const handleChangeDeliveryStatus = async (orderId: string, newStatus: DeliveryStatus) => {
     await updateDeliveryStatus(orderId, newStatus)
@@ -192,37 +172,8 @@ export default function DeliveryPage() {
     showAlert('배송 정보가 저장되었습니다!', 'success')
   }
 
-  /**
-   * 강제 배송완료 핸들러
-   * 해당 발주의 모든 유효 구성품 배송확정일을 오늘로 일괄 설정
-   */
-  const handleForceDelivered = async (orderId: string) => {
-    const today = new Date().toISOString().slice(0, 10)
-    const order = orders.find(o => o.id === orderId)
-    if (!order) return
-
-    // 유효 구성품(이름 또는 모델명이 있는 행)의 배송확정일을 오늘로 설정
-    const updatedItems = (order.equipmentItems || []).map(item => {
-      const hasContent = (item.componentName && item.componentName.trim()) ||
-        (item.componentModel && item.componentModel.trim())
-      if (!hasContent) return item
-      return { ...item, confirmedDeliveryDate: today }
-    })
-
-    // DB 저장
-    await saveEquipmentItems(orderId, updatedItems)
-
-    // 로컬 state 업데이트 → 자동으로 배송완료 탭으로 이동됨
-    setOrders(prev => prev.map(o => {
-      if (o.id !== orderId) return o
-      return { ...o, equipmentItems: updatedItems }
-    }))
-
-    showAlert('강제 배송완료 처리되었습니다.', 'success')
-  }
-
   /** 상태 탭 정의 (3단계: 발주대기/진행중/배송완료) */
-  const statusTabs: { label: string; value: DeliveryTabFilter; count: number }[] = [
+  const statusTabs: { label: string; value: DeliveryStatus; count: number }[] = [
     { label: '발주대기', value: 'pending', count: statusCounts.pending },
     { label: '진행중', value: 'ordered', count: statusCounts.ordered },
     { label: '배송완료', value: 'delivered', count: statusCounts.delivered },
@@ -338,7 +289,7 @@ export default function DeliveryPage() {
       <p className="text-sm text-muted-foreground mb-3">
         {statusFilter === 'pending' && <span className="inline-flex items-center gap-3"><span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span><span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span></span><span className="text-muted-foreground">삼성전자에 발주를 신속히 진행하고 진행중으로 변경해주세요.</span></span>}
         {statusFilter === 'ordered' && '삼성전자에 발주 완료된 장비입니다. 구성품별 배송현황을 확인하세요.'}
-        {statusFilter === 'delivered' && '모든 구성품의 배송이 확정된 건입니다. 배송확정일 기준으로 자동 분류됩니다.'}
+        {statusFilter === 'delivered' && '배송완료 처리된 건입니다.'}
       </p>
 
       {/* 메인 테이블 */}
@@ -354,8 +305,8 @@ export default function DeliveryPage() {
             return { ...order, equipmentItems: items }
           }))
         }}
-        readOnly={statusFilter === 'delivered'}
-        onForceDelivered={handleForceDelivered}
+        readOnly={false}
+        currentTab={statusFilter}
       />
 
       {/* 배송정보 입력 모달 */}

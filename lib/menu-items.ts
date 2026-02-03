@@ -94,14 +94,14 @@ export const menuItems: MenuGroup[] = [
         icon: CalendarCheck,
       },
       {
-        title: '배송 관리',
-        url: '/mellea/delivery',
-        icon: Truck,
-      },
-      {
         title: '에스원 정산관리',
         url: '/mellea/s1-settlement',
         icon: Receipt,
+      },
+      {
+        title: '배송 관리',
+        url: '/mellea/delivery',
+        icon: Truck,
       },
       {
         title: '설치비 관리',

@@ -34,18 +34,11 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
   FileText,
   MapPin,
-  MoreVertical,
   Package,
   Pencil,
   Phone,
@@ -165,7 +158,12 @@ function normalizeDate(raw: string): string {
  * - Ctrl+V 붙여넣기 시 즉시 정규화
  * - 달력 아이콘 클릭하면 날짜 선택기 열림
  */
-function DateInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function DateInput({ value, onChange, onMultiPaste }: {
+  value: string
+  onChange: (val: string) => void
+  /** 엑셀 멀티셀 붙여넣기 콜백 (탭/줄바꿈 포함 시 호출) */
+  onMultiPaste?: (e: React.ClipboardEvent) => void
+}) {
   const dateRef = useRef<HTMLInputElement>(null)
 
   return (
@@ -188,8 +186,15 @@ function DateInput({ value, onChange }: { value: string; onChange: (val: string)
           }
         }}
         onPaste={(e) => {
+          // 멀티셀(탭/줄바꿈 포함) → 상위 핸들러에 위임
+          const raw = e.clipboardData.getData('text')
+          if (onMultiPaste && (raw.includes('\t') || raw.includes('\n'))) {
+            onMultiPaste(e)
+            return
+          }
+          // 단일 셀: 기존 정규화 로직
           e.preventDefault()
-          const pasted = e.clipboardData.getData('text').trim()
+          const pasted = raw.trim()
           onChange(normalizeDate(pasted))
         }}
         placeholder="YYYY-MM-DD"
@@ -449,10 +454,10 @@ interface DeliveryTableProps {
   onChangeStatus?: (orderId: string, newStatus: DeliveryStatus) => void
   /** 인라인 편집 저장 콜백 */
   onSaveItems?: (orderId: string, items: EquipmentItem[]) => void
-  /** 읽기전용 모드 (배송완료 탭에서 사용) */
+  /** 읽기전용 모드 */
   readOnly?: boolean
-  /** 강제 배송완료 콜백 (진행중 탭에서 ⋮ 메뉴로 호출) */
-  onForceDelivered?: (orderId: string) => void
+  /** 현재 선택된 탭 */
+  currentTab?: DeliveryStatus
 }
 
 /** 상태별 행 스타일 */
@@ -465,7 +470,16 @@ function getRowStyle(): string {
  * @param order - 발주 정보
  * @param editingItems - 아코디언에서 편집 중인 구성품 (있으면 이걸로 판정)
  */
-function StatusBadge({ order, editingItems }: { order: Order; editingItems?: EquipmentItem[] }) {
+function StatusBadge({ order, editingItems, currentTab }: { order: Order; editingItems?: EquipmentItem[]; currentTab?: string }) {
+  // 배송완료 탭이면 무조건 "배송완료" 표시
+  if (currentTab === 'delivered') {
+    return (
+      <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">
+        배송완료
+      </Badge>
+    )
+  }
+
   const status = order.deliveryStatus || 'pending'
 
   // 발주완료 탭: 진행중/완료 자동 판정
@@ -629,6 +643,23 @@ function DeliverySummaryDisplay({ equipmentItems }: { equipmentItems?: Equipment
 }
 
 /**
+ * 엑셀 붙여넣기 시 열 순서 매핑
+ *
+ * 0=매입처, 1=주문일, 2=주문번호, 3=배송요청일, 4=배송예정일,
+ * 5=배송확정일, 6=모델명, 7=구성품, 8=수량
+ */
+const PASTE_FIELD_MAP: (keyof EquipmentItem)[] = [
+  'supplier', 'orderDate', 'orderNumber',
+  'requestedDeliveryDate', 'scheduledDeliveryDate', 'confirmedDeliveryDate',
+  'componentModel', 'componentName', 'quantity',
+]
+
+/** 날짜 필드 목록 (붙여넣을 때 자동 정규화 적용) */
+const DATE_FIELDS = new Set<string>([
+  'orderDate', 'requestedDeliveryDate', 'scheduledDeliveryDate', 'confirmedDeliveryDate',
+])
+
+/**
  * 빈 구성품 행 1개 생성
  */
 function createEmptyItem(): EquipmentItem {
@@ -649,7 +680,7 @@ function createDefaultRows(): EquipmentItem[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, readOnly, onForceDelivered }: DeliveryTableProps) {
+export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, readOnly, currentTab }: DeliveryTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   /** 주문별 편집 중인 구성품 데이터 (orderId → EquipmentItem[]) */
@@ -660,14 +691,12 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
   /** pickerTarget.context: 'bulk' = 전체 적용(기본), 'individual' = 해당 행만 변경 */
   const [pickerTarget, setPickerTarget] = useState<{ orderId: string; itemIdx: number; context: 'bulk' | 'individual' } | null>(null)
 
-  /** 발주완료 확인 다이얼로그 대상 (orderId + 현장명) */
-  const [confirmTarget, setConfirmTarget] = useState<{ orderId: string; businessName: string } | null>(null)
-
-  /** 되돌리기 확인 다이얼로그 대상 (진행중→발주대기) */
-  const [revertTarget, setRevertTarget] = useState<{ orderId: string; businessName: string } | null>(null)
-
-  /** 강제 배송완료 확인 다이얼로그 대상 */
-  const [forceDeliveredTarget, setForceDeliveredTarget] = useState<{ orderId: string; businessName: string } | null>(null)
+  /** 상태 전환 확인 다이얼로그 대상 (orderId + 현장명 + 이동할 상태) */
+  const [statusChangeTarget, setStatusChangeTarget] = useState<{
+    orderId: string
+    businessName: string
+    newStatus: DeliveryStatus
+  } | null>(null)
 
   /** 단가표 Sheet 열림/닫힘 상태 */
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
@@ -729,6 +758,74 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
       [orderId]: [...(prev[orderId] || []), ...Array.from({ length: count }, () => createEmptyItem())]
     }))
   }, [])
+
+  const handleDeliveryPaste = useCallback((
+    e: React.ClipboardEvent,
+    orderId: string,
+    startRow: number,
+    startCol: number,
+  ) => {
+    // 클립보드에 탭이나 줄바꿈이 있을 때만 가로채기 (단일 셀이면 기본 동작)
+    const raw = e.clipboardData.getData('text')
+    if (!raw.includes('\t') && !raw.includes('\n')) return
+
+    e.preventDefault()
+
+    // 행(\n)과 열(\t)로 분리
+    const rows = raw.split(/\r?\n/).filter(line => line.trim() !== '')
+
+    setEditingItems(prev => {
+      const items = [...(prev[orderId] || [])]
+
+      // 행이 부족하면 자동 추가
+      const needed = startRow + rows.length
+      while (items.length < needed) {
+        items.push(createEmptyItem())
+      }
+
+      // 각 행/열에 값 채우기
+      for (let r = 0; r < rows.length; r++) {
+        const cols = rows[r].split('\t')
+        const rowIdx = startRow + r
+
+        for (let c = 0; c < cols.length; c++) {
+          const colIdx = startCol + c
+          if (colIdx >= PASTE_FIELD_MAP.length) break
+
+          const field = PASTE_FIELD_MAP[colIdx]
+          let val: string | number = cols[c].trim()
+
+          // 날짜 필드면 자동 정규화
+          if (DATE_FIELDS.has(field) && val) {
+            val = normalizeDate(val)
+          }
+
+          // 수량 필드면 숫자로 변환
+          if (field === 'quantity') {
+            const num = parseInt(val.toString().replace(/\D/g, ''))
+            val = isNaN(num) ? 0 : num
+          }
+
+          items[rowIdx] = { ...items[rowIdx], [field]: val }
+        }
+      }
+
+      // 자동 저장
+      if (onSaveItems) {
+        const validItems = items.filter(item =>
+          (item.componentName && item.componentName.trim() !== '') ||
+          (item.componentModel && item.componentModel.trim() !== '')
+        )
+        const withStatus = validItems.map(item => ({
+          ...item,
+          deliveryStatus: computeItemDeliveryStatus(item)
+        }))
+        onSaveItems(orderId, withStatus)
+      }
+
+      return { ...prev, [orderId]: items }
+    })
+  }, [onSaveItems])
 
   /** 행 삭제 + 자동 저장 */
   const handleRemoveRow = useCallback((orderId: string, index: number) => {
@@ -846,7 +943,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     </td>
                     {/* 상태 뱃지 (단일 표시) — 편집 중인 구성품 반영 */}
                     <td className="p-3">
-                      <StatusBadge order={order} editingItems={editingItems[order.id]} />
+                      <StatusBadge order={order} editingItems={editingItems[order.id]} currentTab={currentTab} />
                     </td>
                     <td className="p-3">
                       <p className="text-sm">{formatShortDate(order.orderDate)}</p>
@@ -865,9 +962,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         </Button>
                       )}
                     </td>
-                    {/* 배송현황 요약: 발주완료 탭은 입고 진행률, 발주대기 탭은 기존 요약 */}
+                    {/* 배송현황 요약 */}
                     <td className="p-3">
-                      {status === 'ordered' ? (
+                      {currentTab === 'delivered' ? (
+                        <span className="text-xs font-medium text-green-700">전체 배송완료</span>
+                      ) : status === 'ordered' ? (
                         <DeliveryProgressSummary order={order} />
                       ) : (
                         <DeliverySummaryDisplay equipmentItems={order.equipmentItems} />
@@ -890,58 +989,73 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         )
                       })()}
                     </td>
-                    {/* 상태 전환 버튼 + 되돌리기 + 케밥 메뉴 */}
-                    <td className="p-3 text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        {/* 앞으로 전환 버튼 (readOnly 시 숨김) */}
-                        {!readOnly && status === 'pending' && onChangeStatus && (
-                          <Button
-                            size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 h-8 rounded-lg shadow-sm hover:shadow-md transition-all hover:scale-105"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setConfirmTarget({ orderId: order.id, businessName: order.businessName })
-                            }}
-                          >
-                            발주완료 →
-                          </Button>
-                        )}
-                        {/* ⋮ 케밥 메뉴 (진행중 탭: 발주대기로 되돌리기 + 강제 배송완료) */}
-                        {!readOnly && status === 'ordered' && onChangeStatus && (
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <button
-                                className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-600"
-                                onClick={(e) => e.stopPropagation()}
+                    {/* 상태 전환 버튼 (탭별 앞/뒤 이동) */}
+                    <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      {!readOnly && onChangeStatus && (
+                        <div className="flex flex-col items-center gap-1">
+                          {/* 발주대기 탭: 진행중→ / 배송완료→ */}
+                          {currentTab === 'pending' && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
                               >
-                                <MoreVertical className="h-4 w-4" />
-                              </button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem
-                                className="text-xs cursor-pointer text-orange-600 focus:text-orange-600"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setRevertTarget({ orderId: order.id, businessName: order.businessName })
-                                }}
+                                진행중 →
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="text-xs px-3 h-7 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
                               >
-                                ← 발주대기로 되돌리기
-                              </DropdownMenuItem>
-                              {onForceDelivered && (
-                                <DropdownMenuItem
-                                  className="text-xs cursor-pointer text-emerald-700 focus:text-emerald-700"
-                                  onClick={(e) => {
-                                    e.stopPropagation()
-                                    setForceDeliveredTarget({ orderId: order.id, businessName: order.businessName })
-                                  }}
-                                >
-                                  강제 배송완료 →
-                                </DropdownMenuItem>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        )}
-                      </div>
+                                배송완료 →
+                              </Button>
+                            </>
+                          )}
+                          {/* 진행중 탭: ←발주대기 / 배송완료→ */}
+                          {currentTab === 'ordered' && (
+                            <>
+                              <Button
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
+                              >
+                                배송완료 →
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs px-3 h-7 text-orange-600 hover:bg-orange-50"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
+                              >
+                                ← 발주대기
+                              </Button>
+                            </>
+                          )}
+                          {/* 배송완료 탭: ←진행중 / ←발주대기 */}
+                          {currentTab === 'delivered' && (
+                            <>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs px-3 h-7 text-blue-600 hover:bg-blue-50"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
+                              >
+                                ← 진행중
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs px-3 h-7 text-orange-600 hover:bg-orange-50"
+                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
+                              >
+                                ← 발주대기
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      )}
                     </td>
                   </tr>
 
@@ -1014,6 +1128,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                         <Input
                                           value={item.supplier || ''}
                                           onChange={(e) => handleItemChange(order.id, idx, 'supplier', e.target.value)}
+                                          onPaste={(e) => handleDeliveryPaste(e, order.id, idx, 0)}
                                           placeholder="삼성전자"
                                           className="h-7 text-xs border-gray-200"
                                           readOnly={readOnly}
@@ -1032,6 +1147,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           <DateInput
                                             value={item.orderDate || ''}
                                             onChange={(val) => handleItemChange(order.id, idx, 'orderDate', val)}
+                                            onMultiPaste={(e) => handleDeliveryPaste(e, order.id, idx, 1)}
                                           />
                                         )}
                                       </td>
@@ -1040,6 +1156,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                         <Input
                                           value={item.orderNumber || ''}
                                           onChange={(e) => handleItemChange(order.id, idx, 'orderNumber', e.target.value)}
+                                          onPaste={(e) => handleDeliveryPaste(e, order.id, idx, 2)}
                                           placeholder="주문번호"
                                           className="h-7 text-xs font-mono border-gray-200"
                                           readOnly={readOnly}
@@ -1054,6 +1171,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           <DateInput
                                             value={item.requestedDeliveryDate || ''}
                                             onChange={(val) => handleItemChange(order.id, idx, 'requestedDeliveryDate', val)}
+                                            onMultiPaste={(e) => handleDeliveryPaste(e, order.id, idx, 3)}
                                           />
                                         )}
                                       </td>
@@ -1065,6 +1183,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           <DateInput
                                             value={item.scheduledDeliveryDate || ''}
                                             onChange={(val) => handleItemChange(order.id, idx, 'scheduledDeliveryDate', val)}
+                                            onMultiPaste={(e) => handleDeliveryPaste(e, order.id, idx, 4)}
                                           />
                                         )}
                                       </td>
@@ -1076,6 +1195,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           <DateInput
                                             value={item.confirmedDeliveryDate || ''}
                                             onChange={(val) => handleItemChange(order.id, idx, 'confirmedDeliveryDate', val)}
+                                            onMultiPaste={(e) => handleDeliveryPaste(e, order.id, idx, 5)}
                                           />
                                         )}
                                       </td>
@@ -1088,6 +1208,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           <Input
                                             value={item.componentModel || ''}
                                             onChange={(e) => handleItemChange(order.id, idx, 'componentModel', e.target.value)}
+                                            onPaste={(e) => handleDeliveryPaste(e, order.id, idx, 6)}
                                             placeholder="모델명"
                                             className="h-7 text-xs border-gray-200 flex-1"
                                             readOnly={readOnly}
@@ -1114,6 +1235,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                         <Input
                                           value={item.componentName || ''}
                                           onChange={(e) => handleItemChange(order.id, idx, 'componentName', e.target.value)}
+                                          onPaste={(e) => handleDeliveryPaste(e, order.id, idx, 7)}
                                           placeholder="실외기"
                                           className="h-7 border-gray-200"
                                           style={{ fontSize: '12px' }}
@@ -1132,8 +1254,15 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                             handleItemChange(order.id, idx, 'quantity', val ? parseInt(val) : 0)
                                           }}
                                           onPaste={(e) => {
+                                            // 멀티셀(탭/줄바꿈 포함) → 엑셀 붙여넣기 핸들러
+                                            const raw = e.clipboardData.getData('text')
+                                            if (raw.includes('\t') || raw.includes('\n')) {
+                                              handleDeliveryPaste(e, order.id, idx, 8)
+                                              return
+                                            }
+                                            // 단일 셀: 숫자만 추출
                                             e.preventDefault()
-                                            const pasted = e.clipboardData.getData('text').replace(/\D/g, '')
+                                            const pasted = raw.replace(/\D/g, '')
                                             handleItemChange(order.id, idx, 'quantity', pasted ? parseInt(pasted) : 0)
                                           }}
                                           placeholder=""
@@ -1246,7 +1375,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 onClick={() => toggleRow(order.id, order)}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <StatusBadge order={order} editingItems={editingItems[order.id]} />
+                  <StatusBadge order={order} editingItems={editingItems[order.id]} currentTab={currentTab} />
                   <span className="text-xs text-gray-500">{formatShortDate(order.orderDate)}</span>
                 </div>
 
@@ -1287,55 +1416,46 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       보기
                     </Button>
                   )}
-                  <div className="flex items-center gap-2">
-                    {/* ⋮ 케밥 메뉴 (진행중 탭: 발주대기로 되돌리기 + 강제 배송완료) */}
-                    {!readOnly && status === 'ordered' && onChangeStatus && (
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="p-1 rounded hover:bg-gray-200 transition-colors text-gray-400 hover:text-gray-600"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <MoreVertical className="h-4 w-4" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem
-                            className="text-xs cursor-pointer text-orange-600 focus:text-orange-600"
-                            onClick={(e) => {
-                              e.stopPropagation()
-                              setRevertTarget({ orderId: order.id, businessName: order.businessName })
-                            }}
-                          >
-                            ← 발주대기로 되돌리기
-                          </DropdownMenuItem>
-                          {onForceDelivered && (
-                            <DropdownMenuItem
-                              className="text-xs cursor-pointer text-emerald-700 focus:text-emerald-700"
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                setForceDeliveredTarget({ orderId: order.id, businessName: order.businessName })
-                              }}
-                            >
-                              강제 배송완료 →
-                            </DropdownMenuItem>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    )}
-                    {!readOnly && status === 'pending' && onChangeStatus && (
-                      <Button
-                        size="sm"
-                        className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-4 h-8 rounded-lg shadow-sm hover:shadow-md transition-all hover:scale-105"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          setConfirmTarget({ orderId: order.id, businessName: order.businessName })
-                        }}
-                      >
-                        발주완료 →
-                      </Button>
-                    )}
-                  </div>
+                  {!readOnly && onChangeStatus && (
+                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {currentTab === 'pending' && (
+                        <>
+                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
+                            진행중 →
+                          </Button>
+                          <Button size="sm" variant="outline" className="text-xs px-3 h-7 text-emerald-700 border-emerald-300"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
+                            배송완료 →
+                          </Button>
+                        </>
+                      )}
+                      {currentTab === 'ordered' && (
+                        <>
+                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
+                            배송완료 →
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-orange-600"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
+                            ← 발주대기
+                          </Button>
+                        </>
+                      )}
+                      {currentTab === 'delivered' && (
+                        <>
+                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-blue-600"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
+                            ← 진행중
+                          </Button>
+                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-orange-600"
+                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
+                            ← 발주대기
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -1570,79 +1690,41 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
         }}
       />
 
-      {/* 발주완료 확인 다이얼로그 */}
-      <AlertDialog open={!!confirmTarget} onOpenChange={(open) => { if (!open) setConfirmTarget(null) }}>
+      {/* 상태 전환 확인 다이얼로그 (통합) */}
+      <AlertDialog open={!!statusChangeTarget} onOpenChange={(open) => { if (!open) setStatusChangeTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>발주완료로 변경</AlertDialogTitle>
+            <AlertDialogTitle>
+              {statusChangeTarget?.newStatus === 'pending' && '발주대기로 변경'}
+              {statusChangeTarget?.newStatus === 'ordered' && '진행중으로 변경'}
+              {statusChangeTarget?.newStatus === 'delivered' && '배송완료로 변경'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              &ldquo;{confirmTarget?.businessName}&rdquo;을(를) 발주완료로 변경하시겠습니까?
+              &ldquo;{statusChangeTarget?.businessName}&rdquo;을(를){' '}
+              {statusChangeTarget?.newStatus === 'pending' && '발주대기'}
+              {statusChangeTarget?.newStatus === 'ordered' && '진행중'}
+              {statusChangeTarget?.newStatus === 'delivered' && '배송완료'}
+              (으)로 변경하시겠습니까?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className={
+                statusChangeTarget?.newStatus === 'delivered'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                  : statusChangeTarget?.newStatus === 'ordered'
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+              }
               onClick={() => {
-                if (confirmTarget && onChangeStatus) {
-                  onChangeStatus(confirmTarget.orderId, 'ordered')
+                if (statusChangeTarget && onChangeStatus) {
+                  onChangeStatus(statusChangeTarget.orderId, statusChangeTarget.newStatus)
                 }
-                setConfirmTarget(null)
+                setStatusChangeTarget(null)
               }}
             >
               변경
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 되돌리기 확인 다이얼로그 (진행중→발주대기) */}
-      <AlertDialog open={!!revertTarget} onOpenChange={(open) => { if (!open) setRevertTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>발주대기로 되돌리기</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{revertTarget?.businessName}&rdquo;을(를) 발주대기로 되돌리시겠습니까?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-orange-500 hover:bg-orange-600 text-white"
-              onClick={() => {
-                if (revertTarget && onChangeStatus) {
-                  onChangeStatus(revertTarget.orderId, 'pending')
-                }
-                setRevertTarget(null)
-              }}
-            >
-              되돌리기
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* 강제 배송완료 확인 다이얼로그 */}
-      <AlertDialog open={!!forceDeliveredTarget} onOpenChange={(open) => { if (!open) setForceDeliveredTarget(null) }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>강제 배송완료</AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{forceDeliveredTarget?.businessName}&rdquo;의 모든 구성품 배송확정일을 오늘로 설정합니다. 계속하시겠습니까?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>취소</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => {
-                if (forceDeliveredTarget && onForceDelivered) {
-                  onForceDelivered(forceDeliveredTarget.orderId)
-                }
-                setForceDeliveredTarget(null)
-              }}
-            >
-              배송완료 처리
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

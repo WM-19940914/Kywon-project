@@ -72,16 +72,13 @@
       "Bash(cmd /c:*)",
       "Bash(npx next dev -p 3001)",
       "Bash(npx next dev -p 3000)",
-      "Skill(keybindings-help)",
+      "Bash(head:*)",
       "Bash(npx next dev:*)",
-      "Bash(node:*)",
-      "Bash(start:*)",
-      "Bash(Start-Sleep -Seconds 8)",
-      "Bash(Select-Object -First 10)",
+      "Bash(npm ls:*)",
+      "Bash(APIKEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtbGxwZmloZGpvaGp1eXBjYXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTQ3ODMsImV4cCI6MjA4NTUzMDc4M30._xbUnCGv5F25IXUPMZuIm-qYl-lQUGWCxFCicrmbz_8\")",
+      "Bash(node test-insert.mjs:*)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)",
-      "Bash(Get-Content C:UsersUserAppDataLocalTempclaudeC--Users-User-workspace-firsttasksbd00a5d.output -Tail 30)",
-      "Bash(ping:*)"
+      "Bash(git pull:*)"
     ]
   }
 }

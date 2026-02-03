@@ -28,7 +28,8 @@ import { getToday, daysDiff } from '@/lib/delivery-utils'
  */
 export function computeInstallScheduleStatus(order: Order): InstallScheduleStatus {
   if (order.installCompleteDate) return 'completed'
-  if (order.installScheduleDate) return 'scheduled'
+  // status가 in-progress여야 설치예정 탭 (버튼으로 명시적 이동)
+  if (order.status === 'in-progress' && order.installScheduleDate) return 'scheduled'
   return 'unscheduled'
 }
 
@@ -212,11 +213,11 @@ export function sortOrdersByScheduleTab(
 
   switch (status) {
     case 'unscheduled':
-      // 발주등록일 오름차순 (오래된 것 위)
+      // 발주등록일 내림차순 (최신이 위)
       sorted.sort((a, b) => {
-        const dateA = a.orderDate || '9999-12-31'
-        const dateB = b.orderDate || '9999-12-31'
-        return dateA.localeCompare(dateB)
+        const dateA = a.orderDate || '0000-00-00'
+        const dateB = b.orderDate || '0000-00-00'
+        return dateB.localeCompare(dateA)
       })
       break
 
