@@ -187,6 +187,21 @@ settlements (월별 정산)
 - **사이드바 메뉴 추가** — "멜레아 · 에스원" 그룹에 에스원 정산관리 메뉴 (Receipt 아이콘)
 - **shadcn checkbox 컴포넌트 설치** (`components/ui/checkbox.tsx`)
 
+### 2026-02-03 야간 작업 내용
+- **설치관리 테이블 열너비 고정** (`components/schedule/schedule-table.tsx`)
+  - `table-layout: fixed` 적용, `min-w-[1450px]`
+  - 설치예정일(편집) 열 120px, 현장명 180px, 현장주소 180px 등 재조정
+  - 장비 상태 열을 견적서 옆(설치 상태 왼쪽)으로 이동
+  - 견적서 버튼 컴팩트 세로 레이아웃 (80px)
+  - DateInput 글자 크기 축소 (`!text-[10px]`, `max-w-[120px]`)
+- **견적서 실시간 자동저장** (`components/quotes/quote-create-dialog.tsx`)
+  - 저장 버튼 제거 → 1초 debounce 자동저장
+  - 하단에 "입력 시 자동 저장" / "저장 중..." / "자동 저장됨" 상태 표시
+  - 바깥 클릭 시 닫힘 방지 (`onInteractOutside`)
+  - 우측 상단 X 닫기 버튼 추가
+- **발주 등록 주소검색 개선** (`components/orders/order-form.tsx`)
+  - 상세주소 자동채움(건물명/법정동) 제거 → 빈 칸 유지
+
 ### 이어서 할 작업 (미정)
 - Supabase DB에 `s1_settlement_status`, `s1_settlement_month` 컬럼 추가 필요
 - 배송중/입고완료 탭에도 MeLEA 또는 역할별 로고 뱃지 추가 검토
