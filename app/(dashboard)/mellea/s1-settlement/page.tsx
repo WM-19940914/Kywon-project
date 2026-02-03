@@ -212,11 +212,11 @@ export default function S1SettlementPage() {
     const confirmed = await showConfirm(confirmMessage)
     if (!confirmed) return
 
-    // DB 업데이트
-    const success = await batchUpdateS1SettlementStatus(ids, targetStatus)
+    // DB 업데이트 (정산완료 시 화면에서 선택한 정산월 전달)
+    const settMonth = `${settlementYear}-${String(settlementMonth).padStart(2, '0')}`
+    const success = await batchUpdateS1SettlementStatus(ids, targetStatus, targetStatus === 'settled' ? settMonth : undefined)
     if (success) {
-      // UI 반영 (수동 설정한 정산 월 사용)
-      const settMonth = `${settlementYear}-${String(settlementMonth).padStart(2, '0')}`
+      // UI 반영 (위에서 계산한 settMonth 사용)
       setOrders(prev => prev.map(order => {
         if (ids.includes(order.id)) {
           return {
