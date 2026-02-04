@@ -78,7 +78,14 @@
       "Bash(APIKEY=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtbGxwZmloZGpvaGp1eXBjYXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTQ3ODMsImV4cCI6MjA4NTUzMDc4M30._xbUnCGv5F25IXUPMZuIm-qYl-lQUGWCxFCicrmbz_8\")",
       "Bash(node test-insert.mjs:*)",
       "Bash(git fetch:*)",
-      "Bash(git pull:*)"
+      "Bash(git pull:*)",
+      "Bash(if exist .next rmdir /s /q .next)",
+      "WebFetch(domain:www.bkit.ai)",
+      "WebFetch(domain:supabase.com)",
+      "Bash(if not exist \"C:\\\\Users\\\\User\\\\workspace\\\\first\\\\.cursor\" mkdir \"C:\\\\Users\\\\User\\\\workspace\\\\first\\\\.cursor\")",
+      "Bash(node:*)",
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:gist.github.com)"
     ]
   }
 }
