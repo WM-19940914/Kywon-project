@@ -224,6 +224,36 @@ settlements (월별 정산)
 - **발주 등록 주소검색 개선** (`components/orders/order-form.tsx`)
   - 상세주소 자동채움(건물명/법정동) 제거 → 빈 칸 유지
 
+### 2026-02-04 집에서 작업한 내용 (회사 PC에서 동기화 필요)
+
+사용자가 회사에서 "집에서 한 거 회사에도 적용해줘"라고 요청하면 아래 절차대로 안내할 것.
+
+**회사 PC 동기화 절차:**
+1. 회사에서 오늘(2/4) 작업한 내용을 먼저 commit + push
+   ```
+   git add .
+   git commit -m "커밋 메시지"
+   git push
+   ```
+2. 집에서 push한 설정 가져오기
+   ```
+   git pull
+   ```
+3. 충돌 발생 시 Claude에게 "충돌 해결해줘" 요청
+4. `.env.local`에 `GITHUB_PAT=본인의_GitHub_PAT_토큰` 한 줄 수동 추가 (git에 포함 안 됨)
+   - PAT 토큰은 https://github.com/settings/tokens?type=beta 에서 확인/재생성
+   - 토큰을 모르겠으면 집 PC의 `.env.local` 파일 참고
+5. Cursor 재시작 → Tools & MCP에서 3개 서버(supabase, context7, github) 연결 확인
+
+**집에서 추가한 파일 목록:**
+- `.cursor/mcp.json` — MCP 서버 3개 설정 (Supabase, Context7, GitHub)
+- `.claude/agents/supabase-helper.md` — DB 작업 전문 에이전트
+- `.claude/agents/ui-reviewer.md` — UI 검수 에이전트
+- `.claude/commands/commit.md` — 한글 커밋 자동 생성
+- `.claude/commands/deploy.md` — 배포 전 점검
+- `.claude/CLAUDE.md` — 자동 적용 규칙(커밋/빌드/DB/UI) 추가
+- `.gitignore` — 정리
+
 ### 이어서 할 작업 (미정)
 - Supabase DB에 `s1_settlement_status`, `s1_settlement_month` 컬럼 추가 필요
 - 배송중/입고완료 탭에도 MeLEA 또는 역할별 로고 뱃지 추가 검토
