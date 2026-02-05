@@ -23,8 +23,19 @@ import {
   type Order
 } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, User, Phone, Calendar } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, XCircle, User, Phone, Calendar } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
+import { useState } from 'react'
 
 /**
  * 컴포넌트가 받을 Props
@@ -34,8 +45,9 @@ interface OrderDetailDialogProps {
   order: Order | null                              // 보여줄 발주 (null이면 모달 안 열림)
   open: boolean                                    // 모달 열림/닫힘 상태
   onOpenChange: (open: boolean) => void           // 모달 닫기 함수
-  onDelete?: (orderId: string) => void            // 삭제 함수
+  onDelete?: (orderId: string) => void            // 완전 삭제 함수
   onEdit?: (order: Order) => void                 // 수정 함수
+  onCancelOrder?: (orderId: string, reason: string) => void  // 발주 취소 함수
 }
 
 /**
@@ -46,10 +58,17 @@ export function OrderDetailDialog({
   open,
   onOpenChange,
   onDelete,
-  onEdit
+  onEdit,
+  onCancelOrder
 }: OrderDetailDialogProps) {
 
   const { showConfirm } = useAlert()
+
+  // 삭제/취소 선택 다이얼로그
+  const [deleteChoiceOpen, setDeleteChoiceOpen] = useState(false)
+  // 취소 사유 입력 다이얼로그
+  const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
+  const [cancelReason, setCancelReason] = useState('')
 
   // order가 없으면 모달 안 보여줌
   if (!order) return null
@@ -63,18 +82,39 @@ export function OrderDetailDialog({
     return dateString.replace(/-/g, '.')
   }
 
-  // 삭제 확인 및 실행
-  const handleDelete = async () => {
+  // 삭제 버튼 클릭 → 선택지 다이얼로그
+  const handleDeleteClick = () => {
+    setDeleteChoiceOpen(true)
+  }
+
+  // 완전 삭제 실행
+  const handlePermanentDelete = async () => {
     if (!onDelete) return
+    setDeleteChoiceOpen(false)
 
     const confirmed = await showConfirm(
-      `"${order.documentNumber}" 발주를 정말 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
+      `"${order.documentNumber}" 발주를 완전 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
     )
 
     if (confirmed) {
       onDelete(order.id)
       onOpenChange(false)
     }
+  }
+
+  // 발주취소 선택 → 사유 입력 다이얼로그
+  const handleCancelChoice = () => {
+    setDeleteChoiceOpen(false)
+    setCancelReason('')
+    setCancelDialogOpen(true)
+  }
+
+  // 발주취소 실행
+  const handleCancelConfirm = () => {
+    if (!onCancelOrder || !cancelReason.trim()) return
+    onCancelOrder(order.id, cancelReason.trim())
+    setCancelDialogOpen(false)
+    onOpenChange(false)
   }
 
   // 수정 버튼 클릭
@@ -271,10 +311,10 @@ export function OrderDetailDialog({
         <div className="flex justify-between items-center pt-6 border-t mt-6">
           {/* 왼쪽: 삭제 + 수정 */}
           <div className="flex gap-2">
-            {onDelete && (
+            {(onDelete || onCancelOrder) && (
               <Button
                 variant="destructive"
-                onClick={handleDelete}
+                onClick={handleDeleteClick}
                 className="gap-1"
               >
                 <Trash2 className="h-4 w-4" />
@@ -295,6 +335,86 @@ export function OrderDetailDialog({
           </Button>
         </div>
       </DialogContent>
+
+      {/* ─── 삭제/취소 선택 다이얼로그 ─── */}
+      <AlertDialog open={deleteChoiceOpen} onOpenChange={setDeleteChoiceOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>발주 삭제 방법 선택</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2">
+                <p>&ldquo;{order.businessName}&rdquo; 발주를 어떻게 처리하시겠습니까?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2 py-2">
+            {onCancelOrder && (
+              <button
+                className="w-full text-left border rounded-lg p-3 hover:bg-orange-50 hover:border-orange-300 transition-colors"
+                onClick={handleCancelChoice}
+              >
+                <div className="flex items-center gap-2 font-medium text-sm text-orange-700">
+                  <XCircle className="h-4 w-4" />
+                  발주취소 (기록 보관)
+                </div>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  취소 사유를 입력하고, 과거내역에서 확인할 수 있습니다.
+                </p>
+              </button>
+            )}
+            {onDelete && (
+              <button
+                className="w-full text-left border rounded-lg p-3 hover:bg-red-50 hover:border-red-300 transition-colors"
+                onClick={handlePermanentDelete}
+              >
+                <div className="flex items-center gap-2 font-medium text-sm text-red-700">
+                  <Trash2 className="h-4 w-4" />
+                  완전 삭제 (복구 불가)
+                </div>
+                <p className="text-xs text-gray-500 mt-1 ml-6">
+                  DB에서 완전히 삭제됩니다. 되돌릴 수 없습니다.
+                </p>
+              </button>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── 취소 사유 입력 다이얼로그 ─── */}
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>발주 취소</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>&ldquo;{order.businessName}&rdquo; 발주의 취소 사유를 입력해주세요.</p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="취소 사유를 입력해주세요"
+                  className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
+                />
+                <p className="text-xs text-gray-500">
+                  취소된 발주는 과거내역에서 확인할 수 있습니다.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={!cancelReason.trim()}
+              onClick={handleCancelConfirm}
+            >
+              발주 취소
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   )
 }

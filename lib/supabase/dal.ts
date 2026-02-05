@@ -12,7 +12,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
-import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus } from '@/types/order'
+import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, InventoryEvent, InventoryEventType, InventoryEventStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 
 // ============================================================
@@ -375,6 +375,63 @@ export async function deleteOrder(id: string): Promise<boolean> {
   if (error) {
     console.error('발주 삭제 실패:', error.message)
     return false
+  }
+
+  return true
+}
+
+/**
+ * 발주 취소 (soft delete)
+ * 삭제 대신 status를 'cancelled'로 변경하고 취소 사유를 저장합니다.
+ * 이미 입고완료된 구성품이 있으면 → 유휴재고 이벤트를 자동 생성합니다.
+ */
+export async function cancelOrder(id: string, reason: string): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+
+  // 1. 발주 상태를 'cancelled'로 변경
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status: 'cancelled',
+      cancel_reason: reason,
+      cancelled_at: now,
+      updated_at: now,
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('발주 취소 실패:', error.message)
+    return false
+  }
+
+  // 2. 입고완료된 구성품 조회 (confirmed_delivery_date가 있는 것 = 이미 창고에 들어온 장비)
+  const { data: deliveredItems } = await supabase
+    .from('equipment_items')
+    .select('id, warehouse_id')
+    .eq('order_id', id)
+    .not('confirmed_delivery_date', 'is', null)
+
+  // 3. 입고된 구성품이 있으면 각각에 대해 유휴재고 이벤트 생성
+  if (deliveredItems && deliveredItems.length > 0) {
+    const events = deliveredItems.map(item => ({
+      event_type: 'cancelled',
+      equipment_item_id: item.id,
+      source_order_id: id,
+      source_warehouse_id: item.warehouse_id,
+      status: 'active',
+      event_date: now.split('T')[0],
+      notes: `발주취소 — ${reason}`,
+    }))
+
+    const { error: eventError } = await supabase
+      .from('inventory_events')
+      .insert(events)
+
+    if (eventError) {
+      console.error('유휴재고 이벤트 생성 실패:', eventError.message)
+      // 발주 취소 자체는 성공했으므로 true 반환 (이벤트는 나중에 수동 처리 가능)
+    }
   }
 
   return true
@@ -850,6 +907,125 @@ export async function batchUpdateS1SettlementStatus(orderIds: string[], status: 
 
   if (error) {
     console.error('에스원 정산 일괄 변경 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 📦 재고 이벤트 (Inventory Events) — 특수 케이스 관리
+// ============================================================
+
+/**
+ * 재고 이벤트 목록 조회
+ * @param eventType - 특정 이벤트 타입만 필터 (선택)
+ * @returns 재고 이벤트 배열
+ */
+export async function fetchInventoryEvents(eventType?: InventoryEventType): Promise<InventoryEvent[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('inventory_events')
+    .select('*')
+    .order('event_date', { ascending: false })
+
+  if (eventType) {
+    query = query.eq('event_type', eventType)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('재고 이벤트 조회 실패:', error.message)
+    return []
+  }
+
+  return toCamelCase<InventoryEvent[]>(data)
+}
+
+/**
+ * 재고 이벤트 생성
+ * @param event - 새 이벤트 정보
+ */
+export async function createInventoryEvent(event: Omit<InventoryEvent, 'id' | 'createdAt'>): Promise<InventoryEvent | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('inventory_events')
+    .insert(toSnakeCase(event))
+    .select()
+    .single()
+
+  if (error) {
+    console.error('재고 이벤트 생성 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<InventoryEvent>(data)
+}
+
+/**
+ * 재고 이벤트 수정
+ * @param id - 이벤트 ID
+ * @param updates - 수정할 필드
+ */
+export async function updateInventoryEvent(id: string, updates: Partial<InventoryEvent>): Promise<InventoryEvent | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('inventory_events')
+    .update(toSnakeCase(updates))
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('재고 이벤트 수정 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<InventoryEvent>(data)
+}
+
+/**
+ * 재고 이벤트 삭제
+ * @param id - 이벤트 ID
+ */
+export async function deleteInventoryEvent(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('inventory_events')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('재고 이벤트 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 재고 이벤트 상태 변경 (active → resolved)
+ * @param id - 이벤트 ID
+ * @param status - 새 상태
+ */
+export async function resolveInventoryEvent(id: string, targetOrderId?: string): Promise<boolean> {
+  const supabase = createClient()
+  const updates: Record<string, unknown> = {
+    status: 'resolved',
+    resolved_date: new Date().toISOString().split('T')[0],
+  }
+  if (targetOrderId) {
+    updates.target_order_id = targetOrderId
+  }
+
+  const { error } = await supabase
+    .from('inventory_events')
+    .update(updates)
+    .eq('id', id)
+
+  if (error) {
+    console.error('재고 이벤트 처리 실패:', error.message)
     return false
   }
 

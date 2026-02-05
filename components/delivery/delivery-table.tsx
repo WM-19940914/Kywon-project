@@ -703,6 +703,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
   /** 단가표에서 선택한 구성품을 채울 대상 행 (orderId + itemIdx) */
   const [priceSheetTarget, setPriceSheetTarget] = useState<{ orderId: string; itemIdx: number } | null>(null)
 
+
   /**
    * 아코디언 토글 시 편집 데이터 초기화
    * - 기존 데이터가 있으면 복사해서 편집 상태로
@@ -993,32 +994,22 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                       {!readOnly && onChangeStatus && (
                         <div className="flex flex-col items-center gap-1">
-                          {/* 발주대기 탭: 진행중→ / 배송완료→ */}
+                          {/* 발주대기 탭: 진행중→ */}
                           {currentTab === 'pending' && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
-                              >
-                                진행중 →
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="text-xs px-3 h-7 text-emerald-700 border-emerald-300 hover:bg-emerald-50"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
-                              >
-                                배송완료 →
-                              </Button>
-                            </>
+                            <Button
+                              size="sm"
+                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
+                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
+                            >
+                              진행중 →
+                            </Button>
                           )}
-                          {/* 진행중 탭: ←발주대기 / 배송완료→ */}
+                          {/* 진행중 탭: ←발주대기 */}
                           {currentTab === 'ordered' && (
                             <>
                               <Button
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
                                 onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
                               >
                                 배송완료 →
@@ -1419,16 +1410,10 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   {!readOnly && onChangeStatus && (
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       {currentTab === 'pending' && (
-                        <>
-                          <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
-                            진행중 →
-                          </Button>
-                          <Button size="sm" variant="outline" className="text-xs px-3 h-7 text-emerald-700 border-emerald-300"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
-                            배송완료 →
-                          </Button>
-                        </>
+                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
+                          onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
+                          진행중 →
+                        </Button>
                       )}
                       {currentTab === 'ordered' && (
                         <>

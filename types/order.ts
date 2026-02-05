@@ -77,6 +77,7 @@ export type OrderStatus =
   | 'in-progress'       // 진행중 (준비부터 설치까지 전부!)
   | 'completed'         // 완료 (설치 끝! 정산 대기)
   | 'settled'           // 정산완료 (돈 계산 끝)
+  | 'cancelled'         // 발주취소 (취소 사유와 함께 보관)
 
 /**
  * 발주 정보
@@ -145,6 +146,10 @@ export interface Order {
   // 💵 에스원 정산 정보 (멜레아 ↔ 에스원 설치비 정산)
   s1SettlementStatus?: S1SettlementStatus  // 에스원 정산 상태
   s1SettlementMonth?: string               // 에스원 정산 처리 월 (예: "2026-02")
+
+  // ❌ 발주 취소 정보
+  cancelReason?: string                    // 취소 사유
+  cancelledAt?: string                     // 취소 일시 (ISO 문자열)
 }
 
 /**
@@ -154,7 +159,8 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
   'received': '접수중',
   'in-progress': '진행중',
   'completed': '완료',
-  'settled': '정산완료'
+  'settled': '정산완료',
+  'cancelled': '발주취소',
 }
 
 /**
@@ -165,7 +171,8 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
   'received': 'bg-amber-100 text-amber-800 border border-amber-200',        // 앰버 (시작)
   'in-progress': 'bg-blue-100 text-blue-800 border border-blue-200',        // 블루 (진행)
   'completed': 'bg-violet-100 text-violet-800 border border-violet-200',    // 바이올렛 (완료)
-  'settled': 'bg-emerald-100 text-emerald-800 border border-emerald-200'    // 에메랄드 (정산완료)
+  'settled': 'bg-emerald-100 text-emerald-800 border border-emerald-200',   // 에메랄드 (정산완료)
+  'cancelled': 'bg-red-100 text-red-800 border border-red-200',             // 빨강 (취소)
 }
 
 /**
@@ -413,6 +420,93 @@ export const S1_SETTLEMENT_STATUS_COLORS: Record<S1SettlementStatus, string> = {
   'unsettled': 'bg-gray-100 text-gray-500 border-gray-200',
   'in-progress': 'bg-orange-50 text-orange-700 border-orange-200',
   'settled': 'bg-green-50 text-green-700 border-green-200'
+}
+
+// ============================================================
+// 📦 재고 이벤트 (Inventory Events) — 특수 케이스 관리
+// ============================================================
+
+/**
+ * 재고 이벤트 종류
+ * - prepaid: 선입금 장비 (교원이 돈만 먼저 줌, 아직 발주 안 넣음)
+ * - cancelled: 취소/미배정 장비 (현장 취소됐는데 장비는 창고에 있음)
+ * - substitution: 대체사용 이력 (A현장 취소 장비를 B현장에서 사용)
+ * - transfer_out: 타창고 이동 (다른 창고에서 빌려옴)
+ * - transfer_return: 타창고 반환 (빌려온 장비를 원래 창고로 돌려보냄)
+ */
+export type InventoryEventType = 'prepaid' | 'cancelled' | 'substitution' | 'transfer_out' | 'transfer_return'
+
+/** 재고 이벤트 상태 */
+export type InventoryEventStatus = 'active' | 'resolved'
+
+/** 재고 이벤트 인터페이스 */
+export interface InventoryEvent {
+  id: string
+  eventType: InventoryEventType         // 이벤트 종류
+  equipmentItemId?: string              // 관련 구성품 ID (선입금은 null)
+  sourceOrderId?: string                // 원래 발주 ID
+  targetOrderId?: string                // 새 발주 ID (대체사용/연결 시)
+  sourceWarehouseId?: string            // 출발 창고
+  targetWarehouseId?: string            // 도착 창고
+  prepaidAmount?: number                // 선입금 금액
+  affiliate?: string                    // 입금처/계열사 (선입금용)
+  modelName?: string                    // 모델명 (표시용)
+  siteName?: string                     // 현장명 (표시용)
+  status: InventoryEventStatus          // 처리 상태
+  notes?: string                        // 메모
+  eventDate: string                     // 이벤트 발생일
+  resolvedDate?: string                 // 처리 완료일
+  createdAt?: string                    // 등록일시
+}
+
+/** 재고 이벤트 종류별 한글 라벨 */
+export const INVENTORY_EVENT_TYPE_LABELS: Record<InventoryEventType, string> = {
+  'prepaid': '선입금',
+  'cancelled': '취소/미배정',
+  'substitution': '대체사용',
+  'transfer_out': '타창고 이동',
+  'transfer_return': '타창고 반환',
+}
+
+/** 재고 이벤트 종류별 색상 */
+export const INVENTORY_EVENT_TYPE_COLORS: Record<InventoryEventType, string> = {
+  'prepaid': 'bg-purple-50 text-purple-700 border-purple-200',
+  'cancelled': 'bg-red-50 text-red-700 border-red-200',
+  'substitution': 'bg-blue-50 text-blue-700 border-blue-200',
+  'transfer_out': 'bg-orange-50 text-orange-700 border-orange-200',
+  'transfer_return': 'bg-orange-50 text-orange-700 border-orange-200',
+}
+
+/** 재고 이벤트 상태별 한글 라벨 */
+export const INVENTORY_EVENT_STATUS_LABELS: Record<InventoryEventStatus, string> = {
+  'active': '진행중',
+  'resolved': '처리완료',
+}
+
+/** 재고 이벤트 상태별 색상 */
+export const INVENTORY_EVENT_STATUS_COLORS: Record<InventoryEventStatus, string> = {
+  'active': 'bg-yellow-50 text-yellow-700 border-yellow-200',
+  'resolved': 'bg-green-50 text-green-700 border-green-200',
+}
+
+/**
+ * 창고 재고 상태 (탭1에서 사용 — 기존 데이터로 파생, DB 필드 불필요)
+ * - idle: 유휴재고 (현장 취소됨, 갈 곳 없이 창고에 있는 장비)
+ * - in_stock: 입고내역 (입고됨, 정상적으로 현장 배정된 장비)
+ * - install_done: 설치완료 (설치까지 끝난 장비)
+ */
+export type WarehouseStockStatus = 'idle' | 'in_stock' | 'install_done'
+
+export const WAREHOUSE_STOCK_STATUS_LABELS: Record<WarehouseStockStatus, string> = {
+  'idle': '유휴재고',
+  'in_stock': '입고내역',
+  'install_done': '설치완료',
+}
+
+export const WAREHOUSE_STOCK_STATUS_COLORS: Record<WarehouseStockStatus, string> = {
+  'idle': 'bg-red-50 text-red-700 border-red-200',
+  'in_stock': 'bg-green-50 text-green-700 border-green-200',
+  'install_done': 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
 /**

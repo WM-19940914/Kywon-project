@@ -398,7 +398,12 @@ export default function S1SettlementPage() {
    * 일정미정(installScheduleDate 없음)은 아직 정산 대상이 아니므로 제외
    */
   const settlementTargetOrders = useMemo(() => {
-    return orders.filter(order => !!order.installScheduleDate)
+    return orders.filter(order => order.status !== 'cancelled' && !!order.installScheduleDate)
+  }, [orders])
+
+  /** 일정미정 건수 (설치예정일이 없는 발주, 취소 건 제외) */
+  const unscheduledCount = useMemo(() => {
+    return orders.filter(order => order.status !== 'cancelled' && !order.installScheduleDate).length
   }, [orders])
 
   /** 탭별 필터링된 발주 목록 */
@@ -653,7 +658,20 @@ export default function S1SettlementPage() {
           <p className="text-xs text-gray-400 ml-1">멜레아에서 정산이 완료되면 정산 완료 페이지로 처리하세요. (정산 월은 현재 날짜 기준 자동 반영, 클릭하여 변경 가능)</p>
         </div>
       ) : (
-        <p className="text-sm text-gray-500 mb-4">{TAB_DESCRIPTIONS[activeTab]}</p>
+        <>
+          <p className="text-sm text-gray-500 mb-2">{TAB_DESCRIPTIONS[activeTab]}</p>
+          {/* 미정산 탭: 일정미정 제외 건수 + 재촉 안내 */}
+          {activeTab === 'unsettled' && unscheduledCount > 0 && (
+            <div className="mb-4 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+              <p className="text-sm text-amber-700">
+                ⚠ 설치일정이 잡히지 않은 <span className="font-bold">{unscheduledCount}건</span>이 제외되었습니다.
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                설치일정을 확정해주세요.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {/* 액션 버튼 (미정산/진행중 탭에서만) */}

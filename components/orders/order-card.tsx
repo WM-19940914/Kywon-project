@@ -63,7 +63,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
             <span className="uppercase tracking-wider font-medium">{order.affiliate}</span>
-            <span>{formatDate(order.orderDate)}</span>
+            <span>발주일: {formatDate(order.orderDate)}</span>
           </div>
           {order.isPreliminaryQuote && (
             <Badge className="bg-red-50 text-red-600 border-red-200 font-semibold text-[9px] px-1 py-0 leading-tight">

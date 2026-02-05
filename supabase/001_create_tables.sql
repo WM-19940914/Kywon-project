@@ -60,6 +60,10 @@ CREATE TABLE IF NOT EXISTS orders (
   install_complete_date TEXT,                       -- 설치완료일
   install_memo TEXT,                                -- 설치메모
 
+  -- 발주 취소 정보
+  cancel_reason TEXT,                               -- 취소 사유
+  cancelled_at TEXT,                                -- 취소 일시
+
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -132,6 +136,27 @@ CREATE TABLE IF NOT EXISTS installation_cost_items (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 8. 재고 이벤트 테이블 (특수 케이스 관리)
+-- 선입금 / 취소·미배정 / 대체사용 / 타창고 이동 등을 기록
+CREATE TABLE IF NOT EXISTS inventory_events (
+  id TEXT PRIMARY KEY DEFAULT ('ie-' || substr(md5(random()::text), 1, 12)),
+  event_type TEXT NOT NULL,              -- prepaid / cancelled / substitution / transfer_out / transfer_return
+  equipment_item_id TEXT REFERENCES equipment_items(id), -- 관련 구성품 (선입금은 null)
+  source_order_id TEXT REFERENCES orders(id),   -- 원래 발주
+  target_order_id TEXT REFERENCES orders(id),   -- 새 발주 (대체사용/연결 시)
+  source_warehouse_id TEXT REFERENCES warehouses(id), -- 출발 창고
+  target_warehouse_id TEXT REFERENCES warehouses(id), -- 도착 창고
+  prepaid_amount NUMERIC,                -- 선입금 금액
+  affiliate TEXT,                        -- 입금처/계열사 (선입금용)
+  model_name TEXT,                       -- 모델명 (표시용)
+  site_name TEXT,                        -- 현장명 (표시용)
+  status TEXT NOT NULL DEFAULT 'active', -- active / resolved
+  notes TEXT,                            -- 메모
+  event_date DATE DEFAULT CURRENT_DATE,  -- 이벤트 발생일
+  resolved_date DATE,                    -- 처리 완료일
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- ============================================================
 -- 인덱스 (검색 속도 향상)
 -- ============================================================
@@ -144,6 +169,9 @@ CREATE INDEX IF NOT EXISTS idx_equipment_items_warehouse_id ON equipment_items(w
 CREATE INDEX IF NOT EXISTS idx_customer_quotes_order_id ON customer_quotes(order_id);
 CREATE INDEX IF NOT EXISTS idx_quote_items_quote_id ON quote_items(quote_id);
 CREATE INDEX IF NOT EXISTS idx_installation_cost_items_order_id ON installation_cost_items(order_id);
+CREATE INDEX IF NOT EXISTS idx_inventory_events_event_type ON inventory_events(event_type);
+CREATE INDEX IF NOT EXISTS idx_inventory_events_status ON inventory_events(status);
+CREATE INDEX IF NOT EXISTS idx_inventory_events_event_date ON inventory_events(event_date);
 
 -- ============================================================
 -- RLS (Row Level Security) - 일단 비활성화 (나중에 역할별 권한 추가)
@@ -164,3 +192,5 @@ CREATE POLICY "Allow all for equipment_items" ON equipment_items FOR ALL USING (
 CREATE POLICY "Allow all for customer_quotes" ON customer_quotes FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for quote_items" ON quote_items FOR ALL USING (true) WITH CHECK (true);
 CREATE POLICY "Allow all for installation_cost_items" ON installation_cost_items FOR ALL USING (true) WITH CHECK (true);
+ALTER TABLE inventory_events ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Allow all for inventory_events" ON inventory_events FOR ALL USING (true) WITH CHECK (true);

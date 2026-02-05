@@ -49,6 +49,7 @@ import {
   StickyNote,
   Trash2,
   Undo2,
+  XCircle,
 } from 'lucide-react'
 import {
   Popover,
@@ -580,9 +581,11 @@ interface ScheduleTableProps {
   onViewDetail?: (order: Order) => void
   /** 견적서 작성/수정 콜백 */
   onQuoteInput?: (order: Order) => void
+  /** 발주 취소 콜백 (사유와 함께) */
+  onCancelOrder?: (orderId: string, reason: string) => void
 }
 
-export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, onQuoteInput }: ScheduleTableProps) {
+export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, onQuoteInput, onCancelOrder }: ScheduleTableProps) {
   // 아코디언 열림/닫힘 상태
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
@@ -593,6 +596,10 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
   // 설치예정일 확인 다이얼로그 (일정미정 탭에서 날짜 입력 시)
   const [scheduleTarget, setScheduleTarget] = useState<{ orderId: string; businessName: string; date: string } | null>(null)
+
+  // 발주 취소 다이얼로그
+  const [cancelTarget, setCancelTarget] = useState<{ orderId: string; businessName: string } | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
 
   /** 아코디언 토글 */
   const toggleRow = (orderId: string) => {
@@ -942,29 +949,53 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       })()}
                     </td>
 
-                    {/* 일정미정: 설치예정 이동 버튼 */}
+                    {/* 일정미정: 설치예정 이동 버튼 + 취소 X */}
                     {activeTab === 'unscheduled' && (
                       <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 h-6"
-                          onClick={() => handleMoveToScheduled(order)}
-                        >
-                          설치예정 →
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 h-6"
+                            onClick={() => handleMoveToScheduled(order)}
+                          >
+                            설치예정 →
+                          </Button>
+                          {onCancelOrder && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     )}
 
-                    {/* 설치예정: 설치완료 버튼 */}
+                    {/* 설치예정: 설치완료 버튼 + 취소 X */}
                     {activeTab === 'scheduled' && (
                       <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <Button
-                          size="sm"
-                          className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
-                          onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
-                        >
-                          설치완료
-                        </Button>
+                        <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
+                            onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
+                          >
+                            설치완료
+                          </Button>
+                          {onCancelOrder && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                            >
+                              <XCircle className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
+                        </div>
                       </td>
                     )}
 
@@ -1177,9 +1208,24 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   </div>
                 )}
 
-                {/* 설치완료 버튼 (설치예정 탭) */}
-                {activeTab === 'scheduled' && (
+                {/* 일정미정 탭: 취소 버튼 */}
+                {activeTab === 'unscheduled' && onCancelOrder && (
                   <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="text-[11px] px-2 h-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                    >
+                      <XCircle className="h-3 w-3 mr-1" />
+                      발주취소
+                    </Button>
+                  </div>
+                )}
+
+                {/* 설치완료 버튼 + 취소 (설치예정 탭) */}
+                {activeTab === 'scheduled' && (
+                  <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
                       className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
@@ -1187,6 +1233,16 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     >
                       설치완료
                     </Button>
+                    {onCancelOrder && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                      >
+                        <XCircle className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 )}
 
@@ -1343,6 +1399,50 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               }}
             >
               설치완료
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ─── 발주 취소 확인 다이얼로그 ─── */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) setCancelTarget(null) }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>발주 취소</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  &ldquo;{cancelTarget?.businessName}&rdquo; 발주를 취소하시겠습니까?
+                </p>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">취소 사유</label>
+                  <textarea
+                    value={cancelReason}
+                    onChange={(e) => setCancelReason(e.target.value)}
+                    placeholder="취소 사유를 입력해주세요"
+                    className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
+                  />
+                </div>
+                <p className="text-xs text-gray-500">
+                  취소된 발주는 발주관리 페이지에서 확인할 수 있습니다.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>돌아가기</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={!cancelReason.trim()}
+              onClick={() => {
+                if (cancelTarget && cancelReason.trim() && onCancelOrder) {
+                  onCancelOrder(cancelTarget.orderId, cancelReason.trim())
+                }
+                setCancelTarget(null)
+                setCancelReason('')
+              }}
+            >
+              발주 취소
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

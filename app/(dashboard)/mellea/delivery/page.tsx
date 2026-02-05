@@ -65,6 +65,8 @@ export default function DeliveryPage() {
   const deliveryOrders = useMemo(() => {
     return orders.filter(order => {
       if (!order.deliveryStatus) return false
+      // 취소된 발주: 입고완료(delivered)는 장비가 창고에 있으므로 표시, 나머지는 제외
+      if (order.status === 'cancelled' && order.deliveryStatus !== 'delivered') return false
       // 배송관리는 신규설치 건만 표시 (장비 발주가 필요한 작업만)
       const hasNewInstall = order.items.some(item => item.workType === '신규설치')
       return hasNewInstall

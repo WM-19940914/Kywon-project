@@ -104,6 +104,11 @@ export const menuItems: MenuGroup[] = [
         icon: Truck,
       },
       {
+        title: '재고 관리',
+        url: '/mellea/inventory',
+        icon: Warehouse,
+      },
+      {
         title: '설치비 관리',
         url: '/mellea/install-cost',
         icon: Calculator,

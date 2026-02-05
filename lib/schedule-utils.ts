@@ -187,6 +187,8 @@ export function filterOrdersByScheduleStatus(
   status: InstallScheduleStatus
 ): Order[] {
   return orders.filter(order => {
+    // 취소 건은 설치일정에서 제외 (발주관리에서 확인)
+    if (order.status === 'cancelled') return false
     // 정산완료 건은 설치일정에서 제외 (완료탭에서는 보여줌)
     if (status !== 'completed' && order.status === 'settled') return false
 

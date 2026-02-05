@@ -23,6 +23,11 @@ import type { Order, OrderStatus } from '@/types/order'
  * | 접수중 (received)     | 위 조건 모두 해당 없음 (기본값)                            |
  */
 export function computeKanbanStatus(order: Order): OrderStatus {
+  // 0. 발주취소 → 취소 컬럼
+  if (order.status === 'cancelled') {
+    return 'cancelled'
+  }
+
   // 1. 정산완료 → 과거내역
   if (order.s1SettlementStatus === 'settled') {
     return 'settled'

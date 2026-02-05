@@ -58,21 +58,22 @@ export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) 
       onClick={() => onClick?.(order)}
     >
       <CardContent className="p-3 space-y-1">
-        {/* 계열사 (작게 위에 표시) */}
-        <p className="text-xs text-gray-500 tracking-tight">
-          {order.affiliate}
-        </p>
+        {/* 계열사 + 발주일 */}
+        <div className="flex items-center justify-between text-xs text-gray-500 tracking-tight">
+          <span>{order.affiliate}</span>
+          <span>발주일: {order.orderDate?.replace(/-/g, '.') || '-'}</span>
+        </div>
 
         {/* 사업자명 (강조) - 1줄로 자르고 ... 표시 */}
         <h4 className="font-semibold text-xs text-gray-900 truncate tracking-tight">
           {order.businessName}
         </h4>
 
-        {/* 마감일 (회색 톤다운) */}
+        {/* 정산월 (회색 톤다운) */}
         <p className="text-xs text-gray-600">
-          {order.settlementDate
-            ? `${formatDate(order.settlementDate)} 마감완료`
-            : '마감일 미등록'}
+          {order.s1SettlementMonth
+            ? `${formatDate(order.s1SettlementMonth)} 정산완료`
+            : '정산월 미등록'}
         </p>
 
         {/* 발주요약 */}

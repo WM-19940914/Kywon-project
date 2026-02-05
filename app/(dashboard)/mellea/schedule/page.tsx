@@ -16,7 +16,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { fetchOrders, updateOrder as updateOrderDB, saveCustomerQuote } from '@/lib/supabase/dal'
+import { fetchOrders, updateOrder as updateOrderDB, saveCustomerQuote, cancelOrder as cancelOrderDB } from '@/lib/supabase/dal'
 import type { Order, InstallScheduleStatus, CustomerQuote } from '@/types/order'
 import { ScheduleTable } from '@/components/schedule/schedule-table'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -70,6 +70,22 @@ export default function SchedulePage() {
   }
 
   /**
+   * 발주 취소 핸들러
+   * status를 'cancelled'로 변경하고 취소 사유를 저장합니다.
+   */
+  const handleCancelOrder = async (orderId: string, reason: string) => {
+    const success = await cancelOrderDB(orderId, reason)
+    if (success) {
+      // 로컬 상태에서 취소 반영 (목록에서 사라짐 — cancelled는 설치관리에 안 보임)
+      setOrders(prev => prev.map(order =>
+        order.id === orderId
+          ? { ...order, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
+          : order
+      ))
+    }
+  }
+
+  /**
    * 견적서 작성/수정 모달 열기
    */
   const handleQuoteCreate = (order: Order) => {
@@ -96,6 +112,8 @@ export default function SchedulePage() {
   const tabCounts = useMemo(() => {
     const counts = { unscheduled: 0, scheduled: 0, completed: 0 }
     orders.forEach(order => {
+      // 취소 건은 카운트 제외
+      if (order.status === 'cancelled') return
       // 정산완료 건은 완료탭에서만 카운트
       if (order.status === 'settled') {
         const status = computeInstallScheduleStatus(order)
@@ -256,6 +274,7 @@ export default function SchedulePage() {
             setDetailDialogOpen(true)
           }}
           onQuoteInput={handleQuoteCreate}
+          onCancelOrder={handleCancelOrder}
         />
       ) : (
         <div className="space-y-8">

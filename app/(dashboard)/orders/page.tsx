@@ -9,7 +9,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB } from '@/lib/supabase/dal'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, cancelOrder as cancelOrderDB } from '@/lib/supabase/dal'
 import { type Order, type OrderStatus } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
@@ -126,6 +126,23 @@ export default function OrdersPage() {
   }
 
   /**
+   * 발주 취소 핸들러 (soft delete — 기록 보관)
+   */
+  const handleCancelOrder = async (orderId: string, reason: string) => {
+    const success = await cancelOrderDB(orderId, reason)
+    if (success) {
+      setOrders(orders.map(o =>
+        o.id === orderId
+          ? { ...o, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
+          : o
+      ))
+      showAlert('발주가 취소되었습니다.', 'success')
+    } else {
+      showAlert('발주 취소에 실패했습니다.', 'error')
+    }
+  }
+
+  /**
    * 발주 수정 버튼 클릭 핸들러
    */
   const handleEdit = (order: Order) => {
@@ -169,8 +186,9 @@ export default function OrdersPage() {
    */
   const filteredOrders = orders
     .filter((order) => {
-      // 1. 정산완료(과거내역)는 칸반보드에서 제외 (별도 패널)
-      if (computeKanbanStatus(order) === 'settled') return false
+      // 1. 정산완료/취소는 칸반보드 메인 흐름에서 제외 (별도 표시)
+      const kanbanStatus = computeKanbanStatus(order)
+      if (kanbanStatus === 'settled' || kanbanStatus === 'cancelled') return false
 
       // 2. 계열사 필터
       if (affiliateFilter !== 'all' && order.affiliate !== affiliateFilter) {
@@ -206,7 +224,8 @@ export default function OrdersPage() {
     'received': filteredOrders.filter(o => computeKanbanStatus(o) === 'received'),
     'in-progress': filteredOrders.filter(o => computeKanbanStatus(o) === 'in-progress'),
     'completed': filteredOrders.filter(o => computeKanbanStatus(o) === 'completed'),
-    'settled': [] // 과거내역은 별도 패널
+    'settled': [], // 과거내역은 별도 패널
+    'cancelled': [], // 취소 건은 과거내역 패널에서 표시
   }
 
   /**
@@ -344,7 +363,7 @@ export default function OrdersPage() {
           />
         </div>
 
-        {/* 오른쪽: 과거내역 패널 */}
+        {/* 오른쪽: 과거내역 패널 (정산완료 + 취소내역) */}
         <SettledHistoryPanel
           orders={orders}
           onCardClick={handleCardClick}
@@ -358,6 +377,7 @@ export default function OrdersPage() {
         onOpenChange={setDetailDialogOpen}
         onDelete={handleDelete}
         onEdit={handleEdit}
+        onCancelOrder={handleCancelOrder}
       />
 
       {/* 수정 모달 */}
@@ -418,7 +438,8 @@ function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps)
     'received': { bg: 'bg-amber-50/70', stripe: 'border-t-4 border-t-amber-400' },
     'in-progress': { bg: 'bg-blue-50/70', stripe: 'border-t-4 border-t-blue-400' },
     'completed': { bg: 'bg-violet-50/70', stripe: 'border-t-4 border-t-violet-400' },
-    'settled': { bg: 'bg-emerald-50/70', stripe: 'border-t-4 border-t-emerald-400' }
+    'settled': { bg: 'bg-emerald-50/70', stripe: 'border-t-4 border-t-emerald-400' },
+    'cancelled': { bg: 'bg-red-50/70', stripe: 'border-t-4 border-t-red-400' },
   }
 
   const style = columnStyles[status]
@@ -452,3 +473,4 @@ function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps)
     </div>
   )
 }
+
