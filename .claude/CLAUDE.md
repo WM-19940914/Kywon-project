@@ -57,26 +57,31 @@
 
 ---
 
-## 현재 구현 상태 (2026-01-31 기준)
+## 현재 구현 상태 (2026-02-06 기준)
 
 ### 구현 완료
-- [x] **발주 관리** (`/orders`) — 칸반보드 + 발주 등록/수정/상세
+- [x] **발주 관리** (`/orders`) — 칸반보드 + 발주 등록/수정/상세 + 발주취소 기능
 - [x] **배송 관리** (`/mellea/delivery`) — 테이블 리스트 + 아코디언 구성품 상세
   - 상태 탭: 발주대기(기본) / 배송중 / 입고완료
   - 구성품별 개별 주문번호 관리
   - 매입처 뱃지 표시 (기본: 삼성전자)
   - 모델명: 구성품명 + 부품모델명 (SET모델은 미표시)
-- [x] **재고 관리** (`/mellea/warehouses`) — 창고별 재고 현황
+  - SET 모델 구성품 좌측 세로 컬러바 그룹핑
+- [x] **재고 관리** (`/mellea/inventory`) — 창고별 재고 현황 + 재고이벤트(입고/출고) 기록
+- [x] **설치 관리** (`/mellea/schedule`) — 설치일정 테이블 + 설치완료 탭
 - [x] **연간 단가표** (`/price-table`) — SET 모델 + 구성품 조회
-- [x] **견적서 작성** — 장비/설치비 입력 + 단가표 연동 + 단위절사/VAT 자동 계산
-- [x] **정산 관리** (`/settlements`) — 기본 구조
+- [x] **견적서 작성** — 장비/설치비 입력 + 단가표 연동 + 단위절사/VAT 자동 계산 + 실시간 자동저장
+- [x] **에스원 정산관리** (`/mellea/s1-settlement`) — 멜레아↔에스원 월별 설치비 정산
+  - 3탭 구조: 미정산 / 정산 진행중 / 정산 완료
+  - 체크박스 일괄 상태 변경, 개별 되돌리기
+- [x] **과거내역 패널** — 정산완료된 발주 조회
 - [x] **사이드바 메뉴** — 역할 그룹별 메뉴 배치 (교원/멜레아/에스원/공통)
+- [x] **Supabase DB 연동** — 테이블 생성 SQL, DAL 함수 구현 완료
 
 ### 미구현 (추후 작업)
 - [ ] **AS 관리** (`/as`) — 메뉴만 배치 (준비중)
 - [ ] **설치비 관리** (`/mellea/install-cost`) — 메뉴만 배치 (준비중)
 - [ ] **배송정보 입력/수정 모달** 개선 — 구성품별 개별 주문번호 체계에 맞게 수정
-- [ ] **Supabase DB 연동** — 현재 mock-data 사용 중, 관계형 테이블 설계 필요
 - [ ] **카카오 알림톡** — 발주접수/배송완료/일정확인 등 알림 (카카오 비즈니스 채널)
 - [ ] **역할별 권한 제어** — 멜레아/에스원/교원 각자 화면만 접근
 - [ ] **카카오 지도 API** — 창고 위치 지도 표시 (현재 SVG)
@@ -151,7 +156,7 @@ settlements (월별 정산)
 
 ---
 
-## 최근 작업 로그 (2026-01-31)
+## 최근 작업 로그
 
 ### 오늘 완료한 작업
 - **배송관리 탭별 안내 문구 추가** (`app/(dashboard)/mellea/delivery/page.tsx`)
@@ -224,38 +229,35 @@ settlements (월별 정산)
 - **발주 등록 주소검색 개선** (`components/orders/order-form.tsx`)
   - 상세주소 자동채움(건물명/법정동) 제거 → 빈 칸 유지
 
-### 2026-02-04 집에서 작업한 내용 (회사 PC에서 동기화 필요)
+### 2026-02-04 작업 내용
+- **MCP 서버 설정** (`.cursor/mcp.json`)
+  - Supabase, Context7, GitHub 3개 서버 연동
+- **Claude 에이전트/명령어 추가**
+  - `.claude/agents/supabase-helper.md` — DB 작업 전문 에이전트
+  - `.claude/agents/ui-reviewer.md` — UI 검수 에이전트
+  - `.claude/commands/commit.md` — 한글 커밋 자동 생성
+  - `.claude/commands/deploy.md` — 배포 전 점검
 
-사용자가 회사에서 "집에서 한 거 회사에도 적용해줘"라고 요청하면 아래 절차대로 안내할 것.
-
-**회사 PC 동기화 절차:**
-1. 회사에서 오늘(2/4) 작업한 내용을 먼저 commit + push
-   ```
-   git add .
-   git commit -m "커밋 메시지"
-   git push
-   ```
-2. 집에서 push한 설정 가져오기
-   ```
-   git pull
-   ```
-3. 충돌 발생 시 Claude에게 "충돌 해결해줘" 요청
-4. `.env.local`에 `GITHUB_PAT=본인의_GitHub_PAT_토큰` 한 줄 수동 추가 (git에 포함 안 됨)
-   - PAT 토큰은 https://github.com/settings/tokens?type=beta 에서 확인/재생성
-   - 토큰을 모르겠으면 집 PC의 `.env.local` 파일 참고
-5. Cursor 재시작 → Tools & MCP에서 3개 서버(supabase, context7, github) 연결 확인
-
-**집에서 추가한 파일 목록:**
-- `.cursor/mcp.json` — MCP 서버 3개 설정 (Supabase, Context7, GitHub)
-- `.claude/agents/supabase-helper.md` — DB 작업 전문 에이전트
-- `.claude/agents/ui-reviewer.md` — UI 검수 에이전트
-- `.claude/commands/commit.md` — 한글 커밋 자동 생성
-- `.claude/commands/deploy.md` — 배포 전 점검
-- `.claude/CLAUDE.md` — 자동 적용 규칙(커밋/빌드/DB/UI) 추가
-- `.gitignore` — 정리
+### 2026-02-05 작업 내용
+- **발주취소 기능** (`components/orders/order-detail-dialog.tsx`)
+  - 발주 상세에서 취소 버튼 추가
+  - 취소된 발주는 별도 상태로 관리
+- **재고관리 페이지 신규** (`app/(dashboard)/mellea/inventory/page.tsx`)
+  - 창고별 재고 현황 조회
+  - `inventory-warehouse-view.tsx` 컴포넌트 (575줄)
+- **재고이벤트 테이블** (`supabase/001_create_tables.sql`)
+  - 입고/출고 기록 추적 테이블 추가
+- **배송관리 버튼 정리** (`components/delivery/delivery-table.tsx`)
+  - UI 개선, 버튼 배치 정리
+- **과거내역 패널 개선** (`components/orders/settled-history-panel.tsx`)
+  - 정산완료된 발주 조회 기능 강화
+- **데이터 임포트 스크립트**
+  - `scripts/import-orders.js` — 발주 데이터 일괄 임포트
+  - `scripts/create-template.js` — 임포트용 템플릿 생성
+- **DAL 함수 대폭 확장** (`lib/supabase/dal.ts`)
+  - 재고 관련 CRUD 함수 추가 (178줄+)
 
 ### 이어서 할 작업 (미정)
-- Supabase DB에 `s1_settlement_status`, `s1_settlement_month` 컬럼 추가 필요
 - 배송중/입고완료 탭에도 MeLEA 또는 역할별 로고 뱃지 추가 검토
 - 배송정보 입력/수정 모달 개선
-- Supabase DB 연동 작업
+- 실제 운영 데이터 임포트 및 테스트

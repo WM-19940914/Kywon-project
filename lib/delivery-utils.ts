@@ -410,8 +410,8 @@ export function computeOrderedDocStatus(items: EquipmentItem[]): OrderedDocStatu
  * 발주완료 탭 문서상태별 뱃지 스타일
  */
 export const ORDERED_DOC_STATUS_STYLES: Record<OrderedDocStatus, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  'in-progress': { label: '진행중', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
-  'completed': { label: '정산완료', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
+  'in-progress': { label: '🚚 배송 진행중', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+  'completed': { label: '✅ 배송완료', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
 }
 
 /**

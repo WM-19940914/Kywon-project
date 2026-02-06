@@ -30,9 +30,9 @@ export type DeliveryStatus = 'pending' | 'ordered' | 'delivered'
 
 /** 배송상태 한글 표시용 (Order 레벨) */
 export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
-  'pending': '발주대기',
-  'ordered': '진행중',
-  'delivered': '배송완료'
+  'pending': '📋 발주대기',
+  'ordered': '🚚 배송 진행중',
+  'delivered': '✅ 배송완료'
 }
 
 /** 배송상태별 색상 (Order 레벨 배지용) */

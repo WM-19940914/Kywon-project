@@ -10,7 +10,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { fetchOrders, updateOrder, updateDeliveryStatus, saveEquipmentItems } from '@/lib/supabase/dal'
+import { fetchOrders, updateOrder, updateDeliveryStatus, saveEquipmentItems, cancelOrder } from '@/lib/supabase/dal'
 import { fetchWarehouses } from '@/lib/supabase/dal'
 import { setWarehouseCache } from '@/lib/delivery-utils'
 import type { Order, DeliveryStatus, EquipmentItem } from '@/types/order'
@@ -174,6 +174,24 @@ export default function DeliveryPage() {
     showAlert('배송 정보가 저장되었습니다!', 'success')
   }
 
+  /**
+   * 발주취소 핸들러
+   * - 발주 상태를 cancelled로 변경
+   * - 입고된 구성품이 있으면 유휴재고 이벤트 자동 생성 (DAL에서 처리)
+   */
+  const handleCancelOrder = async (orderId: string, reason: string) => {
+    const success = await cancelOrder(orderId, reason)
+    if (success) {
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order
+        return { ...order, status: 'cancelled' }
+      }))
+      showAlert('발주가 취소되었습니다.', 'success')
+    } else {
+      showAlert('발주 취소에 실패했습니다.', 'error')
+    }
+  }
+
   // 배송완료 탭 페이지네이션 (10개씩)
   const DELIVERED_PAGE_SIZE = 10
   const [deliveredPage, setDeliveredPage] = useState(1)
@@ -204,6 +222,7 @@ export default function DeliveryPage() {
           배송관리
         </h1>
         <p className="text-muted-foreground">삼성전자에 발주한 장비의 배송 현황을 관리하세요</p>
+        <p className="text-xs text-gray-400 mt-1">❗ <span className="text-red-500 font-semibold">신규설치 건만 표시됩니다.</span> (철거보관, 이전설치 등 장비 배송이 없는 건은 제외)</p>
       </div>
 
       {/* 검색 영역 */}
@@ -314,6 +333,7 @@ export default function DeliveryPage() {
         onEditDelivery={handleEditDelivery}
         onViewDetail={handleViewDetail}
         onChangeStatus={handleChangeDeliveryStatus}
+        onCancelOrder={handleCancelOrder}
         onSaveItems={async (orderId, items) => {
           await saveEquipmentItems(orderId, items)
           setOrders(prev => prev.map(order => {

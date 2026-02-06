@@ -12,7 +12,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
-import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, InventoryEvent, InventoryEventType, InventoryEventStatus } from '@/types/order'
+import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, InventoryEvent, InventoryEventType } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 
 // ============================================================

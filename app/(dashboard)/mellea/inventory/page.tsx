@@ -18,6 +18,7 @@ import { useAlert } from '@/components/ui/custom-alert'
 import { InventoryWarehouseView } from '@/components/inventory/inventory-warehouse-view'
 
 export default function InventoryPage() {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { showAlert } = useAlert()
 
   // 데이터 로딩 상태

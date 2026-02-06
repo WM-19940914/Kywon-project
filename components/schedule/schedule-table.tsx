@@ -42,7 +42,6 @@ import {
   MapPin,
   Package,
   Pencil,
-  Plus,
   PlusCircle,
   CircleCheck,
   RotateCcw,

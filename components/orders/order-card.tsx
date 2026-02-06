@@ -11,7 +11,7 @@
 
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { MapPin, Calendar, User, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw } from 'lucide-react'
+import { MapPin, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import type { Order } from '@/types/order'
 import { WORK_TYPE_ORDER, getWorkTypeBadgeStyle } from '@/types/order'

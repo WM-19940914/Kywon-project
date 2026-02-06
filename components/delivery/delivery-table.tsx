@@ -34,11 +34,18 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
   CalendarDays,
   ChevronDown,
   ChevronRight,
   FileText,
   MapPin,
+  MoreVertical,
   Package,
   Pencil,
   Phone,
@@ -49,8 +56,8 @@ import {
   Warehouse as WarehouseIcon
 } from 'lucide-react'
 import { ClipboardList } from 'lucide-react'
-import type { Order, EquipmentItem, DeliveryStatus } from '@/types/order'
-import { DELIVERY_STATUS_LABELS, DELIVERY_STATUS_COLORS, ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS } from '@/types/order'
+import type { Order, EquipmentItem, DeliveryStatus, OrderStatus } from '@/types/order'
+import { DELIVERY_STATUS_LABELS, DELIVERY_STATUS_COLORS, ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS, ORDER_STATUS_COLORS } from '@/types/order'
 import {
   computeDeliveryProgress,
   getWarehouseDetail,
@@ -452,6 +459,8 @@ interface DeliveryTableProps {
   onViewDetail?: (order: Order) => void
   /** 배송상태 수동 전환 콜백 */
   onChangeStatus?: (orderId: string, newStatus: DeliveryStatus) => void
+  /** 발주취소 콜백 */
+  onCancelOrder?: (orderId: string, reason: string) => void
   /** 인라인 편집 저장 콜백 */
   onSaveItems?: (orderId: string, items: EquipmentItem[]) => void
   /** 읽기전용 모드 */
@@ -466,6 +475,18 @@ function getRowStyle(): string {
 }
 
 /**
+ * 현장진행상황 레이블 (모든 탭에서 표시)
+ * - "완료"는 "완료(정산대기)"로 표시
+ */
+const SITE_PROGRESS_LABELS: Record<OrderStatus, string> = {
+  'received': '접수중',
+  'in-progress': '진행중',
+  'completed': '완료(정산대기)',
+  'settled': '정산완료',
+  'cancelled': '발주취소',
+}
+
+/**
  * 상태 뱃지 (발주대기 / 진행중 / 완료)
  * @param order - 발주 정보
  * @param editingItems - 아코디언에서 편집 중인 구성품 (있으면 이걸로 판정)
@@ -475,7 +496,7 @@ function StatusBadge({ order, editingItems, currentTab }: { order: Order; editin
   if (currentTab === 'delivered') {
     return (
       <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">
-        배송완료
+        ✅ 배송완료
       </Badge>
     )
   }
@@ -680,7 +701,7 @@ function createDefaultRows(): EquipmentItem[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onSaveItems, readOnly, currentTab }: DeliveryTableProps) {
+export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onCancelOrder, onSaveItems, readOnly, currentTab }: DeliveryTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   /** 주문별 편집 중인 구성품 데이터 (orderId → EquipmentItem[]) */
@@ -697,6 +718,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
     businessName: string
     newStatus: DeliveryStatus
   } | null>(null)
+
+  /** 발주취소 다이얼로그 대상 */
+  const [cancelTarget, setCancelTarget] = useState<{
+    orderId: string
+    businessName: string
+  } | null>(null)
+  const [cancelReason, setCancelReason] = useState('')
 
   /** 단가표 Sheet 열림/닫힘 상태 */
   const [priceSheetOpen, setPriceSheetOpen] = useState(false)
@@ -914,7 +942,8 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
           <thead className="bg-muted/80">
             <tr>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '40px' }}></th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>문서 상태</th>
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '110px' }}>배송 현황</th>
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '100px' }}>현장진행상황</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>교원 발주등록일</th>
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '70px' }}>교원 발주서</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>배송현황</th>
@@ -945,6 +974,12 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     {/* 상태 뱃지 (단일 표시) — 편집 중인 구성품 반영 */}
                     <td className="p-3">
                       <StatusBadge order={order} editingItems={editingItems[order.id]} currentTab={currentTab} />
+                    </td>
+                    {/* 현장진행상황 (모든 탭에서 표시) */}
+                    <td className="p-3">
+                      <Badge className={`${ORDER_STATUS_COLORS[order.status]} text-xs`}>
+                        {SITE_PROGRESS_LABELS[order.status]}
+                      </Badge>
                     </td>
                     <td className="p-3">
                       <p className="text-sm">{formatShortDate(order.orderDate)}</p>
@@ -990,11 +1025,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         )
                       })()}
                     </td>
-                    {/* 상태 전환 버튼 (탭별 앞/뒤 이동) */}
+                    {/* 메인 액션 버튼 + 케밥 메뉴 */}
                     <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                       {!readOnly && onChangeStatus && (
-                        <div className="flex flex-col items-center gap-1">
-                          {/* 발주대기 탭: 진행중→ */}
+                        <div className="flex items-center justify-center gap-1">
+                          {/* 메인 버튼: 다음 단계로 이동 */}
                           {currentTab === 'pending' && (
                             <Button
                               size="sm"
@@ -1004,47 +1039,60 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               진행중 →
                             </Button>
                           )}
-                          {/* 진행중 탭: ←발주대기 */}
                           {currentTab === 'ordered' && (
-                            <>
-                              <Button
-                                size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
-                              >
-                                배송완료 →
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-xs px-3 h-7 text-orange-600 hover:bg-orange-50"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
-                              >
-                                ← 발주대기
-                              </Button>
-                            </>
+                            <Button
+                              size="sm"
+                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
+                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
+                            >
+                              배송완료 →
+                            </Button>
                           )}
-                          {/* 배송완료 탭: ←진행중 / ←발주대기 */}
-                          {currentTab === 'delivered' && (
-                            <>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-xs px-3 h-7 text-blue-600 hover:bg-blue-50"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
-                              >
-                                ← 진행중
+                          {/* 케밥 메뉴: 되돌리기 / 취소 등 */}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                                <MoreVertical className="h-4 w-4 text-gray-400" />
                               </Button>
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="text-xs px-3 h-7 text-orange-600 hover:bg-orange-50"
-                                onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
-                              >
-                                ← 발주대기
-                              </Button>
-                            </>
-                          )}
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="min-w-[140px]">
+                              {/* 진행중 탭: ← 발주대기 */}
+                              {currentTab === 'ordered' && (
+                                <DropdownMenuItem
+                                  className="text-xs text-orange-600 cursor-pointer"
+                                  onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
+                                >
+                                  ← 발주대기로 되돌리기
+                                </DropdownMenuItem>
+                              )}
+                              {/* 배송완료 탭: ← 진행중 / ← 발주대기 */}
+                              {currentTab === 'delivered' && (
+                                <DropdownMenuItem
+                                  className="text-xs text-blue-600 cursor-pointer"
+                                  onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
+                                >
+                                  ← 진행중으로 되돌리기
+                                </DropdownMenuItem>
+                              )}
+                              {currentTab === 'delivered' && (
+                                <DropdownMenuItem
+                                  className="text-xs text-orange-600 cursor-pointer"
+                                  onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
+                                >
+                                  ← 발주대기로 되돌리기
+                                </DropdownMenuItem>
+                              )}
+                              {/* 발주대기/진행중 탭: 발주취소 */}
+                              {(currentTab === 'pending' || currentTab === 'ordered') && onCancelOrder && (
+                                <DropdownMenuItem
+                                  className="text-xs text-red-500 cursor-pointer"
+                                  onClick={() => setCancelTarget({ orderId: order.id, businessName: order.businessName })}
+                                >
+                                  발주취소
+                                </DropdownMenuItem>
+                              )}
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       )}
                     </td>
@@ -1053,7 +1101,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   {/* 아코디언 상세 영역 — 인라인 편집 테이블 */}
                   {isExpanded && (
                     <tr>
-                      <td colSpan={9} className="p-0">
+                      <td colSpan={10} className="p-0">
                         <div className="border-t border-gray-200 bg-gray-50/60 px-4 py-4">
                           <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm mb-3">
                             <table className="text-sm" style={{ minWidth: '1720px' }}>
@@ -1366,7 +1414,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 onClick={() => toggleRow(order.id, order)}
               >
                 <div className="flex items-center justify-between mb-2">
-                  <StatusBadge order={order} editingItems={editingItems[order.id]} currentTab={currentTab} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge order={order} editingItems={editingItems[order.id]} currentTab={currentTab} />
+                    {/* 현장진행상황 (모든 탭에서 표시) */}
+                    <Badge className={`${ORDER_STATUS_COLORS[order.status]} text-xs`}>
+                      {SITE_PROGRESS_LABELS[order.status]}
+                    </Badge>
+                  </div>
                   <span className="text-xs text-gray-500">{formatShortDate(order.orderDate)}</span>
                 </div>
 
@@ -1409,6 +1463,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   )}
                   {!readOnly && onChangeStatus && (
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                      {/* 메인 버튼 */}
                       {currentTab === 'pending' && (
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
                           onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
@@ -1416,29 +1471,45 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         </Button>
                       )}
                       {currentTab === 'ordered' && (
-                        <>
-                          <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
-                            배송완료 →
-                          </Button>
-                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-orange-600"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
-                            ← 발주대기
-                          </Button>
-                        </>
+                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
+                          onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
+                          배송완료 →
+                        </Button>
                       )}
-                      {currentTab === 'delivered' && (
-                        <>
-                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-blue-600"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
-                            ← 진행중
+                      {/* 케밥 메뉴 */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0">
+                            <MoreVertical className="h-4 w-4 text-gray-400" />
                           </Button>
-                          <Button size="sm" variant="ghost" className="text-xs px-3 h-7 text-orange-600"
-                            onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
-                            ← 발주대기
-                          </Button>
-                        </>
-                      )}
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="min-w-[140px]">
+                          {currentTab === 'ordered' && (
+                            <DropdownMenuItem className="text-xs text-orange-600 cursor-pointer"
+                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
+                              ← 발주대기로 되돌리기
+                            </DropdownMenuItem>
+                          )}
+                          {currentTab === 'delivered' && (
+                            <DropdownMenuItem className="text-xs text-blue-600 cursor-pointer"
+                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
+                              ← 진행중으로 되돌리기
+                            </DropdownMenuItem>
+                          )}
+                          {currentTab === 'delivered' && (
+                            <DropdownMenuItem className="text-xs text-orange-600 cursor-pointer"
+                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
+                              ← 발주대기로 되돌리기
+                            </DropdownMenuItem>
+                          )}
+                          {(currentTab === 'pending' || currentTab === 'ordered') && onCancelOrder && (
+                            <DropdownMenuItem className="text-xs text-red-500 cursor-pointer"
+                              onClick={() => setCancelTarget({ orderId: order.id, businessName: order.businessName })}>
+                              발주취소
+                            </DropdownMenuItem>
+                          )}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   )}
                 </div>
@@ -1710,6 +1781,43 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               }}
             >
               변경
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 발주취소 사유 입력 다이얼로그 */}
+      <AlertDialog open={!!cancelTarget} onOpenChange={(open) => { if (!open) { setCancelTarget(null); setCancelReason('') } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>발주 취소</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>&ldquo;{cancelTarget?.businessName}&rdquo; 발주를 취소합니다.</p>
+                <textarea
+                  value={cancelReason}
+                  onChange={(e) => setCancelReason(e.target.value)}
+                  placeholder="취소 사유를 입력해주세요"
+                  className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+                />
+                <p className="text-xs text-gray-400">취소된 발주는 과거내역에서 확인할 수 있습니다.</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>닫기</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-red-600 hover:bg-red-700 text-white"
+              disabled={!cancelReason.trim()}
+              onClick={() => {
+                if (cancelTarget && onCancelOrder && cancelReason.trim()) {
+                  onCancelOrder(cancelTarget.orderId, cancelReason.trim())
+                }
+                setCancelTarget(null)
+                setCancelReason('')
+              }}
+            >
+              발주 취소
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
