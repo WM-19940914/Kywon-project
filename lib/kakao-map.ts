@@ -9,37 +9,49 @@
 
 let loadPromise: Promise<void> | null = null
 
+/**
+ * 카카오 지도 SDK 초기화 (layout.tsx에서 스크립트를 미리 로드)
+ *
+ * layout.tsx의 <Script> 태그로 SDK가 로드된 후,
+ * kakao.maps.load()를 호출해서 초기화합니다.
+ * 스크립트가 아직 안 들어왔으면 polling으로 기다립니다.
+ */
 export function loadKakaoMapSdk(): Promise<void> {
   // 이미 로드 중이거나 완료됐으면 같은 Promise 재사용
   if (loadPromise) return loadPromise
 
   loadPromise = new Promise((resolve, reject) => {
-    // 이미 로드 완료된 경우
+    // 이미 초기화 완료된 경우
     if (typeof window !== 'undefined' && window.kakao?.maps?.Map) {
+      console.log('[카카오맵] 이미 초기화됨')
       resolve()
       return
     }
 
-    const apiKey = process.env.NEXT_PUBLIC_KAKAO_MAP_KEY
-    if (!apiKey) {
-      reject(new Error('NEXT_PUBLIC_KAKAO_MAP_KEY 환경변수가 설정되지 않았습니다.'))
-      return
-    }
+    // layout.tsx의 <Script>가 로드될 때까지 polling (최대 10초)
+    let attempts = 0
+    const maxAttempts = 50 // 200ms × 50 = 10초
+    const check = () => {
+      attempts++
 
-    const script = document.createElement('script')
-    // autoload=false: 스크립트 로드 후 수동으로 kakao.maps.load() 호출
-    // libraries=services: Geocoder(주소→좌표 변환) 기능 포함
-    script.src = `https://dapi.kakao.com/v2/maps/sdk.js?appkey=${apiKey}&libraries=services&autoload=false`
-    script.onload = () => {
-      window.kakao.maps.load(() => {
-        resolve()
-      })
+      if (window.kakao?.maps?.load) {
+        // SDK 스크립트 로드 완료 → maps.load()로 초기화
+        console.log('[카카오맵] SDK 감지, 초기화 중...')
+        window.kakao.maps.load(() => {
+          console.log('[카카오맵] 초기화 완료!')
+          resolve()
+        })
+      } else if (attempts >= maxAttempts) {
+        // 타임아웃
+        console.error('[카카오맵] SDK 로드 타임아웃 (10초)')
+        loadPromise = null
+        reject(new Error('카카오 지도 SDK 로드 시간 초과 — 브라우저 콘솔의 네트워크 탭을 확인하세요'))
+      } else {
+        // 아직 로드 안 됨 → 200ms 후 재시도
+        setTimeout(check, 200)
+      }
     }
-    script.onerror = () => {
-      loadPromise = null
-      reject(new Error('카카오 지도 SDK 로드 실패'))
-    }
-    document.head.appendChild(script)
+    check()
   })
 
   return loadPromise

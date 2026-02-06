@@ -104,7 +104,10 @@ export default function KakaoMap({ warehouses, selectedId, onMarkerClick }: Kaka
       const map = new kakao.maps.Map(mapContainerRef.current, {
         center: new kakao.maps.LatLng(36.0, 127.5), // 한국 중심
         level: 13, // 전국이 보이는 줌 레벨
+        mapTypeId: kakao.maps.MapTypeId.ROADMAP, // 기본 도로 지도
+        disableDoubleClickZoom: true, // 더블클릭 줌 비활성화
       })
+
       mapRef.current = map
       setMapStatus('ready')
     }).catch((err) => {
@@ -252,7 +255,7 @@ export default function KakaoMap({ warehouses, selectedId, onMarkerClick }: Kaka
             <div style={{ fontSize: '12px', marginTop: '4px', color: '#9ca3af' }}>{errorMsg}</div>
             <div style={{ fontSize: '11px', marginTop: '8px', color: '#6b7280' }}>
               카카오 개발자센터 → 앱 → 플랫폼 → Web에<br/>
-              http://localhost:3000 이 등록되었는지 확인하세요
+              http://localhost:3002 이 등록되었는지 확인하세요
             </div>
           </div>
         </div>

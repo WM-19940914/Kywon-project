@@ -69,6 +69,37 @@ import {
   getWarehouseCache,
 } from '@/lib/delivery-utils'
 import { DeliveryPriceTableSheet } from '@/components/delivery/delivery-price-table-sheet'
+import { getCoordFromAddress } from '@/lib/kakao-map'
+
+// ─── 다음 우편번호 API (인도처 추가용) ──────────────────────────
+/** 다음 우편번호 API 스크립트 동적 로드 (무료, 키 불필요) */
+function loadDaumPostcode(): Promise<void> {
+  return new Promise((resolve) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    if ((window as any).daum?.Postcode) {
+      resolve()
+      return
+    }
+    const script = document.createElement('script')
+    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+    script.onload = () => resolve()
+    document.head.appendChild(script)
+  })
+}
+
+/** 주소 검색 팝업 열기 → 도로명주소 반환 */
+async function openAddressSearch(
+  onComplete: (address: string) => void
+) {
+  await loadDaumPostcode()
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  new (window as any).daum.Postcode({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    oncomplete: (data: any) => {
+      onComplete(data.roadAddress || data.jibunAddress)
+    },
+  }).open()
+}
 
 /**
  * SET 모델 그룹 컬러바 색상 (6가지 순환)
@@ -252,8 +283,12 @@ function WarehousePickerDialog({
   const [search, setSearch] = useState('')
   /** 인도처 추가 폼 열림/닫힘 */
   const [showAddForm, setShowAddForm] = useState(false)
-  /** 새 인도처 입력 데이터 */
-  const [newWarehouse, setNewWarehouse] = useState({ name: '', address: '', managerName: '', managerPhone: '' })
+  /** 새 인도처 입력 데이터 (좌표 포함) */
+  const [newWarehouse, setNewWarehouse] = useState({
+    name: '', address: '', managerName: '', managerPhone: '',
+    latitude: undefined as number | undefined,
+    longitude: undefined as number | undefined,
+  })
 
   const warehouseList = getWarehouseCache()
   const filtered = warehouseList.filter(wh => {
@@ -266,7 +301,18 @@ function WarehousePickerDialog({
     )
   })
 
-  /** 새 인도처 저장 (DB + 캐시에 추가) */
+  /** 카카오 주소검색 팝업 열기 */
+  const handleSearchAddress = () => {
+    openAddressSearch((address) => {
+      setNewWarehouse(prev => ({ ...prev, address }))
+      // 주소 → 좌표 변환 (전국 설치팀 창고 지도 마커용)
+      getCoordFromAddress(address).then((coord) => {
+        setNewWarehouse(prev => ({ ...prev, latitude: coord.lat, longitude: coord.lng }))
+      })
+    })
+  }
+
+  /** 새 인도처 저장 (DB + 캐시에 추가 → 전국 설치팀 창고에도 반영) */
   const handleAddWarehouse = async () => {
     if (!newWarehouse.name.trim() || !newWarehouse.address.trim()) return
     const newId = `wh-${Date.now()}`
@@ -276,17 +322,19 @@ function WarehousePickerDialog({
       address: newWarehouse.address.trim(),
       managerName: newWarehouse.managerName.trim() || undefined,
       managerPhone: newWarehouse.managerPhone.trim() || undefined,
+      latitude: newWarehouse.latitude,
+      longitude: newWarehouse.longitude,
     }
     // 캐시에 추가 (UI 즉시 반영)
     getWarehouseCache().push(whData)
-    // DB에도 저장 (비동기)
+    // DB에도 저장 (비동기 → 전국 설치팀 창고 페이지에서도 조회됨)
     const { createWarehouse } = await import('@/lib/supabase/dal')
     createWarehouse(whData)
     // 추가 후 바로 선택
     onSelect(newId)
     onOpenChange(false)
     // 폼 초기화
-    setNewWarehouse({ name: '', address: '', managerName: '', managerPhone: '' })
+    setNewWarehouse({ name: '', address: '', managerName: '', managerPhone: '', latitude: undefined, longitude: undefined })
     setShowAddForm(false)
   }
 
@@ -335,13 +383,16 @@ function WarehousePickerDialog({
                 />
               </div>
               <div>
-                <label className="text-[10px] text-gray-500">주소 *</label>
-                <Input
-                  value={newWarehouse.address}
-                  onChange={(e) => setNewWarehouse(prev => ({ ...prev, address: e.target.value }))}
-                  placeholder="예: 부산시 해운대구..."
-                  className="h-7 text-xs"
-                />
+                <label className="text-[10px] text-gray-500">주소 * (클릭하여 검색)</label>
+                <div
+                  onClick={handleSearchAddress}
+                  className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-xs cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                >
+                  <SearchIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                  <span className={newWarehouse.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
+                    {newWarehouse.address || '주소 검색...'}
+                  </span>
+                </div>
               </div>
               <div>
                 <label className="text-[10px] text-gray-500">연락처</label>
@@ -1036,7 +1087,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
                               onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
                             >
-                              진행중 →
+                              발주완료 →
                             </Button>
                           )}
                           {currentTab === 'ordered' && (
@@ -1467,7 +1518,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       {currentTab === 'pending' && (
                         <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
                           onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
-                          진행중 →
+                          발주완료 →
                         </Button>
                       )}
                       {currentTab === 'ordered' && (

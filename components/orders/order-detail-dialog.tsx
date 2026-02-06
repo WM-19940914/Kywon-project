@@ -35,7 +35,8 @@ import {
 } from '@/components/ui/alert-dialog'
 import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, XCircle, User, Phone, Calendar } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { countInventoryEvents } from '@/lib/supabase/dal'
 
 /**
  * 컴포넌트가 받을 Props
@@ -69,6 +70,15 @@ export function OrderDetailDialog({
   // 취소 사유 입력 다이얼로그
   const [cancelDialogOpen, setCancelDialogOpen] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+  // 유휴재고 이벤트 수 (삭제 경고용)
+  const [inventoryEventCount, setInventoryEventCount] = useState(0)
+
+  // 삭제/취소 선택 다이얼로그 열릴 때 유휴재고 이벤트 수 조회
+  useEffect(() => {
+    if (deleteChoiceOpen && order) {
+      countInventoryEvents(order.id).then(setInventoryEventCount)
+    }
+  }, [deleteChoiceOpen, order])
 
   // order가 없으면 모달 안 보여줌
   if (!order) return null
@@ -92,9 +102,10 @@ export function OrderDetailDialog({
     if (!onDelete) return
     setDeleteChoiceOpen(false)
 
-    const confirmed = await showConfirm(
-      `"${order.documentNumber}" 발주를 완전 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
-    )
+    const warningMsg = inventoryEventCount > 0
+      ? `"${order.documentNumber}" 발주를 완전 삭제하시겠습니까?\n\n⚠️ 유휴재고 이벤트 ${inventoryEventCount}건도 함께 삭제됩니다.\n이 작업은 되돌릴 수 없습니다.`
+      : `"${order.documentNumber}" 발주를 완전 삭제하시겠습니까?\n\n이 작업은 되돌릴 수 없습니다.`
+    const confirmed = await showConfirm(warningMsg)
 
     if (confirmed) {
       onDelete(order.id)
@@ -374,6 +385,15 @@ export function OrderDetailDialog({
                 <p className="text-xs text-gray-500 mt-1 ml-6">
                   DB에서 완전히 삭제됩니다. 되돌릴 수 없습니다.
                 </p>
+                {inventoryEventCount > 0 && (
+                  <div className="flex items-start gap-1.5 mt-2 ml-6 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-700">
+                      이 발주에 연결된 <span className="font-bold">유휴재고 이벤트 {inventoryEventCount}건</span>이 있습니다.
+                      완전 삭제 시 유휴재고 기록도 함께 삭제됩니다.
+                    </p>
+                  </div>
+                )}
               </button>
             )}
           </div>

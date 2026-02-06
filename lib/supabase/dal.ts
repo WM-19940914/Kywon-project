@@ -362,11 +362,48 @@ export async function updateOrder(id: string, updates: Partial<Order>): Promise<
 }
 
 /**
- * 발주 삭제 (CASCADE로 하위 테이블 자동 삭제)
+ * 발주에 연결된 유휴재고 이벤트 수 조회
+ * @param orderId - 발주 ID
+ * @returns 유휴재고 이벤트 수
+ */
+export async function countInventoryEvents(orderId: string): Promise<number> {
+  const supabase = createClient()
+  const { count, error } = await supabase
+    .from('inventory_events')
+    .select('*', { count: 'exact', head: true })
+    .or(`source_order_id.eq.${orderId},target_order_id.eq.${orderId}`)
+
+  if (error) {
+    console.error('유휴재고 이벤트 조회 실패:', error.message)
+    return 0
+  }
+  return count || 0
+}
+
+/**
+ * 발주 삭제 (유휴재고 이벤트 포함 깔끔 정리)
+ *
+ * 삭제 순서:
+ * 1. inventory_events에서 해당 발주 참조하는 이벤트 삭제
+ * 2. orders 삭제 (CASCADE로 order_items, equipment_items 등 자동 삭제)
+ *
  * @param id - 발주 ID
  */
 export async function deleteOrder(id: string): Promise<boolean> {
   const supabase = createClient()
+
+  // 1. 유휴재고 이벤트 먼저 삭제 (외래키 제약 방지)
+  const { error: eventError } = await supabase
+    .from('inventory_events')
+    .delete()
+    .or(`source_order_id.eq.${id},target_order_id.eq.${id}`)
+
+  if (eventError) {
+    console.error('유휴재고 이벤트 삭제 실패:', eventError.message)
+    return false
+  }
+
+  // 2. 발주 삭제 (CASCADE로 하위 테이블 자동 삭제)
   const { error } = await supabase
     .from('orders')
     .delete()
