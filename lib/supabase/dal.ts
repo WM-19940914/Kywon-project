@@ -12,7 +12,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
-import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, InventoryEvent, InventoryEventType } from '@/types/order'
+import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, ReviewStatus, InventoryEvent, InventoryEventType } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 
 // ============================================================
@@ -944,6 +944,135 @@ export async function batchUpdateS1SettlementStatus(orderIds: string[], status: 
 
   if (error) {
     console.error('에스원 정산 일괄 변경 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 💰 교원↔멜레아 정산 (Gyowon Settlement)
+// ============================================================
+
+/**
+ * 교원↔멜레아 정산 완료 일괄 처리
+ *
+ * 한 번의 호출로 다음을 동시에 처리:
+ * - orders.status → 'settled'
+ * - orders.settlement_month → 정산월
+ * - orders.s1_settlement_status → 'settled'
+ * - orders.s1_settlement_month → 정산월
+ *
+ * @param orderIds - 정산 대상 발주 ID 배열
+ * @param settlementMonth - 정산월 (YYYY-MM 형식, 예: "2026-02")
+ */
+export async function batchCompleteGyowonSettlement(orderIds: string[], settlementMonth: string): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status: 'settled',
+      settlement_date: now.split('T')[0],
+      settlement_month: settlementMonth,
+      s1_settlement_status: 'settled',
+      s1_settlement_month: settlementMonth,
+      updated_at: now,
+    })
+    .in('id', orderIds)
+
+  if (error) {
+    console.error('교원 정산 완료 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 교원↔멜레아 정산 되돌리기
+ *
+ * 정산완료 → 정산진행중으로 복원:
+ * - orders.status → 'completed'
+ * - orders.settlement_month → null
+ * - orders.settlement_date → null
+ * - orders.s1_settlement_status → 'in-progress'
+ * - orders.s1_settlement_month → null
+ *
+ * @param orderId - 되돌릴 발주 ID
+ */
+export async function revertGyowonSettlement(orderId: string): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      status: 'completed',
+      settlement_date: null,
+      settlement_month: null,
+      s1_settlement_status: 'in-progress',
+      s1_settlement_month: null,
+      updated_at: now,
+    })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error('교원 정산 되돌리기 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 기업이윤 저장 (교원↔멜레아 정산용)
+ * @param orderId - 발주 ID
+ * @param amount - 기업이윤 금액
+ */
+export async function updateCorporateProfit(orderId: string, amount: number): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      corporate_profit: amount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error('기업이윤 저장 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// ✅ 정산 검토 상태 (Review Status)
+// ============================================================
+
+/**
+ * 검토 상태 토글 (멜레아/교원)
+ * @param orderId - 발주 ID
+ * @param reviewer - 검토 주체 ('mellea' | 'gyowon')
+ * @param status - 새 상태 ('pending' | 'reviewed')
+ */
+export async function updateReviewStatus(orderId: string, reviewer: 'mellea' | 'gyowon', status: ReviewStatus): Promise<boolean> {
+  const supabase = createClient()
+  const column = reviewer === 'mellea' ? 'melleea_review_status' : 'gyowon_review_status'
+
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      [column]: status,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error(`${reviewer} 검토 상태 변경 실패:`, error.message)
     return false
   }
 

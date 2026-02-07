@@ -104,9 +104,7 @@ export default function KakaoMap({ warehouses, selectedId, onMarkerClick }: Kaka
       const map = new kakao.maps.Map(mapContainerRef.current, {
         center: new kakao.maps.LatLng(36.0, 127.5), // 한국 중심
         level: 13, // 전국이 보이는 줌 레벨
-        mapTypeId: kakao.maps.MapTypeId.ROADMAP, // 기본 도로 지도
-        disableDoubleClickZoom: true, // 더블클릭 줌 비활성화
-      })
+      } as kakao.maps.MapOptions)
 
       mapRef.current = map
       setMapStatus('ready')

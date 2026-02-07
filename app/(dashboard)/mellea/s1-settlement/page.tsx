@@ -44,9 +44,9 @@ const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
 type S1Tab = 'unsettled' | 'in-progress' | 'settled'
 
 const TAB_CONFIG: { key: S1Tab; label: string; icon: React.ReactNode; color: string }[] = [
-  { key: 'unsettled', label: '미정산', icon: <CircleDot className="h-4 w-4" />, color: 'text-gray-700' },
-  { key: 'in-progress', label: '정산진행중', icon: <Clock className="h-4 w-4" />, color: 'text-orange-600' },
-  { key: 'settled', label: '정산완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-green-600' },
+  { key: 'unsettled', label: '설치비 미정산', icon: <CircleDot className="h-4 w-4" />, color: 'text-gray-700' },
+  { key: 'in-progress', label: '설치비 정산진행중', icon: <Clock className="h-4 w-4" />, color: 'text-orange-600' },
+  { key: 'settled', label: '설치비 정산완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-green-600' },
 ]
 
 /** 탭 안내 문구 */

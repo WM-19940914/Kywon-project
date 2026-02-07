@@ -150,6 +150,13 @@ export interface Order {
   // ❌ 발주 취소 정보
   cancelReason?: string                    // 취소 사유
   cancelledAt?: string                     // 취소 일시 (ISO 문자열)
+
+  // 💰 교원↔멜레아 정산: 기업이윤
+  corporateProfit?: number                 // 기업이윤 (교원에게 청구할 이윤 금액)
+
+  // ✅ 정산 검토 상태 (멜레아/교원 각각 확인)
+  melleeaReviewStatus?: ReviewStatus       // 멜레아 검토 상태
+  gyowonReviewStatus?: ReviewStatus        // 교원 검토 상태
 }
 
 /**
@@ -507,6 +514,23 @@ export const WAREHOUSE_STOCK_STATUS_COLORS: Record<WarehouseStockStatus, string>
   'idle': 'bg-red-50 text-red-700 border-red-200',
   'in_stock': 'bg-green-50 text-green-700 border-green-200',
   'install_done': 'bg-gray-100 text-gray-500 border-gray-200',
+}
+
+// ============================================================
+// ✅ 정산 검토 상태 (Review Status)
+// ============================================================
+
+/**
+ * 정산 검토 상태 — 멜레아/교원 각각 독립적으로 관리
+ * - pending: 아직 검토 안 함
+ * - reviewed: 검토 완료
+ */
+export type ReviewStatus = 'pending' | 'reviewed'
+
+/** 검토 주체별 라벨 설정 */
+export const REVIEW_STATUS_CONFIG = {
+  mellea: { label: '멜레아', pendingText: '미검토', reviewedText: '검토완료' },
+  gyowon: { label: '교원', pendingText: '미확인', reviewedText: '확인완료' },
 }
 
 /**

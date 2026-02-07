@@ -82,15 +82,26 @@ export function QuoteCreateDialog({
         const loadedEquipment: QuoteLineItem[] = quote.items
           .filter(item => item.category === 'equipment')
           .map(item => {
-            // "벽걸이형 냉난방 16평 AR-123" → product: "벽걸이형 냉난방 16평", model: "AR-123"
-            const parts = item.itemName.split(' ')
-            const model = parts[parts.length - 1] // 마지막 부분이 모델명
-            const product = parts.slice(0, -1).join(' ') // 나머지가 품목
+            // "품목|||모델명" 구분자로 분리 (기존 공백 방식 데이터도 호환)
+            const hasDelimiter = item.itemName.includes('|||')
+            let product = hasDelimiter ? item.itemName.split('|||')[0] : item.itemName
+            let model = hasDelimiter ? item.itemName.split('|||')[1] : ''
+            // 기존 데이터 호환: 구분자 없으면 마지막 단어가 모델번호 패턴인지 확인
+            if (!hasDelimiter) {
+              const parts = item.itemName.trim().split(' ')
+              if (parts.length >= 2) {
+                const last = parts[parts.length - 1]
+                if (/^[A-Z0-9]{6,}$/.test(last) && /[A-Z]/.test(last) && /[0-9]/.test(last)) {
+                  product = parts.slice(0, -1).join(' ')
+                  model = last
+                }
+              }
+            }
 
             return {
               id: `${Date.now()}-${Math.random()}`,
-              product: product || item.itemName,  // 분리 실패 시 전체 사용
-              model: model || '',
+              product,
+              model,
               quantity: item.quantity,
               unit: item.unit || '',
               price: item.unitPrice,
@@ -100,7 +111,7 @@ export function QuoteCreateDialog({
           })
 
         // QuoteItem → QuoteLineItem 변환 (설치비)
-        // 규격이 "품목|||규격" 형태로 저장되어 있으면 분리
+        // "품목|||모델명" 형태로 저장되어 있으면 분리
         const loadedInstallation: QuoteLineItem[] = quote.items
           .filter(item => item.category === 'installation')
           .map(item => {
@@ -265,9 +276,9 @@ export function QuoteCreateDialog({
 
     // 2. QuoteLineItem → QuoteItem 형식으로 변환
     const quoteItems: QuoteItem[] = [
-      // 장비 항목 변환 (품목 + 모델명을 합쳐서 항목명으로)
+      // 장비 항목 변환 (품목 + 모델명을 |||로 구분하여 저장)
       ...filledEquipment.map(item => ({
-        itemName: `${item.product} ${item.model}`.trim(), // "벽걸이형 냉난방 16평 AR-123"
+        itemName: item.model ? `${item.product}|||${item.model}` : item.product,
         category: 'equipment' as const,
         quantity: item.quantity,
         unit: item.unit || undefined,
@@ -275,9 +286,9 @@ export function QuoteCreateDialog({
         totalPrice: item.amount,
         description: item.notes || undefined  // 비고가 있으면 추가
       })),
-      // 설치비 항목 변환 (품목명 + 규격을 함께 저장)
+      // 설치비 항목 변환 (품목 + 모델명을 |||로 구분하여 저장)
       ...filledInstallation.map(item => ({
-        itemName: item.model ? `${item.product}|||${item.model}` : item.product,  // 규격이 있으면 구분자로 합쳐서 저장
+        itemName: item.model ? `${item.product}|||${item.model}` : item.product,
         category: 'installation' as const,
         quantity: item.quantity,
         unit: item.unit || undefined,
