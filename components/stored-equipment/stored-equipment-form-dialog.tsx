@@ -3,16 +3,15 @@
  *
  * - 등록 모드: equipment가 null이면 새로 등록
  * - 수정 모드: equipment가 있으면 기존 데이터로 폼 채움
- * - 발주 기반 등록: contextSite가 있으면 현장 정보 자동 채움
- *   + 해당 발주의 철거보관 OrderItem을 드롭다운으로 제공
+ * - 발주 선택 (선택사항): 발주 선택하면 계열사/지점명/주소 자동 채움
  *
  * 필수 입력: 현장명, 품목, 보관 창고
- * 선택 입력: 모델명, 평형, 제조사, 제조년월, 주소, 계열사, 장비 상태, 철거 사유, 메모
+ * 선택 입력: 모델명, 평형, 제조사, 제조년월, 주소, 계열사, 철거 사유, 메모
  */
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -30,9 +29,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { StoredEquipment, EquipmentCondition, StoredEquipmentSite } from '@/types/order'
+import type { StoredEquipment, Order } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
-import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS, EQUIPMENT_CONDITION_LABELS, MANUFACTURER_OPTIONS } from '@/types/order'
+import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS, MANUFACTURER_OPTIONS } from '@/types/order'
+import { Calendar } from 'lucide-react'
 
 interface StoredEquipmentFormDialogProps {
   /** 수정 대상 (null이면 등록 모드) */
@@ -44,8 +44,10 @@ interface StoredEquipmentFormDialogProps {
   onSave: (data: Omit<StoredEquipment, 'id' | 'createdAt' | 'updatedAt'>) => void
   /** 창고 목록 (드롭다운용) */
   warehouses: Warehouse[]
-  /** 현장 컨텍스트 (발주 기반 등록 시 — 현장 정보 자동 채움) */
-  contextSite?: StoredEquipmentSite | null
+  /** 발주 목록 (발주 선택 기능용) */
+  orders: Order[]
+  /** 전체 장비 목록 (이미 등록된 발주 필터링용) */
+  items: StoredEquipment[]
 }
 
 export function StoredEquipmentFormDialog({
@@ -54,9 +56,11 @@ export function StoredEquipmentFormDialog({
   onOpenChange,
   onSave,
   warehouses,
-  contextSite,
+  orders,
+  items,
 }: StoredEquipmentFormDialogProps) {
   // 폼 상태
+  const [selectedOrderId, setSelectedOrderId] = useState<string>('')
   const [siteName, setSiteName] = useState('')
   const [affiliate, setAffiliate] = useState('')
   const [address, setAddress] = useState('')
@@ -67,20 +71,46 @@ export function StoredEquipmentFormDialog({
   const [manufacturer, setManufacturer] = useState('삼성')
   const [manufacturingDate, setManufacturingDate] = useState('')
   const [warehouseId, setWarehouseId] = useState('')
-  const [storageStartDate, setStorageStartDate] = useState(new Date().toISOString().split('T')[0])
-  const [condition, setCondition] = useState<EquipmentCondition>('good')
-  const [removalReason, setRemovalReason] = useState('')
-  const [notes, setNotes] = useState('')
+  const [removalDate, setRemovalDate] = useState('')
 
-  // 발주 기반 등록: 해당 현장의 철거보관 OrderItem 목록
-  const removalOrderItems = contextSite?.orderItems?.filter(
-    item => item.workType === '철거보관'
-  ) || []
+  // 달력 선택기 ref
+  const monthInputRef = useRef<HTMLInputElement>(null)
+  const dateInputRef = useRef<HTMLInputElement>(null)
 
-  // 수정 모드 또는 컨텍스트 기반으로 폼 초기화
+  // 이미 장비가 등록된 발주 ID 목록
+  const registeredOrderIds = useMemo(() => {
+    if (equipment) {
+      // 수정 모드: 현재 수정 중인 장비의 발주는 제외하지 않음
+      return new Set(
+        items
+          .filter(item => item.orderId && item.id !== equipment.id)
+          .map(item => item.orderId!)
+      )
+    } else {
+      // 등록 모드: 모든 등록된 발주 ID
+      return new Set(
+        items
+          .filter(item => item.orderId)
+          .map(item => item.orderId!)
+      )
+    }
+  }, [items, equipment])
+
+  // 철거보관 작업이 포함된 발주 목록 (아직 장비가 등록되지 않은 발주만)
+  const removalOrders = useMemo(() => {
+    return (orders || []).filter(order =>
+      order.status !== 'cancelled' &&
+      order.items.some(item => item.workType === '철거보관') &&
+      !registeredOrderIds.has(order.id) // 아직 장비가 등록되지 않은 발주만
+    )
+  }, [orders, registeredOrderIds])
+
+
+  // 수정 모드로 폼 초기화
   useEffect(() => {
     if (equipment) {
       // 수정 모드: 기존 데이터로 채우기
+      setSelectedOrderId(equipment.orderId || '')
       setSiteName(equipment.siteName || '')
       setAffiliate(equipment.affiliate || '')
       setAddress(equipment.address || '')
@@ -91,28 +121,10 @@ export function StoredEquipmentFormDialog({
       setManufacturer(equipment.manufacturer || '삼성')
       setManufacturingDate(equipment.manufacturingDate || '')
       setWarehouseId(equipment.warehouseId || '')
-      setStorageStartDate(equipment.storageStartDate || new Date().toISOString().split('T')[0])
-      setCondition(equipment.condition || 'good')
-      setRemovalReason(equipment.removalReason || '')
-      setNotes(equipment.notes || '')
-    } else if (contextSite) {
-      // 발주 기반 등록: 현장 정보 자동 채움
-      setSiteName(contextSite.siteName || '')
-      setAffiliate(contextSite.affiliate || '')
-      setAddress(contextSite.address || '')
-      setCategory('스탠드에어컨')
-      setModel('')
-      setSize('')
-      setQuantity(1)
-      setManufacturer('삼성')
-      setManufacturingDate('')
-      setWarehouseId('')
-      setStorageStartDate(new Date().toISOString().split('T')[0])
-      setCondition('good')
-      setRemovalReason('')
-      setNotes('')
+      setRemovalDate(equipment.removalDate || '')
     } else {
-      // 수동 등록 모드: 전체 초기화
+      // 등록 모드: 전체 초기화
+      setSelectedOrderId('')
       setSiteName('')
       setAffiliate('')
       setAddress('')
@@ -123,22 +135,27 @@ export function StoredEquipmentFormDialog({
       setManufacturer('삼성')
       setManufacturingDate('')
       setWarehouseId('')
-      setStorageStartDate(new Date().toISOString().split('T')[0])
-      setCondition('good')
-      setRemovalReason('')
-      setNotes('')
+      setRemovalDate('')
     }
-  }, [equipment, contextSite, open])
+  }, [equipment, open])
 
-  /** 발주 OrderItem 선택 시 품목/모델/평형 자동 채움 */
-  const handleOrderItemSelect = (value: string) => {
-    if (value === '__none__') return
-    const idx = parseInt(value)
-    const item = removalOrderItems[idx]
-    if (item) {
-      setCategory(item.category || '스탠드에어컨')
-      setModel(item.model || '')
-      setSize(item.size || '')
+  /** 발주 선택 시 현장 정보 자동 채움 */
+  const handleOrderSelect = (orderId: string) => {
+    // "none"은 선택 안 함을 의미
+    const actualOrderId = orderId === 'none' ? '' : orderId
+    setSelectedOrderId(actualOrderId)
+
+    if (actualOrderId) {
+      const order = (orders || []).find(o => o.id === actualOrderId)
+      if (order) {
+        setSiteName(order.businessName || '')
+        setAffiliate(order.affiliate || '')
+        setAddress(order.address || '')
+      }
+    } else {
+      setSiteName('')
+      setAffiliate('')
+      setAddress('')
     }
   }
 
@@ -147,7 +164,7 @@ export function StoredEquipmentFormDialog({
     if (!siteName.trim() || !category || !warehouseId) return
 
     onSave({
-      orderId: equipment?.orderId || contextSite?.orderId || undefined,
+      orderId: selectedOrderId || undefined,
       siteName: siteName.trim(),
       affiliate: affiliate || undefined,
       address: address || undefined,
@@ -158,10 +175,7 @@ export function StoredEquipmentFormDialog({
       manufacturer: manufacturer || undefined,
       manufacturingDate: manufacturingDate || undefined,
       warehouseId,
-      storageStartDate,
-      condition,
-      removalReason: removalReason || undefined,
-      notes: notes || undefined,
+      removalDate: removalDate || undefined,
       status: equipment?.status || 'stored',
       releaseType: equipment?.releaseType,
       releaseDate: equipment?.releaseDate,
@@ -176,226 +190,275 @@ export function StoredEquipmentFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>
+          <DialogTitle className="text-lg">
             {equipment ? '장비 정보 수정' : '철거보관 장비 등록'}
           </DialogTitle>
+          {!equipment && (
+            <p className="text-sm text-gray-500 mt-1">
+              철거보관 장비의 정보를 입력하세요. 발주서가 있다면 빠르게 선택할 수 있습니다.
+            </p>
+          )}
         </DialogHeader>
 
-        <div className="space-y-4 py-2">
-          {/* 발주 기반: OrderItem 선택 (등록 모드 + 철거보관 항목이 있을 때만) */}
-          {!equipment && removalOrderItems.length > 0 && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 space-y-2">
-              <p className="text-xs font-medium text-blue-700">
-                발주서에 철거보관 {removalOrderItems.length}건이 있습니다 — 선택하면 자동 입력됩니다
-              </p>
-              <Select onValueChange={handleOrderItemSelect}>
-                <SelectTrigger className="bg-white">
-                  <SelectValue placeholder="발주 내역에서 선택..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {removalOrderItems.map((item, idx) => (
-                    <SelectItem key={idx} value={String(idx)}>
-                      {item.category} · {item.model || '모델 미입력'} · {item.size || '-'} ({item.quantity}대)
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+        <div className="space-y-5 py-2">
+          {/* ═══ 빠른 입력: 최근 철거보관 발주 조회 ═══ */}
+          {!equipment && removalOrders.length > 0 && (
+            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
+              <div className="flex items-start gap-2">
+                <div className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
+                  💡
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-bold text-blue-900 mb-1">
+                    빠른 입력: 최근 철거보관 발주 조회
+                  </h3>
+                  <p className="text-xs text-blue-700 mb-3">
+                    발주를 선택하면 현장 정보(계열사/지점명/주소)가 자동으로 채워집니다.
+                  </p>
+                  <Select value={selectedOrderId || 'none'} onValueChange={handleOrderSelect}>
+                    <SelectTrigger className="bg-white border-blue-300">
+                      <SelectValue placeholder="발주 선택 (또는 아래에서 직접 입력)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">선택 안 함 → 직접 입력</SelectItem>
+                      {removalOrders.map((order) => (
+                        <SelectItem key={order.id} value={order.id}>
+                          📋 {order.businessName} · {order.affiliate || '계열사 미입력'} · {order.orderDate}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           )}
 
-          {/* 현장명 (필수) — 발주 기반이면 읽기전용 */}
-          <div>
-            <Label className="text-sm font-medium">
-              현장명 <span className="text-red-500">*</span>
-            </Label>
-            <Input
-              value={siteName}
-              onChange={(e) => setSiteName(e.target.value)}
-              placeholder="예: 구몬 화곡지국"
-              className="mt-1"
-              readOnly={!!contextSite}
-            />
-          </div>
+          {/* ═══ 섹션 1: 현장 정보 ═══ */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <div className="bg-gray-800 text-white rounded w-6 h-6 flex items-center justify-center text-xs font-bold">
+                1
+              </div>
+              <h3 className="text-sm font-bold text-gray-800">현장 정보</h3>
+            </div>
 
-          {/* 계열사 */}
-          <div>
-            <Label className="text-sm font-medium">계열사</Label>
-            <Select value={affiliate} onValueChange={setAffiliate}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="계열사 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {AFFILIATE_OPTIONS.map(opt => (
-                  <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 현장 주소 */}
-          <div>
-            <Label className="text-sm font-medium">현장 주소</Label>
-            <Input
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="현장 주소 입력"
-              className="mt-1"
-            />
-          </div>
-
-          {/* 품목 + 수량 (한 줄) */}
-          <div className="grid grid-cols-2 gap-3">
+            {/* 계열사 + 지점명 */}
             <div>
-              <Label className="text-sm font-medium">
-                품목 <span className="text-red-500">*</span>
+              <Label className="text-sm font-semibold text-gray-700">
+                계열사 + 지점명 <span className="text-red-500">*</span>
               </Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
+              <Input
+                value={siteName}
+                onChange={(e) => setSiteName(e.target.value)}
+                placeholder="예: Wells 영업 - 화곡지국"
+                className="mt-1.5"
+              />
+            </div>
+
+            {/* 계열사 */}
+            <div>
+              <Label className="text-sm font-semibold text-gray-700">계열사</Label>
+              <Select value={affiliate} onValueChange={setAffiliate}>
+                <SelectTrigger className="mt-1.5">
+                  <SelectValue placeholder="계열사 선택" />
                 </SelectTrigger>
                 <SelectContent>
-                  {CATEGORY_OPTIONS.map(opt => (
+                  {AFFILIATE_OPTIONS.map(opt => (
                     <SelectItem key={opt} value={opt}>{opt}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
+
+            {/* 현장 주소 */}
             <div>
-              <Label className="text-sm font-medium">수량</Label>
+              <Label className="text-sm font-semibold text-gray-700">현장 주소</Label>
               <Input
-                type="number"
-                min={1}
-                value={quantity}
-                onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
-                className="mt-1"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="현장 주소 입력"
+                className="mt-1.5"
               />
             </div>
           </div>
 
-          {/* 모델명 + 평형 (한 줄) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-sm font-medium">모델명</Label>
-              <Input
-                value={model}
-                onChange={(e) => setModel(e.target.value)}
-                placeholder="모델명 입력"
-                className="mt-1"
-              />
+          {/* ═══ 섹션 2: 장비 정보 ═══ */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <div className="bg-gray-800 text-white rounded w-6 h-6 flex items-center justify-center text-xs font-bold">
+                2
+              </div>
+              <h3 className="text-sm font-bold text-gray-800">장비 정보</h3>
             </div>
-            <div>
-              <Label className="text-sm font-medium">평형</Label>
-              <Input
-                value={size}
-                onChange={(e) => setSize(e.target.value)}
-                placeholder="예: 18평"
-                className="mt-1"
-              />
+
+            {/* 품목 + 수량 */}
+            <div className="grid grid-cols-3 gap-3">
+              <div className="col-span-2">
+                <Label className="text-sm font-semibold text-gray-700">
+                  품목 <span className="text-red-500">*</span>
+                </Label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">수량</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={quantity}
+                  onChange={(e) => setQuantity(Math.max(1, parseInt(e.target.value) || 1))}
+                  className="mt-1.5"
+                  placeholder="대"
+                />
+              </div>
+            </div>
+
+            {/* 모델명 + 평형 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">모델명</Label>
+                <Input
+                  value={model}
+                  onChange={(e) => setModel(e.target.value)}
+                  placeholder="예: AR-Q18P2PBXA"
+                  className="mt-1.5"
+                />
+              </div>
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">평형</Label>
+                <Input
+                  value={size}
+                  onChange={(e) => setSize(e.target.value)}
+                  placeholder="예: 18평"
+                  className="mt-1.5"
+                />
+              </div>
+            </div>
+
+            {/* 제조사 + 제조년월 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">제조사</Label>
+                <Select value={manufacturer} onValueChange={setManufacturer}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {MANUFACTURER_OPTIONS.map(opt => (
+                      <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">제조년월</Label>
+                <div className="flex gap-2 mt-1.5 relative">
+                  <Input
+                    type="text"
+                    value={manufacturingDate}
+                    onChange={(e) => setManufacturingDate(e.target.value)}
+                    placeholder="2024-01"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => monthInputRef.current?.showPicker()}
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </Button>
+                  <input
+                    ref={monthInputRef}
+                    type="month"
+                    value={manufacturingDate}
+                    onChange={(e) => setManufacturingDate(e.target.value)}
+                    className="absolute right-0 top-0 w-10 h-10 opacity-0 pointer-events-none"
+                  />
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* 제조사 + 제조년월 (한 줄) — 신규 필드 */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-sm font-medium">제조사</Label>
-              <Select value={manufacturer} onValueChange={setManufacturer}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {MANUFACTURER_OPTIONS.map(opt => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* ═══ 섹션 3: 보관 정보 ═══ */}
+          <div className="space-y-3">
+            <div className="flex items-center gap-2 pb-2 border-b">
+              <div className="bg-gray-800 text-white rounded w-6 h-6 flex items-center justify-center text-xs font-bold">
+                3
+              </div>
+              <h3 className="text-sm font-bold text-gray-800">보관 정보</h3>
             </div>
-            <div>
-              <Label className="text-sm font-medium">제조년월</Label>
-              <Input
-                type="month"
-                value={manufacturingDate}
-                onChange={(e) => setManufacturingDate(e.target.value)}
-                placeholder="YYYY-MM"
-                className="mt-1"
-              />
+
+            {/* 보관 창고 + 철거일 */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">
+                  보관 창고 <span className="text-red-500">*</span>
+                </Label>
+                <Select value={warehouseId} onValueChange={setWarehouseId}>
+                  <SelectTrigger className="mt-1.5">
+                    <SelectValue placeholder="창고 선택" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {warehouses.map(wh => (
+                      <SelectItem key={wh.id} value={wh.id}>
+                        📦 {wh.name} {wh.managerName ? `(${wh.managerName})` : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label className="text-sm font-semibold text-gray-700">철거일</Label>
+                <div className="flex gap-2 mt-1.5 relative">
+                  <Input
+                    type="text"
+                    value={removalDate}
+                    onChange={(e) => setRemovalDate(e.target.value)}
+                    placeholder="2024-01-15"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => dateInputRef.current?.showPicker()}
+                  >
+                    <Calendar className="h-4 w-4" />
+                  </Button>
+                  <input
+                    ref={dateInputRef}
+                    type="date"
+                    value={removalDate}
+                    onChange={(e) => setRemovalDate(e.target.value)}
+                    className="absolute right-0 top-0 w-10 h-10 opacity-0 pointer-events-none"
+                  />
+                </div>
+              </div>
             </div>
-          </div>
-
-          {/* 보관 창고 (필수) */}
-          <div>
-            <Label className="text-sm font-medium">
-              보관 창고 <span className="text-red-500">*</span>
-            </Label>
-            <Select value={warehouseId} onValueChange={setWarehouseId}>
-              <SelectTrigger className="mt-1">
-                <SelectValue placeholder="창고 선택" />
-              </SelectTrigger>
-              <SelectContent>
-                {warehouses.map(wh => (
-                  <SelectItem key={wh.id} value={wh.id}>
-                    {wh.name} {wh.managerName ? `(${wh.managerName})` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* 보관 시작일 + 장비 상태 (한 줄) */}
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label className="text-sm font-medium">보관 시작일</Label>
-              <Input
-                type="date"
-                value={storageStartDate}
-                onChange={(e) => setStorageStartDate(e.target.value)}
-                className="mt-1"
-              />
-            </div>
-            <div>
-              <Label className="text-sm font-medium">장비 상태</Label>
-              <Select value={condition} onValueChange={(v) => setCondition(v as EquipmentCondition)}>
-                <SelectTrigger className="mt-1">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="good">{EQUIPMENT_CONDITION_LABELS['good']}</SelectItem>
-                  <SelectItem value="poor">{EQUIPMENT_CONDITION_LABELS['poor']}</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-
-          {/* 철거 사유 */}
-          <div>
-            <Label className="text-sm font-medium">철거 사유</Label>
-            <Input
-              value={removalReason}
-              onChange={(e) => setRemovalReason(e.target.value)}
-              placeholder="예: 이전설치 예정, 노후 장비 등"
-              className="mt-1"
-            />
-          </div>
-
-          {/* 메모 */}
-          <div>
-            <Label className="text-sm font-medium">메모</Label>
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="추가 메모를 입력하세요"
-              className="w-full mt-1 border rounded-md p-2 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 placeholder:text-gray-300"
-            />
           </div>
         </div>
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
             취소
           </Button>
-          <Button onClick={handleSave} disabled={!isValid}>
-            {equipment ? '수정' : '등록'}
+          <Button
+            onClick={handleSave}
+            disabled={!isValid}
+            className="flex-1 bg-blue-600 hover:bg-blue-700"
+          >
+            {equipment ? '✓ 수정 완료' : '✓ 등록 완료'}
           </Button>
         </DialogFooter>
       </DialogContent>

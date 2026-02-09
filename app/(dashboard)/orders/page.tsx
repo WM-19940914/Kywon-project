@@ -9,8 +9,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, cancelOrder as cancelOrderDB } from '@/lib/supabase/dal'
-import { type Order, type OrderStatus } from '@/types/order'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, cancelOrder as cancelOrderDB, fetchStoredEquipment, updateStoredEquipment } from '@/lib/supabase/dal'
+import { type Order, type OrderStatus, type StoredEquipment } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
@@ -45,13 +45,15 @@ export default function OrdersPage() {
   const [searchTerm, setSearchTerm] = useState('') // 검색어
   const [isDialogOpen, setIsDialogOpen] = useState(false) // 신규 등록 모달
   const [orders, setOrders] = useState<Order[]>([]) // 발주 목록 (DB에서 로드)
+  const [storedEquipment, setStoredEquipment] = useState<StoredEquipment[]>([]) // 보관 장비 목록
   const [isSubmitting, setIsSubmitting] = useState(false) // 제출 중 상태
   const [, setIsLoading] = useState(true) // 로딩 상태
 
-  // Supabase에서 발주 데이터 가져오기
+  // Supabase에서 발주 및 보관 장비 데이터 가져오기
   useEffect(() => {
-    fetchOrders().then(data => {
-      setOrders(data)
+    Promise.all([fetchOrders(), fetchStoredEquipment()]).then(([ordersData, equipmentData]) => {
+      setOrders(ordersData)
+      setStoredEquipment(equipmentData)
       setIsLoading(false)
     })
   }, [])
@@ -90,6 +92,26 @@ export default function OrdersPage() {
       // DB에 저장
       const created = await createOrderDB(newOrder)
       if (created) {
+        // 재고설치 발주: 선택된 장비 상태를 'requested'로 변경
+        const equipmentUpdates = created.items
+          .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+          .map(item => item.storedEquipmentId!)
+
+        if (equipmentUpdates.length > 0) {
+          // 각 장비의 status를 'requested'로 업데이트
+          await Promise.all(
+            equipmentUpdates.map(equipmentId =>
+              updateStoredEquipment(equipmentId, { status: 'requested' })
+            )
+          )
+          // storedEquipment 목록도 업데이트
+          setStoredEquipment(prev =>
+            prev.map(eq =>
+              equipmentUpdates.includes(eq.id) ? { ...eq, status: 'requested' as const } : eq
+            )
+          )
+        }
+
         setOrders([created, ...orders])
         showAlert('발주가 등록되었습니다!', 'success')
         setIsDialogOpen(false)
@@ -116,8 +138,23 @@ export default function OrdersPage() {
    * 발주 삭제 핸들러
    */
   const handleDelete = async (orderId: string) => {
+    // 삭제 전: 재고설치 장비 ID 미리 수집 (CASCADE 삭제되기 전에)
+    const orderToDelete = orders.find(o => o.id === orderId)
+    const equipmentIds = (orderToDelete?.items || [])
+      .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+      .map(item => item.storedEquipmentId!)
+
     const success = await deleteOrderDB(orderId)
     if (success) {
+      // 재고설치 장비 → 다시 '보관중'으로 되돌리기
+      if (equipmentIds.length > 0) {
+        await Promise.all(
+          equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
+        )
+        setStoredEquipment(prev =>
+          prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
+        )
+      }
       setOrders(orders.filter(o => o.id !== orderId))
       showAlert('발주가 삭제되었습니다.', 'success')
     } else {
@@ -131,6 +168,21 @@ export default function OrdersPage() {
   const handleCancelOrder = async (orderId: string, reason: string) => {
     const success = await cancelOrderDB(orderId, reason)
     if (success) {
+      // 재고설치 장비 → 다시 '보관중'으로 되돌리기
+      const cancelledOrder = orders.find(o => o.id === orderId)
+      const equipmentIds = (cancelledOrder?.items || [])
+        .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+        .map(item => item.storedEquipmentId!)
+
+      if (equipmentIds.length > 0) {
+        await Promise.all(
+          equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
+        )
+        setStoredEquipment(prev =>
+          prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
+        )
+      }
+
       setOrders(orders.map(o =>
         o.id === orderId
           ? { ...o, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
@@ -159,12 +211,46 @@ export default function OrdersPage() {
 
     setIsSubmitting(true)
     try {
+      // 수정 전: 기존 발주의 재고설치 장비 ID 수집
+      const oldEquipmentIds = (orderToEdit.items || [])
+        .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+        .map(item => item.storedEquipmentId!)
+
+      // 수정 후: 새 발주의 재고설치 장비 ID 수집
+      const newEquipmentIds = (data.items || [])
+        .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+        .map(item => item.storedEquipmentId!)
+
+      // 해제된 장비 (기존에 있었는데 새로운 데이터에 없는 것) → stored로 되돌림
+      const removedIds = oldEquipmentIds.filter(id => !newEquipmentIds.includes(id))
+      // 새로 추가된 장비 (기존에 없었는데 새로운 데이터에 있는 것) → requested로 변경
+      const addedIds = newEquipmentIds.filter(id => !oldEquipmentIds.includes(id))
+
       // orderNumber는 DB에 없는 필드이므로 제거 (사용하지 않으므로 _로 표시)
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { orderNumber: _orderNumber, ...orderData } = data
       // DB에 수정 반영
       const updated = await updateOrderDB(orderToEdit.id, orderData)
       if (updated) {
+        // 해제된 장비 → stored
+        if (removedIds.length > 0) {
+          await Promise.all(removedIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' })))
+        }
+        // 새로 추가된 장비 → requested
+        if (addedIds.length > 0) {
+          await Promise.all(addedIds.map(eqId => updateStoredEquipment(eqId, { status: 'requested' })))
+        }
+        // 로컬 상태 업데이트
+        if (removedIds.length > 0 || addedIds.length > 0) {
+          setStoredEquipment(prev =>
+            prev.map(eq => {
+              if (removedIds.includes(eq.id)) return { ...eq, status: 'stored' as const }
+              if (addedIds.includes(eq.id)) return { ...eq, status: 'requested' as const }
+              return eq
+            })
+          )
+        }
+
         setOrders(orders.map(o => o.id === orderToEdit.id ? updated : o))
         showAlert('발주가 수정되었습니다!', 'success')
         setEditDialogOpen(false)
@@ -317,6 +403,7 @@ export default function OrdersPage() {
                   onSubmit={handleSubmit}
                   onCancel={() => setIsDialogOpen(false)}
                   isSubmitting={isSubmitting}
+                  storedEquipment={storedEquipment}
                 />
               </DialogContent>
             </Dialog>
@@ -413,6 +500,7 @@ export default function OrdersPage() {
               }}
               submitLabel="수정 완료"
               isSubmitting={isSubmitting}
+              storedEquipment={storedEquipment}
             />
           )}
         </DialogContent>

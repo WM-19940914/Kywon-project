@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -22,6 +22,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck, CalendarDays } from 'lucide-react'
 import {
@@ -29,6 +35,7 @@ import {
   CATEGORY_OPTIONS,
   WORK_TYPE_OPTIONS,
   type OrderItem,
+  type StoredEquipment,
   parseAddress
 } from '@/types/order'
 // import { PriceTableSheet } from '@/components/orders/price-table-dialog'
@@ -63,6 +70,7 @@ interface OrderFormProps {
   initialData?: Partial<OrderFormData>
   submitLabel?: string
   isSubmitting?: boolean
+  storedEquipment?: StoredEquipment[]
 }
 
 /**
@@ -114,7 +122,8 @@ export function OrderForm({
   onCancel,
   initialData,
   submitLabel = '등록',
-  isSubmitting = false
+  isSubmitting = false,
+  storedEquipment = []
 }: OrderFormProps) {
   const { showAlert } = useAlert()
 
@@ -140,6 +149,20 @@ export function OrderForm({
   const [orderDate, setOrderDate] = useState(initialData?.orderDate || new Date().toISOString().split('T')[0]) // 발주일 (기본값: 오늘)
   const [requestedInstallDate, setRequestedInstallDate] = useState('') // 설치요청일 (선택)
   const [notes, setNotes] = useState(initialData?.notes || '') // 설치기사님 전달사항
+
+  // 보관 장비 선택 Dialog 상태
+  const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false)
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null) // 어느 작업 항목에 장비를 적용할지
+
+  // 선택 가능한 보관 장비 (이미 다른 항목에 선택된 장비 제외)
+  const availableEquipment = useMemo(() => {
+    const usedIds = items
+      .filter(item => item.storedEquipmentId && item.id !== selectedItemId)
+      .map(item => item.storedEquipmentId!)
+    return storedEquipment.filter(
+      e => e.status === 'stored' && !usedIds.includes(e.id)
+    )
+  }, [items, selectedItemId, storedEquipment])
 
   /**
    * 다음 우편번호 서비스 스크립트 로드
@@ -238,6 +261,48 @@ export function OrderForm({
     setItems(items.map(item =>
       item.id === itemId ? { ...item, [field]: value } : item
     ))
+  }
+
+  /**
+   * 보관 장비 선택 Dialog 열기
+   */
+  const handleOpenEquipmentDialog = (itemId: string) => {
+    setSelectedItemId(itemId)
+    setEquipmentDialogOpen(true)
+  }
+
+  /**
+   * 보관 장비 선택 시 자동 채움
+   */
+  const handleSelectEquipment = (equipment: StoredEquipment) => {
+    if (!selectedItemId) return
+
+    setItems(items.map(item => {
+      if (item.id === selectedItemId) {
+        return {
+          ...item,
+          category: equipment.category,
+          model: equipment.model || '',
+          size: equipment.size || '',
+          quantity: equipment.quantity,
+          storedEquipmentId: equipment.id, // 보관 장비 ID 저장
+        }
+      }
+      return item
+    }))
+
+    // 보관 장비 안내 문구 자동 생성 → notes에 추가 (중복 방지)
+    const dateStr = equipment.removalDate
+      ? equipment.removalDate.replace(/-/g, '.')
+      : '날짜미상'
+    const equipmentNote = `[자동문구] ${dateStr}에 철거한 ${equipment.affiliate || ''} ${equipment.siteName}에 보관중인 장비를 사용해주세요`
+    setNotes(prev => {
+      if (prev.includes(equipmentNote)) return prev // 이미 있으면 추가 안 함
+      return prev ? `${prev}\n\n${equipmentNote}` : equipmentNote
+    })
+
+    setEquipmentDialogOpen(false)
+    showAlert(`${equipment.siteName}의 장비 정보가 적용되었습니다`, 'success')
   }
 
 
@@ -726,6 +791,22 @@ export function OrderForm({
                               ))}
                             </SelectContent>
                           </Select>
+
+                          {/* 재고설치 선택 시: 보관 장비 선택 */}
+                          {item.workType === '재고설치' && (
+                            <div className="mt-3">
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="w-full gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                                onClick={() => handleOpenEquipmentDialog(item.id!)}
+                              >
+                                <Package className="h-4 w-4" />
+                                보관 장비 선택 ({availableEquipment.length}개)
+                              </Button>
+                            </div>
+                          )}
                         </div>
 
                         <div>
@@ -1128,6 +1209,59 @@ export function OrderForm({
           </Button>
         )}
       </div>
+
+      {/* 보관 장비 선택 Dialog */}
+      <Dialog open={equipmentDialogOpen} onOpenChange={setEquipmentDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>보관 중인 장비 선택</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            {availableEquipment.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                선택 가능한 보관 장비가 없습니다.
+              </p>
+            ) : (
+              availableEquipment.map((equipment) => (
+                  <button
+                    key={equipment.id}
+                    onClick={() => handleSelectEquipment(equipment)}
+                    className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                  >
+                    <div className="flex items-start justify-between gap-4">
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-blue-50 text-blue-700 font-semibold">
+                            {equipment.category}
+                          </Badge>
+                          <span className="text-sm text-gray-600">
+                            {equipment.model || '모델명 미입력'}
+                          </span>
+                        </div>
+                        <p className="text-sm font-semibold text-gray-900 mb-1">
+                          {equipment.siteName}
+                        </p>
+                        <div className="flex items-center gap-4 text-xs text-gray-500">
+                          <span>수량: {equipment.quantity}대</span>
+                          {equipment.size && <span>평형: {equipment.size}</span>}
+                          {equipment.manufacturer && <span>제조사: {equipment.manufacturer}</span>}
+                          {equipment.manufacturingDate && <span>제조년월: {equipment.manufacturingDate}</span>}
+                        </div>
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        className="shrink-0"
+                      >
+                        선택
+                      </Button>
+                    </div>
+                  </button>
+                ))
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

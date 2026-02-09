@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -39,9 +39,11 @@ interface ReleaseDialogProps {
     releaseDestination?: string
     releaseNotes?: string
   }) => void
+  /** 출고 목적지 기본값 (요청중 장비 → 발주 주소 자동 채움) */
+  defaultDestination?: string
 }
 
-export function ReleaseDialog({ equipment, open, onOpenChange, onRelease }: ReleaseDialogProps) {
+export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaultDestination }: ReleaseDialogProps) {
   // 출고 유형 (기본: 재설치)
   const [releaseType, setReleaseType] = useState<ReleaseType>('reinstall')
   // 출고일 (기본: 오늘)
@@ -50,6 +52,14 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease }: Rele
   const [releaseDestination, setReleaseDestination] = useState('')
   // 출고 메모
   const [releaseNotes, setReleaseNotes] = useState('')
+
+  // 다이얼로그 열릴 때 기본값 적용 (요청중 장비 → 발주 주소)
+  useEffect(() => {
+    if (open && defaultDestination) {
+      setReleaseType('reinstall')
+      setReleaseDestination(defaultDestination)
+    }
+  }, [open, defaultDestination])
 
   /** 폼 초기화 */
   const resetForm = () => {

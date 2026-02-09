@@ -1,14 +1,14 @@
 /**
- * 철거보관 장비 관리 페이지 (재설계)
+ * 철거보관 장비 관리 페이지 (테이블 리스트 방식)
  *
- * 핵심 변경: "장비 단독 등록" → "현장(발주) 기반 아코디언 + 장비 개별 관리"
+ * 핵심 개선: 아코디언 현장 그룹 → 장비 전체 테이블 리스트
  *
  * 업무 흐름:
- *   발주서 접수 (workType='철거보관' 포함)
+ *   철거보관 작업 발생
  *     ↓
- *   이 페이지에 해당 현장이 자동 표시
+ *   장비를 개별 등록 (품목/모델/평형/제조사/제조년월/보관창고)
  *     ↓
- *   현장을 펼치면 → 장비를 1대씩 등록 (품목/모델/평형/제조사/제조년월/보관창고)
+ *   창고/계열사/품목 필터로 빠르게 조회
  *     ↓
  *   보관중인 장비 → 출고 처리 (재설치/반납)
  *
@@ -28,9 +28,9 @@ import {
   revertStoredEquipmentRelease,
   fetchWarehouses,
 } from '@/lib/supabase/dal'
-import type { Order, StoredEquipment, StoredEquipmentSite, StoredEquipmentStatus } from '@/types/order'
+import type { Order, StoredEquipment, StoredEquipmentStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
-import { StoredEquipmentSiteList } from '@/components/stored-equipment/stored-equipment-site-list'
+import { StoredEquipmentTable } from '@/components/stored-equipment/stored-equipment-table'
 import { StoredEquipmentFormDialog } from '@/components/stored-equipment/stored-equipment-form-dialog'
 import { ReleaseDialog } from '@/components/stored-equipment/release-dialog'
 import { Input } from '@/components/ui/input'
@@ -43,86 +43,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Archive, Plus, Package, AlertTriangle, CheckCircle } from 'lucide-react'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
+import { Archive, Plus, AlertCircle, FileText } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
-
-/**
- * 현장 그룹핑 함수 (핵심 로직!)
- *
- * 발주 목록 + 장비 목록을 받아서 "현장 기반 그룹"으로 변환합니다.
- *
- * 1. orders 중 workType='철거보관' 포함된 발주만 추출
- * 2. equipment를 orderId별로 Map에 그룹핑
- * 3. 각 발주 → 현장으로 변환, 매칭된 장비 연결
- * 4. orderId=null인 수동 등록 장비 → siteName으로 별도 현장 그룹
- * 5. 장비 0대인 현장도 표시 (아직 등록 안 한 발주)
- */
-function buildSiteGroups(
-  orders: Order[],
-  equipment: StoredEquipment[],
-  activeTab: StoredEquipmentStatus
-): StoredEquipmentSite[] {
-  // 탭에 맞는 장비만 필터
-  const filteredEquip = equipment.filter(eq => eq.status === activeTab)
-
-  // 1. 철거보관 작업이 포함된 발주 추출
-  const removalOrders = orders.filter(order =>
-    order.status !== 'cancelled' &&
-    order.items.some(item => item.workType === '철거보관')
-  )
-
-  // 2. 장비를 orderId별로 Map에 그룹핑
-  const equipByOrderId = new Map<string, StoredEquipment[]>()
-  const manualEquip: StoredEquipment[] = [] // orderId가 없는 수동 등록 장비
-
-  for (const eq of filteredEquip) {
-    if (eq.orderId) {
-      const list = equipByOrderId.get(eq.orderId) || []
-      list.push(eq)
-      equipByOrderId.set(eq.orderId, list)
-    } else {
-      manualEquip.push(eq)
-    }
-  }
-
-  // 3. 각 발주 → 현장으로 변환
-  const sites: StoredEquipmentSite[] = removalOrders.map(order => ({
-    orderId: order.id,
-    siteName: order.businessName,
-    affiliate: order.affiliate,
-    address: order.address,
-    orderDate: order.orderDate,
-    orderItems: order.items,
-    equipment: equipByOrderId.get(order.id) || [],
-  }))
-
-  // 4. 수동 등록 장비를 siteName으로 그룹핑
-  const manualSiteMap = new Map<string, StoredEquipment[]>()
-  for (const eq of manualEquip) {
-    const key = eq.siteName
-    const list = manualSiteMap.get(key) || []
-    list.push(eq)
-    manualSiteMap.set(key, list)
-  }
-
-  Array.from(manualSiteMap.entries()).forEach(([name, eqs]) => {
-    sites.push({
-      orderId: null,
-      siteName: name,
-      affiliate: eqs[0]?.affiliate,
-      address: eqs[0]?.address,
-      equipment: eqs,
-    })
-  })
-
-  // 보관중 탭: 장비 0대인 발주도 표시 (아직 등록 안 한 현장)
-  // 출고완료 탭: 장비가 있는 현장만 표시
-  if (activeTab === 'released') {
-    return sites.filter(s => s.equipment.length > 0)
-  }
-
-  return sites
-}
+import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS } from '@/types/order'
 
 export default function StoredEquipmentPage() {
   const { showAlert } = useAlert()
@@ -148,67 +76,72 @@ export default function StoredEquipmentPage() {
   const [activeTab, setActiveTab] = useState<StoredEquipmentStatus>('stored')
   const [searchTerm, setSearchTerm] = useState('')
   const [warehouseFilter, setWarehouseFilter] = useState<string>('all')
+  const [affiliateFilter, setAffiliateFilter] = useState<string>('all')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
   // ─── 다이얼로그 상태 ───
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<StoredEquipment | null>(null)
-  const [contextSite, setContextSite] = useState<StoredEquipmentSite | null>(null)
   const [releaseOpen, setReleaseOpen] = useState(false)
   const [releaseTarget, setReleaseTarget] = useState<StoredEquipment | null>(null)
-
-  // ─── 통계 계산 ───
-  const stats = useMemo(() => {
-    const stored = items.filter(i => i.status === 'stored')
-    return {
-      storedCount: stored.reduce((sum, i) => sum + i.quantity, 0),
-      goodCount: stored.filter(i => i.condition === 'good').reduce((sum, i) => sum + i.quantity, 0),
-      poorCount: stored.filter(i => i.condition === 'poor').reduce((sum, i) => sum + i.quantity, 0),
-      releasedCount: items.filter(i => i.status === 'released').reduce((sum, i) => sum + i.quantity, 0),
-    }
-  }, [items])
 
   // ─── 탭별 건수 ───
   const tabCounts = useMemo(() => ({
     stored: items.filter(i => i.status === 'stored').length,
+    requested: items.filter(i => i.status === 'requested').length,
     released: items.filter(i => i.status === 'released').length,
   }), [items])
 
-  // ─── 현장 그룹 생성 ───
-  const siteGroups = useMemo(() => {
-    let sites = buildSiteGroups(orders, items, activeTab)
+  // ─── 미등록 철거보관 발주 목록 ───
+  const removalOrders = useMemo(() => {
+    // 이미 장비가 등록된 발주 ID 목록
+    const registeredOrderIds = new Set(
+      items.filter(item => item.orderId).map(item => item.orderId!)
+    )
 
-    // 창고 필터 적용
+    // 철거보관 작업이 포함되고 아직 장비가 등록되지 않은 발주만
+    return (orders || []).filter(order =>
+      order.status !== 'cancelled' &&
+      order.items.some(item => item.workType === '철거보관') &&
+      !registeredOrderIds.has(order.id)
+    )
+  }, [orders, items])
+
+  // ─── 장비 리스트 필터링 ───
+  const filteredItems = useMemo(() => {
+    let result = items.filter(i => i.status === activeTab)
+
+    // 창고 필터
     if (warehouseFilter !== 'all') {
-      sites = sites.map(site => ({
-        ...site,
-        equipment: site.equipment.filter(eq => eq.warehouseId === warehouseFilter),
-      })).filter(site => site.equipment.length > 0 || (activeTab === 'stored' && site.orderId))
+      result = result.filter(i => i.warehouseId === warehouseFilter)
     }
 
-    // 검색어 필터 적용
+    // 계열사 필터
+    if (affiliateFilter !== 'all') {
+      result = result.filter(i => i.affiliate === affiliateFilter)
+    }
+
+    // 품목 필터
+    if (categoryFilter !== 'all') {
+      result = result.filter(i => i.category === categoryFilter)
+    }
+
+    // 검색어 필터
     if (searchTerm) {
       const term = searchTerm.toLowerCase()
-      sites = sites.filter(site => {
-        // 현장 정보에서 검색
-        const siteMatch =
-          site.siteName.toLowerCase().includes(term) ||
-          (site.affiliate || '').toLowerCase().includes(term) ||
-          (site.address || '').toLowerCase().includes(term)
-
-        // 장비 정보에서 검색
-        const equipMatch = site.equipment.some(eq =>
-          eq.category.toLowerCase().includes(term) ||
-          (eq.model || '').toLowerCase().includes(term) ||
-          (eq.manufacturer || '').toLowerCase().includes(term) ||
-          (eq.notes || '').toLowerCase().includes(term)
-        )
-
-        return siteMatch || equipMatch
-      })
+      result = result.filter(i =>
+        i.category.toLowerCase().includes(term) ||
+        (i.model || '').toLowerCase().includes(term) ||
+        i.siteName.toLowerCase().includes(term) ||
+        (i.affiliate || '').toLowerCase().includes(term) ||
+        (i.address || '').toLowerCase().includes(term) ||
+        (i.manufacturer || '').toLowerCase().includes(term) ||
+        (i.notes || '').toLowerCase().includes(term)
+      )
     }
 
-    return sites
-  }, [orders, items, activeTab, warehouseFilter, searchTerm])
+    return result
+  }, [items, activeTab, warehouseFilter, affiliateFilter, categoryFilter, searchTerm])
 
   // ─── 핸들러 ───
 
@@ -297,7 +230,6 @@ export default function StoredEquipmentPage() {
   /** 수정 다이얼로그 열기 */
   const handleEdit = (item: StoredEquipment) => {
     setEditTarget(item)
-    setContextSite(null)
     setFormOpen(true)
   }
 
@@ -307,17 +239,9 @@ export default function StoredEquipmentPage() {
     setReleaseOpen(true)
   }
 
-  /** 현장에서 장비 추가 */
-  const handleAddEquipment = (site: StoredEquipmentSite) => {
+  /** 장비 등록 다이얼로그 열기 */
+  const handleOpenForm = () => {
     setEditTarget(null)
-    setContextSite(site)
-    setFormOpen(true)
-  }
-
-  /** 수동 등록 (발주 없는 장비) */
-  const handleManualCreate = () => {
-    setEditTarget(null)
-    setContextSite(null)
     setFormOpen(true)
   }
 
@@ -336,6 +260,7 @@ export default function StoredEquipmentPage() {
   // 탭 정의
   const tabs: { label: string; value: StoredEquipmentStatus; count: number }[] = [
     { label: '보관중', value: 'stored', count: tabCounts.stored },
+    { label: '요청중', value: 'requested', count: tabCounts.requested },
     { label: '출고완료', value: 'released', count: tabCounts.released },
   ]
 
@@ -348,43 +273,11 @@ export default function StoredEquipmentPage() {
           철거보관 장비 관리
         </h1>
         <p className="text-muted-foreground">
-          철거보관 발주가 접수되면 현장이 자동으로 표시됩니다. 현장을 펼쳐서 장비를 개별 등록하세요.
+          철거보관 장비 전체를 한눈에 조회하고 관리합니다. 필터로 빠르게 찾으세요.
         </p>
       </div>
 
-      {/* 통계 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-blue-700">
-            <Package className="h-4 w-4" />
-            <span className="text-xs font-medium">보관중</span>
-          </div>
-          <p className="text-2xl font-bold text-blue-800 mt-1">{stats.storedCount}대</p>
-        </div>
-        <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-green-700">
-            <CheckCircle className="h-4 w-4" />
-            <span className="text-xs font-medium">양호</span>
-          </div>
-          <p className="text-2xl font-bold text-green-800 mt-1">{stats.goodCount}대</p>
-        </div>
-        <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-red-700">
-            <AlertTriangle className="h-4 w-4" />
-            <span className="text-xs font-medium">불량</span>
-          </div>
-          <p className="text-2xl font-bold text-red-800 mt-1">{stats.poorCount}대</p>
-        </div>
-        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3">
-          <div className="flex items-center gap-2 text-gray-600">
-            <Archive className="h-4 w-4" />
-            <span className="text-xs font-medium">출고완료</span>
-          </div>
-          <p className="text-2xl font-bold text-gray-700 mt-1">{stats.releasedCount}대</p>
-        </div>
-      </div>
-
-      {/* 검색 + 창고필터 + 수동등록 버튼 */}
+      {/* 필터 영역 */}
       <div className="flex flex-col md:flex-row items-start md:items-center gap-3 mb-4">
         <Input
           placeholder="현장명, 품목, 모델명, 주소로 검색..."
@@ -393,8 +286,8 @@ export default function StoredEquipmentPage() {
           className="max-w-md"
         />
         <Select value={warehouseFilter} onValueChange={setWarehouseFilter}>
-          <SelectTrigger className="w-[180px]">
-            <SelectValue placeholder="창고 필터" />
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="창고" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">전체 창고</SelectItem>
@@ -403,9 +296,70 @@ export default function StoredEquipmentPage() {
             ))}
           </SelectContent>
         </Select>
-        <Button onClick={handleManualCreate} variant="outline" className="gap-1.5 ml-auto">
+        <Select value={affiliateFilter} onValueChange={setAffiliateFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="계열사" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 계열사</SelectItem>
+            {AFFILIATE_OPTIONS.map(opt => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="품목" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">전체 품목</SelectItem>
+            {CATEGORY_OPTIONS.map(opt => (
+              <SelectItem key={opt} value={opt}>{opt}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+
+        {/* 미등록 철거보관 발주 목록 */}
+        {removalOrders.length > 0 && (
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="gap-2 border-orange-300 bg-orange-50 text-orange-800 hover:bg-orange-100">
+                <AlertCircle className="h-4 w-4" />
+                미등록 발주 {removalOrders.length}건
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-80" align="end">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-sm mb-3">철거보관 발주 (미등록)</h4>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {removalOrders.map((order) => (
+                    <button
+                      key={order.id}
+                      onClick={() => handleOpenForm()}
+                      className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                    >
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {order.businessName}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {order.affiliate || '계열사 미입력'} · {order.orderDate}
+                          </p>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </PopoverContent>
+          </Popover>
+        )}
+
+        <Button onClick={handleOpenForm} className="gap-1.5 ml-auto">
           <Plus className="h-4 w-4" />
-          수동 등록
+          장비 등록
         </Button>
       </div>
 
@@ -428,17 +382,17 @@ export default function StoredEquipmentPage() {
           </button>
         ))}
         <span className="text-sm text-gray-500 ml-auto">
-          {siteGroups.length}개 현장
+          {filteredItems.length}대
           {searchTerm && <span className="text-blue-600 font-medium ml-1">(검색중)</span>}
         </span>
       </div>
 
-      {/* 메인 컨텐츠: 현장 아코디언 리스트 */}
-      <StoredEquipmentSiteList
-        sites={siteGroups}
+      {/* 메인 컨텐츠: 장비 테이블 리스트 */}
+      <StoredEquipmentTable
+        items={filteredItems}
         activeTab={activeTab}
         warehouses={warehouses}
-        onAddEquipment={handleAddEquipment}
+        orders={orders}
         onEdit={handleEdit}
         onRelease={handleReleaseClick}
         onDelete={handleDelete}
@@ -451,14 +405,12 @@ export default function StoredEquipmentPage() {
         open={formOpen}
         onOpenChange={(open) => {
           setFormOpen(open)
-          if (!open) {
-            setEditTarget(null)
-            setContextSite(null)
-          }
+          if (!open) setEditTarget(null)
         }}
         onSave={editTarget ? handleUpdate : handleCreate}
         warehouses={warehouses}
-        contextSite={contextSite}
+        orders={orders}
+        items={items}
       />
 
       {/* 출고 다이얼로그 */}
@@ -470,6 +422,15 @@ export default function StoredEquipmentPage() {
           if (!open) setReleaseTarget(null)
         }}
         onRelease={handleRelease}
+        defaultDestination={(() => {
+          // 요청중 장비 → 연결된 발주의 주소를 출고목적지 기본값으로
+          if (!releaseTarget || releaseTarget.status !== 'requested') return undefined
+          const linkedOrder = orders.find(o =>
+            o.items.some(item => item.workType === '재고설치' && item.storedEquipmentId === releaseTarget.id)
+          )
+          if (!linkedOrder) return undefined
+          return `${linkedOrder.businessName} (${linkedOrder.address})`
+        })()}
       />
     </div>
   )

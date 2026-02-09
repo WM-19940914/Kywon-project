@@ -16,6 +16,7 @@ export interface OrderItem {
   model: string                // 모델명 (예: AR-123)
   size: string                 // 평형 (예: 18평)
   quantity: number             // 수량 (몇 대?)
+  storedEquipmentId?: string   // 재고설치 시: 사용한 보관 장비 ID
 }
 
 /**
@@ -543,7 +544,7 @@ export const REVIEW_STATUS_CONFIG = {
  * - stored: 보관중 (창고에 있음)
  * - released: 출고완료 (재설치/폐기/반납 됨)
  */
-export type StoredEquipmentStatus = 'stored' | 'released'
+export type StoredEquipmentStatus = 'stored' | 'requested' | 'released'
 
 /**
  * 출고 유형 (어디로 나갔는지)
@@ -552,13 +553,6 @@ export type StoredEquipmentStatus = 'stored' | 'released'
  * - return: 반납 (교원에게 돌려줌)
  */
 export type ReleaseType = 'reinstall' | 'dispose' | 'return'
-
-/**
- * 장비 상태 (양호/불량)
- * - good: 양호 (정상 작동)
- * - poor: 불량 (고장이나 손상 있음)
- */
-export type EquipmentCondition = 'good' | 'poor'
 
 /** 철거보관 장비 인터페이스 */
 export interface StoredEquipment {
@@ -577,7 +571,7 @@ export interface StoredEquipment {
   // 보관 정보
   warehouseId?: string                // 보관 창고 ID
   storageStartDate?: string           // 보관 시작일 (YYYY-MM-DD)
-  condition: EquipmentCondition       // 장비 상태 (양호/불량)
+  removalDate?: string                // 철거일 (YYYY-MM-DD)
   removalReason?: string              // 철거 사유
   notes?: string                      // 메모
 
@@ -629,12 +623,14 @@ export interface StoredEquipmentSite {
 /** 보관 상태 한글 라벨 */
 export const STORED_EQUIPMENT_STATUS_LABELS: Record<StoredEquipmentStatus, string> = {
   'stored': '보관중',
+  'requested': '요청중',
   'released': '출고완료',
 }
 
 /** 보관 상태 색상 */
 export const STORED_EQUIPMENT_STATUS_COLORS: Record<StoredEquipmentStatus, string> = {
   'stored': 'bg-blue-50 text-blue-700 border-blue-200',
+  'requested': 'bg-orange-50 text-orange-700 border-orange-200',
   'released': 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
@@ -650,18 +646,6 @@ export const RELEASE_TYPE_COLORS: Record<ReleaseType, string> = {
   'reinstall': 'bg-green-50 text-green-700 border-green-200',
   'dispose': 'bg-red-50 text-red-700 border-red-200',
   'return': 'bg-orange-50 text-orange-700 border-orange-200',
-}
-
-/** 장비 상태 한글 라벨 */
-export const EQUIPMENT_CONDITION_LABELS: Record<EquipmentCondition, string> = {
-  'good': '양호',
-  'poor': '불량',
-}
-
-/** 장비 상태 색상 */
-export const EQUIPMENT_CONDITION_COLORS: Record<EquipmentCondition, string> = {
-  'good': 'bg-green-50 text-green-700 border-green-200',
-  'poor': 'bg-red-50 text-red-700 border-red-200',
 }
 
 /**

@@ -69,6 +69,11 @@ export const menuItems: MenuGroup[] = [
         icon: Wrench,
         disabled: true,
       },
+      {
+        title: '철거보관 장비',
+        url: '/kyowon/stored-equipment',
+        icon: Archive,
+      },
     ],
   },
 
