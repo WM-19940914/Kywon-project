@@ -12,7 +12,7 @@
 
 import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
-import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, ReviewStatus, InventoryEvent, InventoryEventType } from '@/types/order'
+import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, ReviewStatus, InventoryEvent, InventoryEventType, StoredEquipment, StoredEquipmentStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 
 // ============================================================
@@ -732,158 +732,6 @@ export async function saveCustomerQuote(orderId: string, quote: CustomerQuote): 
 // 💰 연간 단가표 (Price Table)
 // ============================================================
 
-/**
- * 연간 단가표 전체 조회 (구성품 포함)
- * @returns 단가표 배열
- */
-export async function fetchPriceTable(): Promise<any[]> {
-  const supabase = createClient()
-
-  // price_table + price_table_components 조인
-  const { data, error } = await supabase
-    .from('price_table')
-    .select(`
-      *,
-      components:price_table_components(*)
-    `)
-    .order('size', { ascending: false })
-
-  if (error) {
-    console.error('단가표 조회 실패:', error.message)
-    return []
-  }
-
-  // snake_case → camelCase 변환
-  return toCamelCase(data)
-}
-
-/**
- * 단가표 제품 추가 (SET + 구성품)
- * @param priceTableRow - 새 제품 정보
- */
-export async function createPriceTableRow(priceTableRow: any): Promise<any | null> {
-  const supabase = createClient()
-
-  // 1. SET 모델 추가
-  const { data: setData, error: setError } = await supabase
-    .from('price_table')
-    .insert({
-      category: priceTableRow.category,
-      model: priceTableRow.model,
-      size: priceTableRow.size,
-      price: priceTableRow.price,
-    })
-    .select()
-    .single()
-
-  if (setError) {
-    console.error('단가표 추가 실패:', setError.message)
-    return null
-  }
-
-  // 2. 구성품 추가
-  if (priceTableRow.components && priceTableRow.components.length > 0) {
-    const componentsData = priceTableRow.components.map((comp: any) => ({
-      price_table_id: setData.id,
-      type: comp.type,
-      model: comp.model,
-      unit_price: comp.unitPrice || comp.unit_price,
-      sale_price: comp.salePrice || comp.sale_price,
-      quantity: comp.quantity || 1,
-    }))
-
-    const { error: compError } = await supabase
-      .from('price_table_components')
-      .insert(componentsData)
-
-    if (compError) {
-      console.error('구성품 추가 실패:', compError.message)
-      // SET은 추가됐으니 롤백하거나 경고만
-    }
-  }
-
-  // 3. 생성된 데이터 반환 (구성품 포함)
-  const { data: fullData } = await supabase
-    .from('price_table')
-    .select(`
-      *,
-      components:price_table_components(*)
-    `)
-    .eq('id', setData.id)
-    .single()
-
-  return toCamelCase(fullData)
-}
-
-/**
- * 단가표 제품 수정
- * @param id - 제품 ID
- * @param updates - 수정할 필드
- */
-export async function updatePriceTableRow(id: string, updates: any): Promise<boolean> {
-  const supabase = createClient()
-
-  // SET 모델 정보 업데이트
-  const { error } = await supabase
-    .from('price_table')
-    .update({
-      category: updates.category,
-      model: updates.model,
-      size: updates.size,
-      price: updates.price,
-    })
-    .eq('id', id)
-
-  if (error) {
-    console.error('단가표 수정 실패:', error.message)
-    return false
-  }
-
-  // 구성품은 전체 교체 (삭제 후 재추가)
-  if (updates.components) {
-    await supabase
-      .from('price_table_components')
-      .delete()
-      .eq('price_table_id', id)
-
-    const componentsData = updates.components.map((comp: any) => ({
-      price_table_id: id,
-      type: comp.type,
-      model: comp.model,
-      unit_price: comp.unitPrice || comp.unit_price,
-      sale_price: comp.salePrice || comp.sale_price,
-      quantity: comp.quantity || 1,
-    }))
-
-    await supabase
-      .from('price_table_components')
-      .insert(componentsData)
-  }
-
-  return true
-}
-
-/**
- * 단가표 제품 삭제
- * @param id - 제품 ID
- */
-export async function deletePriceTableRow(id: string): Promise<boolean> {
-  const supabase = createClient()
-
-  // CASCADE 설정으로 구성품도 자동 삭제됨
-  const { error } = await supabase
-    .from('price_table')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('단가표 삭제 실패:', error.message)
-    return false
-  }
-
-  return true
-}
-
 // ============================================================
 // 💵 에스원 정산 (S1 Settlement)
 // ============================================================
@@ -1192,6 +1040,360 @@ export async function resolveInventoryEvent(id: string, targetOrderId?: string):
 
   if (error) {
     console.error('재고 이벤트 처리 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 📊 연간 단가표 (Price Table)
+// ============================================================
+
+/** 단가표 SET 모델 타입 */
+export interface PriceTableSet {
+  id: string
+  category: string
+  model: string
+  size: string
+  price: number
+  year: number
+  isActive: boolean
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 단가표 구성품 타입 */
+export interface PriceTableComponent {
+  id: string
+  setModel: string
+  model: string
+  type: string
+  unitPrice: number
+  salePrice: number
+  quantity: number
+  createdAt?: string
+  updatedAt?: string
+}
+
+/** 단가표 행 (SET + 구성품) */
+export interface PriceTableRow {
+  category: string
+  model: string
+  size: string
+  price: number
+  components: Array<{
+    model: string
+    type: string
+    unitPrice: number
+    salePrice: number
+    quantity: number
+  }>
+}
+
+/**
+ * 활성화된 단가표 조회 (기본 2026년)
+ * @param year - 조회할 연도 (기본: 2026)
+ * @returns PriceTableRow 배열
+ */
+export async function fetchPriceTable(year: number = 2026): Promise<PriceTableRow[]> {
+  const supabase = createClient()
+
+  // 1. SET 모델 조회
+  const { data: sets, error: setsError } = await supabase
+    .from('price_table_sets')
+    .select('*')
+    .eq('year', year)
+    .eq('is_active', true)
+    .order('category')
+    .order('price', { ascending: false })
+
+  if (setsError) {
+    console.error('단가표 조회 실패:', setsError.message)
+    return []
+  }
+
+  if (!sets || sets.length === 0) {
+    return []
+  }
+
+  // 2. 모든 구성품 조회
+  const setModels = sets.map(s => s.model)
+  const { data: components, error: compError } = await supabase
+    .from('price_table_components')
+    .select('*')
+    .in('set_model', setModels)
+
+  if (compError) {
+    console.error('구성품 조회 실패:', compError.message)
+    return []
+  }
+
+  // 3. SET + 구성품 조합
+  const result: PriceTableRow[] = sets.map(set => {
+    const setComponents = (components || [])
+      .filter(c => c.set_model === set.model)
+      .map(c => ({
+        model: c.model,
+        type: c.type,
+        unitPrice: c.unit_price,
+        salePrice: c.sale_price,
+        quantity: c.quantity,
+      }))
+
+    return {
+      category: set.category,
+      model: set.model,
+      size: set.size,
+      price: set.price,
+      components: setComponents,
+    }
+  })
+
+  return result
+}
+
+/**
+ * SET 모델 추가/수정
+ */
+export async function upsertPriceTableSet(set: Omit<PriceTableSet, 'id' | 'createdAt' | 'updatedAt'>): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('price_table_sets')
+    .upsert(toSnakeCase(set), { onConflict: 'model' })
+
+  if (error) {
+    console.error('SET 모델 저장 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * SET 모델 삭제
+ */
+export async function deletePriceTableSet(model: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('price_table_sets')
+    .delete()
+    .eq('model', model)
+
+  if (error) {
+    console.error('SET 모델 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 📦 철거보관 장비 (Stored Equipment)
+// ============================================================
+
+/**
+ * 철거보관 장비 목록 조회
+ * @param status - 상태 필터 (stored/released, 생략 시 전체)
+ * @param warehouseId - 창고 필터 (생략 시 전체)
+ */
+export async function fetchStoredEquipment(status?: StoredEquipmentStatus, warehouseId?: string): Promise<StoredEquipment[]> {
+  const supabase = createClient()
+  let query = supabase
+    .from('stored_equipment')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (status) {
+    query = query.eq('status', status)
+  }
+  if (warehouseId) {
+    query = query.eq('warehouse_id', warehouseId)
+  }
+
+  const { data, error } = await query
+
+  if (error) {
+    console.error('철거보관 장비 조회 실패:', error.message)
+    return []
+  }
+
+  return toCamelCase<StoredEquipment[]>(data)
+}
+
+/**
+ * 철거보관 장비 등록 (직접 입력)
+ * @param equipment - 새 장비 정보
+ */
+export async function createStoredEquipment(equipment: Omit<StoredEquipment, 'id' | 'createdAt' | 'updatedAt'>): Promise<StoredEquipment | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('stored_equipment')
+    .insert(toSnakeCase(equipment))
+    .select()
+    .single()
+
+  if (error) {
+    console.error('철거보관 장비 등록 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<StoredEquipment>(data)
+}
+
+/**
+ * 철거보관 장비 수정
+ * @param id - 장비 ID
+ * @param updates - 수정할 필드
+ */
+export async function updateStoredEquipment(id: string, updates: Partial<StoredEquipment>): Promise<StoredEquipment | null> {
+  const supabase = createClient()
+  const dbUpdates = toSnakeCase(updates)
+  dbUpdates.updated_at = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from('stored_equipment')
+    .update(dbUpdates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('철거보관 장비 수정 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<StoredEquipment>(data)
+}
+
+/**
+ * 철거보관 장비 삭제
+ * @param id - 장비 ID
+ */
+export async function deleteStoredEquipment(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('stored_equipment')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('철거보관 장비 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 철거보관 장비 출고 처리
+ * status를 'released'로 변경하고 출고 정보를 저장합니다.
+ *
+ * @param id - 장비 ID
+ * @param releaseInfo - 출고 정보 (유형/날짜/목적지/메모)
+ */
+export async function releaseStoredEquipment(id: string, releaseInfo: {
+  releaseType: string
+  releaseDate: string
+  releaseDestination?: string
+  releaseNotes?: string
+}): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('stored_equipment')
+    .update({
+      status: 'released',
+      release_type: releaseInfo.releaseType,
+      release_date: releaseInfo.releaseDate,
+      release_destination: releaseInfo.releaseDestination || null,
+      release_notes: releaseInfo.releaseNotes || null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('출고 처리 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 출고 되돌리기 (released → stored)
+ * 출고 정보를 초기화하고 다시 보관중으로 변경합니다.
+ *
+ * @param id - 장비 ID
+ */
+export async function revertStoredEquipmentRelease(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('stored_equipment')
+    .update({
+      status: 'stored',
+      release_type: null,
+      release_date: null,
+      release_destination: null,
+      release_notes: null,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', id)
+
+  if (error) {
+    console.error('출고 되돌리기 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 발주에서 철거보관 장비 자동 등록
+ * 설치완료 처리 시 workType='철거보관'인 항목을 stored_equipment에 등록합니다.
+ *
+ * @param order - 발주 정보
+ * @param warehouseId - 보관 창고 ID
+ */
+export async function createStoredEquipmentFromOrder(order: Order, warehouseId?: string): Promise<boolean> {
+  const supabase = createClient()
+
+  // 철거보관 항목만 추출
+  const removalItems = order.items.filter(item => item.workType === '철거보관')
+  if (removalItems.length === 0) return true
+
+  // 이미 등록된 건 중복 방지
+  const { data: existing } = await supabase
+    .from('stored_equipment')
+    .select('id')
+    .eq('order_id', order.id)
+
+  if (existing && existing.length > 0) {
+    console.log('이미 등록된 철거보관 장비가 있습니다:', order.id)
+    return true
+  }
+
+  // 각 철거보관 항목을 stored_equipment에 등록
+  const records = removalItems.map(item => ({
+    order_id: order.id,
+    site_name: order.businessName,
+    affiliate: order.affiliate || null,
+    address: order.address || null,
+    category: item.category,
+    model: item.model || null,
+    size: item.size || null,
+    quantity: item.quantity,
+    warehouse_id: warehouseId || null,
+    storage_start_date: order.installCompleteDate || new Date().toISOString().split('T')[0],
+    condition: 'good',
+    status: 'stored',
+  }))
+
+  const { error } = await supabase
+    .from('stored_equipment')
+    .insert(records)
+
+  if (error) {
+    console.error('철거보관 장비 자동 등록 실패:', error.message)
     return false
   }
 

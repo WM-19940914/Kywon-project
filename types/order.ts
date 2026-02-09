@@ -142,6 +142,7 @@ export interface Order {
   installScheduleDate?: string          // 설치예정일 (YYYY-MM-DD)
   installCompleteDate?: string          // 설치완료일 (YYYY-MM-DD)
   installMemo?: string                  // 설치 관련 메모
+  sitePhotos?: string[]                 // 현장사진 (URL 배열 — 설치팀장 업로드)
 
   // 💵 에스원 정산 정보 (멜레아 ↔ 에스원 설치비 정산)
   s1SettlementStatus?: S1SettlementStatus  // 에스원 정산 상태
@@ -531,6 +532,136 @@ export type ReviewStatus = 'pending' | 'reviewed'
 export const REVIEW_STATUS_CONFIG = {
   mellea: { label: '멜레아', pendingText: '미검토', reviewedText: '검토완료' },
   gyowon: { label: '교원', pendingText: '미확인', reviewedText: '확인완료' },
+}
+
+// ============================================================
+// 📦 철거보관 장비 (Stored Equipment)
+// ============================================================
+
+/**
+ * 철거보관 장비 보관 상태
+ * - stored: 보관중 (창고에 있음)
+ * - released: 출고완료 (재설치/폐기/반납 됨)
+ */
+export type StoredEquipmentStatus = 'stored' | 'released'
+
+/**
+ * 출고 유형 (어디로 나갔는지)
+ * - reinstall: 재설치 (다른 현장에 다시 설치)
+ * - dispose: 폐기 (못 쓰게 되어서 버림)
+ * - return: 반납 (교원에게 돌려줌)
+ */
+export type ReleaseType = 'reinstall' | 'dispose' | 'return'
+
+/**
+ * 장비 상태 (양호/불량)
+ * - good: 양호 (정상 작동)
+ * - poor: 불량 (고장이나 손상 있음)
+ */
+export type EquipmentCondition = 'good' | 'poor'
+
+/** 철거보관 장비 인터페이스 */
+export interface StoredEquipment {
+  id: string
+  orderId?: string                    // 연결된 발주 ID (직접 입력 시 null)
+  siteName: string                    // 현장명
+  affiliate?: string                  // 계열사
+  address?: string                    // 현장 주소
+  category: string                    // 품목 (스탠드에어컨, 벽걸이에어컨 등)
+  model?: string                      // 모델명
+  size?: string                       // 평형
+  quantity: number                    // 수량
+  manufacturer?: string               // 제조사 (삼성/LG/캐리어/기타)
+  manufacturingDate?: string           // 제조년월 (YYYY-MM 형식)
+
+  // 보관 정보
+  warehouseId?: string                // 보관 창고 ID
+  storageStartDate?: string           // 보관 시작일 (YYYY-MM-DD)
+  condition: EquipmentCondition       // 장비 상태 (양호/불량)
+  removalReason?: string              // 철거 사유
+  notes?: string                      // 메모
+
+  // 출고 정보
+  status: StoredEquipmentStatus       // 보관중 / 출고완료
+  releaseType?: ReleaseType           // 출고 유형
+  releaseDate?: string                // 출고일
+  releaseDestination?: string         // 출고 목적지
+  releaseNotes?: string               // 출고 메모
+
+  // 시스템
+  createdAt?: string
+  updatedAt?: string
+}
+
+/**
+ * 제조사 옵션 (드롭다운용)
+ */
+export const MANUFACTURER_OPTIONS = [
+  '삼성',
+  'LG',
+  '캐리어',
+  '기타',
+] as const
+
+/**
+ * 현장 그룹 (철거보관 페이지용)
+ *
+ * 발주서 1건 = 현장 1개로 매핑
+ * 현장 안에 여러 대의 장비가 있을 수 있습니다
+ */
+export interface StoredEquipmentSite {
+  /** 발주 ID (수동 등록 그룹이면 null) */
+  orderId: string | null
+  /** 현장명 (발주의 businessName 또는 수동 입력 siteName) */
+  siteName: string
+  /** 계열사 */
+  affiliate?: string
+  /** 현장 주소 */
+  address?: string
+  /** 발주일 */
+  orderDate?: string
+  /** 해당 발주의 철거보관 OrderItem 목록 (장비 등록 시 자동채움용) */
+  orderItems?: OrderItem[]
+  /** 이 현장에 등록된 장비 목록 */
+  equipment: StoredEquipment[]
+}
+
+/** 보관 상태 한글 라벨 */
+export const STORED_EQUIPMENT_STATUS_LABELS: Record<StoredEquipmentStatus, string> = {
+  'stored': '보관중',
+  'released': '출고완료',
+}
+
+/** 보관 상태 색상 */
+export const STORED_EQUIPMENT_STATUS_COLORS: Record<StoredEquipmentStatus, string> = {
+  'stored': 'bg-blue-50 text-blue-700 border-blue-200',
+  'released': 'bg-gray-100 text-gray-500 border-gray-200',
+}
+
+/** 출고 유형 한글 라벨 */
+export const RELEASE_TYPE_LABELS: Record<ReleaseType, string> = {
+  'reinstall': '재설치',
+  'dispose': '폐기',
+  'return': '반납',
+}
+
+/** 출고 유형 색상 */
+export const RELEASE_TYPE_COLORS: Record<ReleaseType, string> = {
+  'reinstall': 'bg-green-50 text-green-700 border-green-200',
+  'dispose': 'bg-red-50 text-red-700 border-red-200',
+  'return': 'bg-orange-50 text-orange-700 border-orange-200',
+}
+
+/** 장비 상태 한글 라벨 */
+export const EQUIPMENT_CONDITION_LABELS: Record<EquipmentCondition, string> = {
+  'good': '양호',
+  'poor': '불량',
+}
+
+/** 장비 상태 색상 */
+export const EQUIPMENT_CONDITION_COLORS: Record<EquipmentCondition, string> = {
+  'good': 'bg-green-50 text-green-700 border-green-200',
+  'poor': 'bg-red-50 text-red-700 border-red-200',
 }
 
 /**

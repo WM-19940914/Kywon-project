@@ -16,7 +16,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { fetchOrders, updateOrder as updateOrderDB, saveCustomerQuote, cancelOrder as cancelOrderDB } from '@/lib/supabase/dal'
+import { fetchOrders, updateOrder as updateOrderDB, saveCustomerQuote, cancelOrder as cancelOrderDB, createStoredEquipmentFromOrder } from '@/lib/supabase/dal'
 import type { Order, InstallScheduleStatus, CustomerQuote } from '@/types/order'
 import { ScheduleTable } from '@/components/schedule/schedule-table'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -60,9 +60,25 @@ export default function SchedulePage() {
   /**
    * 설치일정 정보 업데이트 핸들러
    * 설치예정일, 설치완료일, 메모 등을 수정합니다.
+   *
+   * 설치완료 처리 시 (installCompleteDate 입력됨):
+   * - 발주 항목 중 workType='철거보관'이 있으면 → stored_equipment에 자동 등록
    */
   const handleUpdateOrder = async (orderId: string, updates: Partial<Order>) => {
     await updateOrderDB(orderId, updates)
+
+    // 설치완료 처리 시 철거보관 장비 자동 등록
+    if (updates.installCompleteDate) {
+      const order = orders.find(o => o.id === orderId)
+      if (order) {
+        const hasRemoval = order.items.some(item => item.workType === '철거보관')
+        if (hasRemoval) {
+          const updatedOrder = { ...order, ...updates }
+          await createStoredEquipmentFromOrder(updatedOrder)
+        }
+      }
+    }
+
     setOrders(prev => prev.map(order => {
       if (order.id !== orderId) return order
       return { ...order, ...updates }

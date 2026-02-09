@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * 연간 단가표 페이지
  *
@@ -10,7 +11,7 @@
 
 import { useState, useEffect } from 'react'
 import { ChevronDown, ChevronRight, FileText, Loader2, Plus, Trash2, Pencil } from 'lucide-react'
-import { fetchPriceTable, createPriceTableRow, updatePriceTableRow, deletePriceTableRow } from '@/lib/supabase/dal'
+import { fetchPriceTable } from '@/lib/supabase/dal'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -480,40 +481,43 @@ export default function PriceTablePage() {
     setPriceTable(sorted)
   }
 
-  // 장비 추가 핸들러
-  const handleAdd = async (data: any) => {
-    const created = await createPriceTableRow(data)
-    if (created) {
-      await refreshPriceTable()
-      showAlert('장비가 추가되었습니다!', 'success')
-    } else {
-      showAlert('장비 추가에 실패했습니다.', 'error')
-    }
+  // 장비 추가 핸들러 (임시 비활성화 - DB 구조 변경으로 추후 재구현 예정)
+  const handleAdd = async (_data: any) => {
+    showAlert('장비 추가 기능은 준비 중입니다.', 'info')
+    // const created = await createPriceTableRow(data)
+    // if (created) {
+    //   await refreshPriceTable()
+    //   showAlert('장비가 추가되었습니다!', 'success')
+    // } else {
+    //   showAlert('장비 추가에 실패했습니다.', 'error')
+    // }
   }
 
-  // 장비 수정 핸들러
-  const handleUpdate = async (data: any) => {
-    const success = await updatePriceTableRow(data.id, data)
-    if (success) {
-      await refreshPriceTable()
-      showAlert('장비가 수정되었습니다!', 'success')
-    } else {
-      showAlert('장비 수정에 실패했습니다.', 'error')
-    }
+  // 장비 수정 핸들러 (임시 비활성화 - DB 구조 변경으로 추후 재구현 예정)
+  const handleUpdate = async (_data: any) => {
+    showAlert('장비 수정 기능은 준비 중입니다.', 'info')
+    // const success = await updatePriceTableRow(data.id, data)
+    // if (success) {
+    //   await refreshPriceTable()
+    //   showAlert('장비가 수정되었습니다!', 'success')
+    // } else {
+    //   showAlert('장비 수정에 실패했습니다.', 'error')
+    // }
   }
 
-  // 장비 삭제 핸들러
-  const handleDelete = async (id: string, model: string) => {
-    const confirmed = await showConfirm(`"${model}" 제품을 삭제하시겠습니까?\n구성품도 함께 삭제됩니다.`)
-    if (confirmed) {
-      const success = await deletePriceTableRow(id)
-      if (success) {
-        await refreshPriceTable()
-        showAlert('장비가 삭제되었습니다!', 'success')
-      } else {
-        showAlert('장비 삭제에 실패했습니다.', 'error')
-      }
-    }
+  // 장비 삭제 핸들러 (임시 비활성화 - DB 구조 변경으로 추후 재구현 예정)
+  const handleDelete = async (_id: string, model: string) => {
+    showAlert(`"${model}" 삭제 기능은 준비 중입니다.`, 'info')
+    // const confirmed = await showConfirm(`"${model}" 제품을 삭제하시겠습니까?\n구성품도 함께 삭제됩니다.`)
+    // if (confirmed) {
+    //   const success = await deletePriceTableRow(id)
+    //   if (success) {
+    //     await refreshPriceTable()
+    //     showAlert('장비가 삭제되었습니다!', 'success')
+    //   } else {
+    //     showAlert('장비 삭제에 실패했습니다.', 'error')
+    //   }
+    // }
   }
 
   // 로딩 중이면 로딩 표시

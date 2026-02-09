@@ -16,7 +16,7 @@ import {
   FileText,       // 단가표
   Truck,          // 배송 관리
   Warehouse,      // 재고 관리
-  Calculator,     // 설치비 관리
+  Archive,        // 철거 보관
   CalendarCheck,  // 설치일정 관리
   Receipt,        // 에스원 정산관리
   Settings        // 설정
@@ -109,10 +109,9 @@ export const menuItems: MenuGroup[] = [
         icon: Warehouse,
       },
       {
-        title: '설치비 관리',
-        url: '/mellea/install-cost',
-        icon: Calculator,
-        disabled: true,
+        title: '철거 보관',
+        url: '/mellea/stored-equipment',
+        icon: Archive,
       },
     ],
   },

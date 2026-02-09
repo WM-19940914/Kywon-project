@@ -27,6 +27,7 @@ import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, Pl
 import type { LucideIcon } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
+import { SitePhotoViewer } from '@/components/schedule/site-photo-viewer'
 
 /** 계열사별 색상 (가로 스택 바 + 범례용) */
 const AFFILIATE_COLORS: Record<string, string> = {
@@ -203,6 +204,7 @@ function AffiliateGroup({
                   <th className="text-center p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '70px' }}>발주서</th>
                   <th className="text-center p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '90px' }}>계열사</th>
                   <th className="text-center p-3 text-xs font-bold uppercase tracking-wider text-gray-600">사업자명</th>
+                  <th className="text-center p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '80px' }}>현장사진</th>
                   <th className="text-right p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '120px' }}>부가세별도</th>
                   <th className="text-right p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '100px' }}>부가세</th>
                   <th className="text-right p-3 text-xs font-bold uppercase tracking-wider text-gray-600" style={{ width: '130px' }}>부가세포함</th>
@@ -267,6 +269,14 @@ function AffiliateGroup({
                             <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             <p className="font-semibold text-sm truncate">{order.businessName}</p>
                           </div>
+                        </td>
+
+                        {/* 현장사진 */}
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <SitePhotoViewer
+                            photos={order.sitePhotos || []}
+                            businessName={order.businessName}
+                          />
                         </td>
 
                         {/* 부가세별도 */}

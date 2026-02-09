@@ -73,6 +73,7 @@ import {
   computeItemDeliveryStatus,
   getWarehouseDetail,
 } from '@/lib/delivery-utils'
+import { SitePhotoUpload } from './site-photo-upload'
 
 // ──────────────────────────────────────────────────
 // 날짜 입력 컴포넌트 (delivery-table.tsx와 동일 패턴)
@@ -439,11 +440,11 @@ function getColumnCount(activeTab: InstallScheduleStatus): number {
     // + 발주등록일(1) + 설치요청일(1) + 설치예정일편집(1) = 3
     count += 3
   } else if (activeTab === 'scheduled') {
-    // + 설치예정일(1) + 담당자(1) + 일정변경(1) = 3
-    count += 3
+    // + 설치예정일(1) + 담당자(1) + 일정변경(1) + 현장사진(1) = 4
+    count += 4
   } else {
-    // completed: + 설치예정일(1) + 설치완료일(1) = 2
-    count += 2
+    // completed: + 설치예정일(1) + 설치완료일(1) + 현장사진(1) = 3
+    count += 3
   }
 
   return count
@@ -619,7 +620,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   }
 
   /** 인라인 편집 핸들러 */
-  const handleFieldChange = (orderId: string, field: keyof Order, value: string) => {
+  const handleFieldChange = (orderId: string, field: keyof Order, value: string | string[]) => {
     onUpdateOrder(orderId, { [field]: value })
   }
 
@@ -759,6 +760,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
               {/* 에스원 정산 상태 */}
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>정산 상태</th>
+
+              {/* 현장사진 (설치예정/설치완료 탭만) */}
+              {(activeTab === 'scheduled' || activeTab === 'completed') && (
+                <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>현장사진</th>
+              )}
 
               {/* 일정미정 탭: 설치예정 이동 버튼 / 설치예정 탭: 설치완료 버튼 / 설치완료 탭: 되돌리기 버튼 */}
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: activeTab === 'completed' ? '140px' : '80px' }}></th>
@@ -947,6 +953,18 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                         )
                       })()}
                     </td>
+
+                    {/* 현장사진 (설치예정/설치완료 탭만) */}
+                    {(activeTab === 'scheduled' || activeTab === 'completed') && (
+                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <SitePhotoUpload
+                          photos={order.sitePhotos || []}
+                          onChange={(photos) => handleFieldChange(order.id, 'sitePhotos', photos)}
+                          businessName={order.businessName}
+                          orderId={order.id}
+                        />
+                      </td>
+                    )}
 
                     {/* 일정미정: 설치예정 이동 버튼 + 취소 X */}
                     {activeTab === 'unscheduled' && (
@@ -1195,6 +1213,19 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     )
                   })()}
                 </div>
+
+                {/* 현장사진 (설치예정/설치완료 탭만) */}
+                {(activeTab === 'scheduled' || activeTab === 'completed') && (
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                    <span className="text-xs text-gray-500">현장사진:</span>
+                    <SitePhotoUpload
+                      photos={order.sitePhotos || []}
+                      onChange={(photos) => handleFieldChange(order.id, 'sitePhotos', photos)}
+                      businessName={order.businessName}
+                      orderId={order.id}
+                    />
+                  </div>
+                )}
 
                 {/* 설치완료 탭: 견적서 + 메모 */}
                 {activeTab === 'completed' && (
