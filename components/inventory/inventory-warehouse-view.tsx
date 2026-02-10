@@ -362,7 +362,7 @@ export function InventoryWarehouseView({
                           <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
                         </td>
                         <td className="p-3">
-                          <p className={`font-semibold text-sm truncate ${isResolved ? 'text-gray-400' : ''}`}>
+                          <p className={`font-semibold text-sm truncate ${isResolved ? 'text-gray-400' : ''}`} title={item.businessName}>
                             {item.businessName}
                           </p>
                         </td>
@@ -375,7 +375,7 @@ export function InventoryWarehouseView({
                         <td className="p-3 text-center text-sm">{item.quantity}</td>
                         {/* 취소 사유 */}
                         <td className="p-3">
-                          <p className="text-xs text-gray-500 truncate">
+                          <p className="text-xs text-gray-500 truncate" title={cleanCancelReason(item.cancelReason)}>
                             {cleanCancelReason(item.cancelReason)}
                           </p>
                           {item.cancelledAt && (
@@ -387,7 +387,7 @@ export function InventoryWarehouseView({
                           {isResolved && item.usedByBusinessName ? (
                             <div className="flex items-center gap-1 text-xs">
                               <ArrowRight className="h-3 w-3 text-green-500 shrink-0" />
-                              <span className="text-green-700 font-medium truncate">
+                              <span className="text-green-700 font-medium truncate" title={item.usedByBusinessName}>
                                 {item.usedByBusinessName}
                               </span>
                             </div>
@@ -509,8 +509,8 @@ export function InventoryWarehouseView({
                         <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
                       </td>
                       <td className="p-3">
-                        <p className="font-semibold text-sm truncate">{item.businessName}</p>
-                        <p className="text-xs text-gray-500 truncate">{item.address}</p>
+                        <p className="font-semibold text-sm truncate" title={item.businessName}>{item.businessName}</p>
+                        <p className="text-xs text-gray-500 truncate" title={item.address}>{item.address}</p>
                       </td>
                       <td className="p-3">
                         <p className="text-sm">{item.componentName}</p>
@@ -552,7 +552,7 @@ export function InventoryWarehouseView({
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm">{item.businessName}</h3>
-                    <p className="text-xs text-gray-500 truncate">{item.address}</p>
+                    <p className="text-xs text-gray-500 truncate" title={item.address}>{item.address}</p>
                   </div>
                   <div className="flex items-center justify-between text-sm">
                     <div>

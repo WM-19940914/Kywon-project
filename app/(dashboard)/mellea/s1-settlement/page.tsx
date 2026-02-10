@@ -198,11 +198,11 @@ function SettledMonthGroup({
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            <p className="font-semibold text-sm truncate">{order.businessName}</p>
+                            <p className="font-semibold text-sm truncate" title={order.businessName}>{order.businessName}</p>
                           </div>
                         </td>
                         <td className="p-3 text-center">
-                          <p className="text-xs text-gray-600 truncate">{order.address}</p>
+                          <p className="text-xs text-gray-600 truncate" title={order.address}>{order.address}</p>
                         </td>
                         <td className="p-3 text-center">
                           <p className="text-sm font-semibold">
@@ -278,12 +278,12 @@ function SettledMonthGroup({
                                           return (
                                             <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-green-50/30">
                                               <td className="py-2 px-2 text-center text-gray-400">{idx + 1}</td>
-                                              <td className="py-2 px-2 text-center text-gray-800 font-medium truncate">{displayName}</td>
-                                              <td className="py-2 px-2 text-center text-gray-500 truncate">{displayModel}</td>
+                                              <td className="py-2 px-2 text-center text-gray-800 font-medium truncate" title={displayName}>{displayName}</td>
+                                              <td className="py-2 px-2 text-center text-gray-500 truncate" title={displayModel}>{displayModel}</td>
                                               <td className="py-2 px-2 text-center text-gray-600">{item.quantity}</td>
                                               <td className="py-2 px-2 text-right text-gray-600">{item.unitPrice.toLocaleString('ko-KR')}</td>
                                               <td className="py-2 px-2 text-right font-semibold text-gray-800">{item.totalPrice.toLocaleString('ko-KR')}</td>
-                                              <td className="py-2 px-2 text-center text-gray-500 truncate">{item.description || ''}</td>
+                                              <td className="py-2 px-2 text-center text-gray-500 truncate" title={item.description || ''}>{item.description || ''}</td>
                                             </tr>
                                           )
                                         })}
@@ -857,13 +857,13 @@ export default function S1SettlementPage() {
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
                             <ChevronDown className={`h-4 w-4 text-gray-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            <p className="font-semibold text-sm truncate">{order.businessName}</p>
+                            <p className="font-semibold text-sm truncate" title={order.businessName}>{order.businessName}</p>
                           </div>
                         </td>
 
                         {/* 주소 */}
                         <td className="p-3 text-center">
-                          <p className="text-xs text-gray-600 truncate">{order.address}</p>
+                          <p className="text-xs text-gray-600 truncate" title={order.address}>{order.address}</p>
                         </td>
 
                         {/* 설치비 소계 */}
@@ -975,12 +975,12 @@ export default function S1SettlementPage() {
                                         return (
                                         <tr key={item.id || idx} className="border-b border-gray-100 hover:bg-slate-50/50">
                                           <td className="py-2 px-2 text-center text-gray-400">{idx + 1}</td>
-                                          <td className="py-2 px-2 text-center text-gray-800 font-medium truncate">{displayName}</td>
-                                          <td className="py-2 px-2 text-center text-gray-500 truncate">{displayModel}</td>
+                                          <td className="py-2 px-2 text-center text-gray-800 font-medium truncate" title={displayName}>{displayName}</td>
+                                          <td className="py-2 px-2 text-center text-gray-500 truncate" title={displayModel}>{displayModel}</td>
                                           <td className="py-2 px-2 text-center text-gray-600">{item.quantity}</td>
                                           <td className="py-2 px-2 text-right text-gray-600">{item.unitPrice.toLocaleString('ko-KR')}</td>
                                           <td className="py-2 px-2 text-right font-semibold text-gray-800">{item.totalPrice.toLocaleString('ko-KR')}</td>
-                                          <td className="py-2 px-2 text-center text-gray-500 truncate">{item.description || ''}</td>
+                                          <td className="py-2 px-2 text-center text-gray-500 truncate" title={item.description || ''}>{item.description || ''}</td>
                                         </tr>
                                         )
                                       })}
@@ -1110,7 +1110,7 @@ export default function S1SettlementPage() {
                     {/* 현장명 + 주소 */}
                     <div>
                       <h3 className="font-semibold text-sm">{order.businessName}</h3>
-                      <p className="text-xs text-gray-500 mt-0.5 truncate">{order.address}</p>
+                      <p className="text-xs text-gray-500 mt-0.5 truncate" title={order.address}>{order.address}</p>
                     </div>
 
                     {/* 설치상태 + 날짜 + 설치비 */}

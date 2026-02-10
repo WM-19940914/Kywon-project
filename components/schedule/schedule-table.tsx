@@ -323,7 +323,7 @@ function EquipmentAccordion({ order }: { order: Order }) {
                 </td>
                 {/* 모델명 */}
                 <td className="px-3 py-2">
-                  <p className="text-xs text-gray-700 truncate">{item.componentModel || '-'}</p>
+                  <p className="text-xs text-gray-700 truncate" title={item.componentModel || '-'}>{item.componentModel || '-'}</p>
                 </td>
                 {/* 구성품 */}
                 <td className="px-3 py-2">
@@ -343,7 +343,7 @@ function EquipmentAccordion({ order }: { order: Order }) {
                 </td>
                 {/* 창고 */}
                 <td className="px-3 py-2">
-                  <p className="text-xs text-gray-600 truncate">
+                  <p className="text-xs text-gray-600 truncate" title={whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}>
                     {whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}
                   </p>
                 </td>
@@ -394,7 +394,7 @@ function EquipmentAccordionMobile({ order }: { order: Order }) {
             <div className="grid grid-cols-2 gap-x-3 text-xs">
               <div>
                 <span className="text-[10px] text-gray-400">모델명</span>
-                <p className="text-gray-700 truncate">{item.componentModel || '-'}</p>
+                <p className="text-gray-700 truncate" title={item.componentModel || '-'}>{item.componentModel || '-'}</p>
               </div>
               <div>
                 <span className="text-[10px] text-gray-400">구성품</span>
@@ -417,7 +417,7 @@ function EquipmentAccordionMobile({ order }: { order: Order }) {
               </div>
               <div>
                 <span className="text-[10px] text-gray-400">창고</span>
-                <p className="text-gray-600 truncate">{whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}</p>
+                <p className="text-gray-600 truncate" title={whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}>{whDetail ? `${whDetail.name}${whDetail.managerName ? ` · ${whDetail.managerName}` : ''}` : '-'}</p>
               </div>
             </div>
           </div>
@@ -823,7 +823,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     {/* 현장명 + 사전견적 뱃지 */}
                     <td className="p-3">
                       <div className="flex items-center gap-1.5">
-                        <p className="font-semibold text-xs truncate">{order.businessName}</p>
+                        <p className="font-semibold text-xs truncate" title={order.businessName}>{order.businessName}</p>
                         {order.isPreliminaryQuote && (
                           <Badge className="bg-red-50 text-red-600 border-red-200 text-[9px] px-1 py-0 leading-tight shrink-0">
                             사전견적
@@ -849,7 +849,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 현장주소 */}
                     <td className="p-3">
-                      <p className="text-[10px] text-gray-500 truncate">{order.address}</p>
+                      <p className="text-[10px] text-gray-500 truncate" title={order.address}>{order.address}</p>
                     </td>
 
                     {/* 일정미정: 설치요청일 */}

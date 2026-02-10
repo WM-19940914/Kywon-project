@@ -28,16 +28,12 @@ import {
   Edit2,
   FileText,
   LogOut,
-  MapPin,
-  Package,
   Trash2,
   Undo2,
   Warehouse as WarehouseIcon,
 } from 'lucide-react'
 import type { StoredEquipment, StoredEquipmentStatus, ReleaseType, Order } from '@/types/order'
 import {
-  STORED_EQUIPMENT_STATUS_LABELS,
-  STORED_EQUIPMENT_STATUS_COLORS,
   RELEASE_TYPE_LABELS,
   RELEASE_TYPE_COLORS,
 } from '@/types/order'
@@ -179,7 +175,7 @@ export function StoredEquipmentTable({
                   {item.affiliate && (
                     <p className="text-xs text-gray-500">{item.affiliate}</p>
                   )}
-                  <p className="font-semibold text-sm truncate">{item.siteName}</p>
+                  <p className="font-semibold text-sm truncate" title={item.siteName}>{item.siteName}</p>
                 </td>
 
                 {/* 철거일 */}
@@ -199,7 +195,7 @@ export function StoredEquipmentTable({
                 {/* 품목/모델명 */}
                 <td className="p-3">
                   <p className="text-sm text-gray-800 font-semibold">{item.category}</p>
-                  <p className="text-sm text-gray-600 truncate">{item.model || '-'}</p>
+                  <p className="text-sm text-gray-600 truncate" title={item.model || '-'}>{item.model || '-'}</p>
                 </td>
 
                 {/* 발주서보기 */}

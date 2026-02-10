@@ -67,7 +67,6 @@ export const menuItems: MenuGroup[] = [
         title: 'AS 관리',
         url: '/as',
         icon: Wrench,
-        disabled: true,
       },
       {
         title: '철거보관 장비',

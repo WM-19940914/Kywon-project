@@ -184,17 +184,17 @@ function CancelledHistoryCard({ order, onClick }: { order: Order; onClick: (orde
       onClick={() => onClick(order)}
     >
       <div className="flex items-center justify-between mb-1">
-        <p className="font-medium text-sm text-gray-700 truncate">{order.businessName}</p>
+        <p className="font-medium text-sm text-gray-700 truncate" title={order.businessName}>{order.businessName}</p>
         <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] border ml-2 shrink-0">
           취소
         </Badge>
       </div>
       <div className="flex items-center justify-between text-xs text-gray-400">
-        <span className="truncate">{order.address}</span>
+        <span className="truncate" title={order.address}>{order.address}</span>
         <span className="shrink-0 ml-2">발주일: {order.orderDate?.replace(/-/g, '.') || '-'}</span>
       </div>
       {order.cancelReason && (
-        <p className="text-xs text-red-500 mt-1 truncate">사유: {order.cancelReason}</p>
+        <p className="text-xs text-red-500 mt-1 truncate" title={`사유: ${order.cancelReason}`}>사유: {order.cancelReason}</p>
       )}
       {order.cancelledAt && (
         <p className="text-[10px] text-gray-400 mt-0.5">

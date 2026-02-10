@@ -73,7 +73,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
         </div>
 
         {/* 사업자명 — 1줄만 */}
-        <h3 className="text-sm font-bold text-foreground leading-snug truncate">
+        <h3 className="text-sm font-bold text-foreground leading-snug truncate" title={order.businessName}>
           {order.businessName}
         </h3>
 
@@ -105,7 +105,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
         </div>
 
         {/* 주소 (1줄) */}
-        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate">
+        <p className="text-[11px] text-muted-foreground flex items-center gap-1 truncate" title={order.address}>
           <MapPin className="h-2.5 w-2.5 flex-shrink-0" />
           {shortenAddress(order.address, 30)}
         </p>

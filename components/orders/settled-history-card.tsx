@@ -65,7 +65,7 @@ export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) 
         </div>
 
         {/* 사업자명 (강조) - 1줄로 자르고 ... 표시 */}
-        <h4 className="font-semibold text-xs text-gray-900 truncate tracking-tight">
+        <h4 className="font-semibold text-xs text-gray-900 truncate tracking-tight" title={order.businessName}>
           {order.businessName}
         </h4>
 

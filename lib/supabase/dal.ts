@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/client'
 import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
 import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, ReviewStatus, InventoryEvent, InventoryEventType, StoredEquipment, StoredEquipmentStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
+import type { ASRequest, ASRequestStatus } from '@/types/as'
 
 // ============================================================
 // 🏠 창고 (Warehouses)
@@ -1394,6 +1395,226 @@ export async function createStoredEquipmentFromOrder(order: Order, warehouseId?:
 
   if (error) {
     console.error('철거보관 장비 자동 등록 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 🔧 AS 관리 (AS Requests)
+// ============================================================
+
+/**
+ * AS 요청 목록 조회
+ * @returns AS 요청 배열 (최신순)
+ */
+export async function fetchASRequests(): Promise<ASRequest[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('as_requests')
+    .select('*')
+    .order('reception_date', { ascending: false })
+
+  if (error) {
+    console.error('AS 요청 조회 실패:', error.message)
+    return []
+  }
+
+  return toCamelCase<ASRequest[]>(data)
+}
+
+/**
+ * AS 요청 등록
+ * @param request - 새 AS 요청 정보
+ */
+export async function createASRequest(request: Omit<ASRequest, 'id' | 'createdAt' | 'updatedAt'>): Promise<ASRequest | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('as_requests')
+    .insert(toSnakeCase(request))
+    .select()
+    .single()
+
+  if (error) {
+    console.error('AS 요청 등록 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<ASRequest>(data)
+}
+
+/**
+ * AS 요청 수정 (관리 정보 + 상태 변경)
+ * @param id - AS 요청 ID
+ * @param updates - 수정할 필드들
+ */
+export async function updateASRequest(id: string, updates: Partial<ASRequest>): Promise<ASRequest | null> {
+  const supabase = createClient()
+  const dbUpdates = toSnakeCase(updates)
+  dbUpdates.updated_at = new Date().toISOString()
+
+  const { data, error } = await supabase
+    .from('as_requests')
+    .update(dbUpdates)
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('AS 요청 수정 실패:', error.message)
+    return null
+  }
+
+  return toCamelCase<ASRequest>(data)
+}
+
+/**
+ * AS 요청 삭제
+ * @param id - AS 요청 ID
+ */
+export async function deleteASRequest(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('as_requests')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('AS 요청 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * AS 요청 일괄 상태 변경 (정산대기 → 정산완료 등)
+ * @param ids - AS 요청 ID 배열
+ * @param status - 새 상태
+ * @param settlementMonth - 정산월 (YYYY-MM 형식, 정산완료 시 자동 설정)
+ */
+export async function batchUpdateASStatus(ids: string[], status: ASRequestStatus, settlementMonth?: string): Promise<boolean> {
+  const supabase = createClient()
+  const updates: Record<string, unknown> = {
+    status,
+    updated_at: new Date().toISOString()
+  }
+
+  // 정산완료 시 정산월 자동 입력
+  if (status === 'settled') {
+    if (settlementMonth) {
+      updates.settlement_month = settlementMonth
+    } else {
+      const now = new Date()
+      updates.settlement_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+    }
+  }
+
+  const { error } = await supabase
+    .from('as_requests')
+    .update(updates)
+    .in('id', ids)
+
+  if (error) {
+    console.error('AS 일괄 상태 변경 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+// ─────────────────────────────────────────────────
+// 월별 정산 확인 (settlement_confirmations)
+// ─────────────────────────────────────────────────
+
+/** 정산 확인 데이터 타입 */
+export interface SettlementConfirmation {
+  id: string
+  year: number
+  month: number
+  melleeaAmount: number | null
+  melleeaConfirmedAt: string | null
+  melleeaConfirmedBy: string | null
+  kyowonAmount: number | null
+  kyowonConfirmedAt: string | null
+  kyowonConfirmedBy: string | null
+}
+
+/** 월별 정산 확인 조회 */
+export async function fetchSettlementConfirmation(year: number, month: number): Promise<SettlementConfirmation | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('settlement_confirmations')
+    .select('*')
+    .eq('year', year)
+    .eq('month', month)
+    .single()
+
+  if (error || !data) return null
+
+  return {
+    id: data.id,
+    year: data.year,
+    month: data.month,
+    melleeaAmount: data.mellea_amount,
+    melleeaConfirmedAt: data.mellea_confirmed_at,
+    melleeaConfirmedBy: data.mellea_confirmed_by,
+    kyowonAmount: data.kyowon_amount,
+    kyowonConfirmedAt: data.kyowon_confirmed_at,
+    kyowonConfirmedBy: data.kyowon_confirmed_by,
+  }
+}
+
+/** 정산 확인금액 저장 (멜레아 또는 교원) */
+export async function saveSettlementConfirmation(
+  year: number,
+  month: number,
+  side: 'mellea' | 'kyowon',
+  amount: number,
+  confirmedBy: string
+): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+  const updateData = side === 'mellea'
+    ? { mellea_amount: amount, mellea_confirmed_at: now, mellea_confirmed_by: confirmedBy, updated_at: now }
+    : { kyowon_amount: amount, kyowon_confirmed_at: now, kyowon_confirmed_by: confirmedBy, updated_at: now }
+
+  const { error } = await supabase
+    .from('settlement_confirmations')
+    .upsert(
+      { year, month, ...updateData },
+      { onConflict: 'year,month' }
+    )
+
+  if (error) {
+    console.error('정산 확인 저장 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/** 정산 확인금액 초기화 (멜레아 또는 교원) */
+export async function clearSettlementConfirmation(
+  year: number,
+  month: number,
+  side: 'mellea' | 'kyowon'
+): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString()
+  const updateData = side === 'mellea'
+    ? { mellea_amount: null, mellea_confirmed_at: null, mellea_confirmed_by: null, updated_at: now }
+    : { kyowon_amount: null, kyowon_confirmed_at: null, kyowon_confirmed_by: null, updated_at: now }
+
+  const { error } = await supabase
+    .from('settlement_confirmations')
+    .update(updateData)
+    .eq('year', year)
+    .eq('month', month)
+
+  if (error) {
+    console.error('정산 확인 초기화 실패:', error.message)
     return false
   }
 

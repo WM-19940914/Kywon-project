@@ -389,7 +389,7 @@ function WarehousePickerDialog({
                   className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-xs cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
                 >
                   <SearchIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                  <span className={newWarehouse.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
+                  <span className={newWarehouse.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'} title={newWarehouse.address || ''}>
                     {newWarehouse.address || '주소 검색...'}
                   </span>
                 </div>
@@ -488,7 +488,7 @@ function WarehouseNameCell({
       className="w-full text-left group flex items-center gap-1"
       onClick={(e) => { e.stopPropagation(); onPickerOpen() }}
     >
-      <span className="text-xs font-semibold text-gray-800 truncate">
+      <span className="text-xs font-semibold text-gray-800 truncate" title={`${detail.name}_${detail.managerName}`}>
         {detail.name}_{detail.managerName}
       </span>
       <Pencil className="h-3 w-3 text-gray-300 group-hover:text-blue-500 shrink-0" />
@@ -1060,10 +1060,10 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       )}
                     </td>
                     <td className="p-3">
-                      <p className="font-semibold text-sm truncate">{order.businessName}</p>
+                      <p className="font-semibold text-sm truncate" title={order.businessName}>{order.businessName}</p>
                     </td>
                     <td className="p-3">
-                      <p className="text-xs text-gray-600 truncate">{order.address}</p>
+                      <p className="text-xs text-gray-600 truncate" title={order.address}>{order.address}</p>
                     </td>
                     {/* 창고정보: 구성품 중 가장 많이 설정된 창고 표시 */}
                     <td className="p-3">
@@ -1072,7 +1072,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         const detail = getWarehouseDetail(whId)
                         if (!detail) return <p className="text-sm text-gray-400">미지정</p>
                         return (
-                          <p className="text-sm font-medium truncate">{detail.name}_{detail.managerName}</p>
+                          <p className="text-sm font-medium truncate" title={`${detail.name}_${detail.managerName}`}>{detail.name}_{detail.managerName}</p>
                         )
                       })()}
                     </td>
@@ -1227,7 +1227,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       </td>
                                       {/* 현장명 */}
                                       <td className="px-1 py-1.5">
-                                        <p className="text-xs text-gray-700 truncate">{order.businessName}</p>
+                                        <p className="text-xs text-gray-700 truncate" title={order.businessName}>{order.businessName}</p>
                                       </td>
                                       {/* 주문일 */}
                                       <td className="px-1 py-1.5">
@@ -1364,7 +1364,10 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       {/* 창고명 (팝업으로 한번에 선택, 3컬럼 분리 표시) */}
                                       <td className="px-1 py-1.5">
                                         {readOnly ? (
-                                          <span className="text-xs font-semibold text-gray-800 truncate">
+                                          <span className="text-xs font-semibold text-gray-800 truncate" title={(() => {
+                                              const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                              return d ? `${d.name}_${d.managerName}` : ''
+                                            })()}>
                                             {(() => {
                                               const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
                                               return d ? `${d.name}_${d.managerName}` : '-'
@@ -1385,7 +1388,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                         {(() => {
                                           const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
                                           return d ? (
-                                            <p className="text-[11px] text-gray-500 truncate">{d.address}</p>
+                                            <p className="text-[11px] text-gray-500 truncate" title={d.address}>{d.address}</p>
                                           ) : <span className="text-xs text-gray-300">—</span>
                                         })()}
                                       </td>
