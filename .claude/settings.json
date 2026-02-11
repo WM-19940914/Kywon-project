@@ -1,0 +1,16 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node .claude/scripts/check-dev-server.js",
+            "timeout": 30
+          }
+        ]
+      }
+    ]
+  }
+}

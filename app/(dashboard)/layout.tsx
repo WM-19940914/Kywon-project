@@ -11,6 +11,7 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { Bell, Search } from 'lucide-react'
+import { Toaster } from 'sonner'
 
 import {
   Sidebar,
@@ -155,29 +156,32 @@ export default function DashboardLayout({
 
       {/* 오른쪽 메인 콘텐츠 영역 */}
       <div className="flex-1 flex flex-col min-h-screen">
-        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-white/80 backdrop-blur-md px-6">
+        <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b border-slate-200/80 bg-white/80 backdrop-blur-md shadow-sm px-6">
           <SidebarTrigger />
 
           <div className="flex-1 flex items-center gap-4">
             <div className="relative max-w-md flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 type="search"
                 placeholder="발주 검색..."
-                className="w-full rounded-xl border-0 bg-muted/60 pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/20 transition-all"
+                className="w-full rounded-full border-0 bg-slate-100 pl-10 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition-all"
               />
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
+          <Button variant="ghost" size="icon" className="relative rounded-full hover:bg-slate-100">
+            <Bell className="h-5 w-5 text-slate-500" />
             <span className="absolute top-1 right-1 h-2 w-2 rounded-full bg-red-500" />
           </Button>
         </header>
 
         <main className="flex-1 bg-slate-50/50 p-6">
-          {children}
+          <div className="animate-page-enter">
+            {children}
+          </div>
         </main>
+        <Toaster richColors position="top-right" toastOptions={{ duration: 3000 }} />
       </div>
     </SidebarProvider>
     </AlertProvider>

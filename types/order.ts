@@ -544,15 +544,14 @@ export const REVIEW_STATUS_CONFIG = {
  * - stored: 보관중 (창고에 있음)
  * - released: 출고완료 (재설치/폐기/반납 됨)
  */
-export type StoredEquipmentStatus = 'stored' | 'requested' | 'released'
+export type StoredEquipmentStatus = 'stored' | 'released'
 
 /**
  * 출고 유형 (어디로 나갔는지)
  * - reinstall: 재설치 (다른 현장에 다시 설치)
  * - dispose: 폐기 (못 쓰게 되어서 버림)
- * - return: 반납 (교원에게 돌려줌)
  */
-export type ReleaseType = 'reinstall' | 'dispose' | 'return'
+export type ReleaseType = 'reinstall' | 'dispose'
 
 /** 철거보관 장비 인터페이스 */
 export interface StoredEquipment {
@@ -623,14 +622,12 @@ export interface StoredEquipmentSite {
 /** 보관 상태 한글 라벨 */
 export const STORED_EQUIPMENT_STATUS_LABELS: Record<StoredEquipmentStatus, string> = {
   'stored': '보관중',
-  'requested': '요청중',
   'released': '출고완료',
 }
 
 /** 보관 상태 색상 */
 export const STORED_EQUIPMENT_STATUS_COLORS: Record<StoredEquipmentStatus, string> = {
   'stored': 'bg-blue-50 text-blue-700 border-blue-200',
-  'requested': 'bg-orange-50 text-orange-700 border-orange-200',
   'released': 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
@@ -638,14 +635,12 @@ export const STORED_EQUIPMENT_STATUS_COLORS: Record<StoredEquipmentStatus, strin
 export const RELEASE_TYPE_LABELS: Record<ReleaseType, string> = {
   'reinstall': '재설치',
   'dispose': '폐기',
-  'return': '반납',
 }
 
 /** 출고 유형 색상 */
 export const RELEASE_TYPE_COLORS: Record<ReleaseType, string> = {
   'reinstall': 'bg-green-50 text-green-700 border-green-200',
   'dispose': 'bg-red-50 text-red-700 border-red-200',
-  'return': 'bg-orange-50 text-orange-700 border-orange-200',
 }
 
 /**

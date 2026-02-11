@@ -12,9 +12,10 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { fetchWarehouses, createWarehouse as createWarehouseDB, updateWarehouse as updateWarehouseDB, deleteWarehouse as deleteWarehouseDB } from '@/lib/supabase/dal'
 import type { Warehouse } from '@/types/warehouse'
-import { Card, CardContent } from '@/components/ui/card'
+import { CardContent } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
+import { Skeleton } from '@/components/ui/skeleton'
 import {
   Warehouse as WarehouseIcon,
   MapPin,
@@ -149,10 +150,10 @@ function WarehouseCard({
     <div
       ref={cardRef}
       onClick={() => !isEditing && onSelect(warehouse.id)}
-      className={`rounded-lg border bg-card p-3 transition-all duration-200 cursor-pointer ${
+      className={`rounded-xl border bg-white p-3 transition-all duration-200 cursor-pointer ${
         isSelected
-          ? 'ring-2 ring-blue-500 shadow-md bg-blue-50/30'
-          : 'hover:shadow-sm hover:border-gray-300'
+          ? 'ring-2 ring-blue-500 shadow-md bg-blue-50/30 border-blue-300'
+          : 'border-slate-200 hover:shadow-sm hover:border-slate-300'
       }`}
     >
       {isEditing ? (
@@ -161,39 +162,39 @@ function WarehouseCard({
           <Input
             value={editData.name}
             onChange={(e) => setEditData({ ...editData, name: e.target.value })}
-            className="h-7 text-sm" placeholder="창고명"
+            className="h-7 text-sm rounded-lg border-slate-200" placeholder="창고명"
           />
           <div
             onClick={handleSearchAddress}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
           >
-            <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-            <span className={editData.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
+            <Search className="h-3 w-3 text-slate-400 flex-shrink-0" />
+            <span className={editData.address ? 'text-foreground truncate' : 'text-slate-400 truncate'}>
               {editData.address || '주소 검색...'}
             </span>
           </div>
           <Input
             value={editData.addressDetail}
             onChange={(e) => setEditData({ ...editData, addressDetail: e.target.value })}
-            className="h-7 text-sm" placeholder="상세주소 (동/호수 등)"
+            className="h-7 text-sm rounded-lg border-slate-200" placeholder="상세주소 (동/호수 등)"
           />
           <div className="grid grid-cols-2 gap-1.5">
             <Input
               value={editData.managerName}
               onChange={(e) => setEditData({ ...editData, managerName: e.target.value })}
-              className="h-7 text-sm" placeholder="담당자"
+              className="h-7 text-sm rounded-lg border-slate-200" placeholder="담당자"
             />
             <Input
               value={editData.managerPhone}
               onChange={(e) => setEditData({ ...editData, managerPhone: e.target.value })}
-              className="h-7 text-sm" placeholder="연락처"
+              className="h-7 text-sm rounded-lg border-slate-200" placeholder="연락처"
             />
           </div>
           <div className="flex gap-1.5">
-            <Button size="sm" onClick={handleSave} className="flex-1 h-7 text-xs">
+            <Button size="sm" onClick={handleSave} className="flex-1 h-7 text-xs rounded-lg">
               <Check className="h-3 w-3 mr-1" />저장
             </Button>
-            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1 h-7 text-xs">
+            <Button size="sm" variant="outline" onClick={() => setIsEditing(false)} className="flex-1 h-7 text-xs rounded-lg border-slate-200">
               <X className="h-3 w-3 mr-1" />취소
             </Button>
           </div>
@@ -209,7 +210,7 @@ function WarehouseCard({
               <Button
                 size="sm" variant="ghost"
                 onClick={(e) => { e.stopPropagation(); handleEdit() }}
-                className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600 rounded-lg"
               >
                 <Pencil className="h-3 w-3" />
               </Button>
@@ -222,7 +223,7 @@ function WarehouseCard({
                     onDelete(warehouse.id)
                   }
                 }}
-                className="h-6 w-6 p-0 text-gray-400 hover:text-red-600"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 rounded-lg"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -230,7 +231,7 @@ function WarehouseCard({
           </div>
 
           <div className="flex items-start gap-1.5 mb-1.5">
-            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-muted-foreground" />
+            <MapPin className="h-3 w-3 mt-0.5 flex-shrink-0 text-slate-400" />
             <span className="text-xs text-gray-600 leading-tight line-clamp-2">
               {warehouse.address}{warehouse.addressDetail ? `, ${warehouse.addressDetail}` : ''}
             </span>
@@ -307,7 +308,7 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
     return (
       <button
         onClick={() => setIsAdding(true)}
-        className="w-full rounded-lg border-2 border-dashed border-gray-300 p-3 flex items-center justify-center gap-2 text-sm text-gray-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-colors"
+        className="w-full rounded-xl border-2 border-dashed border-slate-200 p-3 flex items-center justify-center gap-2 text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-colors"
       >
         <Plus className="h-4 w-4" />
         창고 추가
@@ -316,49 +317,49 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
   }
 
   return (
-    <div className="rounded-lg border-2 border-blue-400 bg-blue-50/20 p-3">
+    <div className="rounded-xl border-2 border-blue-400 bg-blue-50/20 p-3">
       <div className="space-y-2">
         <Input
           value={formData.name}
           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-          className="h-7 text-sm" placeholder="창고명 *"
+          className="h-7 text-sm rounded-lg border-slate-200" placeholder="창고명 *"
           autoFocus
         />
         <div
           onClick={handleSearchAddress}
-          className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+          className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
         >
-          <Search className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-          <span className={formData.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'}>
+          <Search className="h-3 w-3 text-slate-400 flex-shrink-0" />
+          <span className={formData.address ? 'text-foreground truncate' : 'text-slate-400 truncate'}>
             {formData.address || '주소 검색 *'}
           </span>
         </div>
         <Input
           value={formData.addressDetail}
           onChange={(e) => setFormData({ ...formData, addressDetail: e.target.value })}
-          className="h-7 text-sm" placeholder="상세주소 (동/호수 등)"
+          className="h-7 text-sm rounded-lg border-slate-200" placeholder="상세주소 (동/호수 등)"
         />
         <div className="grid grid-cols-2 gap-1.5">
           <Input
             value={formData.managerName}
             onChange={(e) => setFormData({ ...formData, managerName: e.target.value })}
-            className="h-7 text-sm" placeholder="담당자"
+            className="h-7 text-sm rounded-lg border-slate-200" placeholder="담당자"
           />
           <Input
             value={formData.managerPhone}
             onChange={(e) => setFormData({ ...formData, managerPhone: e.target.value })}
-            className="h-7 text-sm" placeholder="연락처"
+            className="h-7 text-sm rounded-lg border-slate-200" placeholder="연락처"
           />
         </div>
         <div className="flex gap-1.5">
           <Button
             size="sm" onClick={handleAdd}
             disabled={!formData.name.trim() || !formData.address.trim()}
-            className="flex-1 h-7 text-xs"
+            className="flex-1 h-7 text-xs rounded-lg"
           >
             <Plus className="h-3 w-3 mr-1" />추가
           </Button>
-          <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} className="flex-1 h-7 text-xs">
+          <Button size="sm" variant="outline" onClick={() => setIsAdding(false)} className="flex-1 h-7 text-xs rounded-lg border-slate-200">
             <X className="h-3 w-3 mr-1" />취소
           </Button>
         </div>
@@ -369,7 +370,7 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
 
 export default function WarehousesPage() {
   const [warehouses, setWarehouses] = useState<Warehouse[]>([])
-  const [, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const cardElements = useRef<Record<string, HTMLDivElement | null>>({})
@@ -427,29 +428,80 @@ export default function WarehousesPage() {
     }
   }, [])
 
-  return (
-    <div className="container mx-auto py-6 px-4">
-      {/* 헤더 + 검색 */}
-      <div className="mb-6">
-        <div className="flex items-center justify-between mb-3">
+  // 로딩 중이면 스켈레톤 표시
+  if (isLoading) {
+    return (
+      <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
+        {/* 헤더 스켈레톤 */}
+        <div className="flex items-center gap-4 mb-6">
+          <Skeleton className="h-11 w-11 rounded-xl" />
           <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-              <WarehouseIcon className="h-6 w-6" />
-              창고 관리
-            </h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {filteredWarehouses.length}개 창고
-            </p>
+            <Skeleton className="h-7 w-48 mb-1.5" />
+            <Skeleton className="h-4 w-64" />
           </div>
         </div>
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="창고명, 주소, 담당자명으로 검색..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 h-9"
-          />
+
+        {/* 검색 스켈레톤 */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
+          <Skeleton className="h-9 w-full max-w-md rounded-lg" />
+        </div>
+
+        {/* 지도 + 카드 스켈레톤 */}
+        <div className="hidden lg:grid lg:grid-cols-[1fr_2fr_1fr] gap-4">
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+          <Skeleton className="h-[500px] w-full rounded-xl" />
+          <div className="space-y-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
+
+        {/* 모바일 스켈레톤 */}
+        <div className="lg:hidden space-y-4">
+          <Skeleton className="h-64 w-full rounded-xl" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
+      {/* 헤더 + 검색 */}
+      <div className="mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-4">
+            <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+              <WarehouseIcon className="h-6 w-6" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold tracking-tight">전국 설치팀 창고</h1>
+              <p className="text-muted-foreground mt-0.5">전국 설치팀 창고 위치와 정보를 관리합니다</p>
+            </div>
+          </div>
+          <span className="text-sm text-slate-500">{filteredWarehouses.length}개 창고</span>
+        </div>
+
+        {/* 검색창 */}
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5">
+          <div className="relative max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="창고명, 주소, 담당자명으로 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 h-9 rounded-lg bg-white border-slate-200"
+            />
+          </div>
         </div>
       </div>
 
@@ -473,7 +525,7 @@ export default function WarehousesPage() {
 
         {/* 중앙 카카오 지도 */}
         <div className="sticky top-4">
-          <Card className="overflow-hidden">
+          <div className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
             <CardContent className="p-2">
               <KakaoMap
                 warehouses={filteredWarehouses}
@@ -481,7 +533,7 @@ export default function WarehousesPage() {
                 onMarkerClick={handleSelect}
               />
             </CardContent>
-          </Card>
+          </div>
         </div>
 
         {/* 오른쪽 카드 */}
@@ -503,7 +555,7 @@ export default function WarehousesPage() {
 
       {/* 모바일/태블릿: 지도 위 + 카드 그리드 아래 */}
       <div className="lg:hidden">
-        <Card className="mb-6 overflow-hidden">
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm mb-6 overflow-hidden">
           <CardContent className="p-2">
             <KakaoMap
               warehouses={filteredWarehouses}
@@ -511,7 +563,7 @@ export default function WarehousesPage() {
               onMarkerClick={handleSelect}
             />
           </CardContent>
-        </Card>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {filteredWarehouses.map((wh) => (

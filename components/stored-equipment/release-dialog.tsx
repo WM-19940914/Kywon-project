@@ -1,10 +1,10 @@
 /**
  * 출고 처리 다이얼로그
  *
- * 보관중인 장비를 출고(재설치/폐기/반납)할 때 사용합니다.
- * - 출고 유형 선택 (재설치/폐기/반납)
+ * 보관중인 장비를 출고(재설치/폐기)할 때 사용합니다.
+ * - 출고 유형 선택 (재설치/폐기)
  * - 출고일 입력
- * - 출고 목적지 입력 (재설치 시 필요)
+ * - 출고 목적지 — 재설치 시: 재고설치 발주 목록(일정미정)에서 선택 또는 직접 입력
  * - 출고 메모 (선택)
  */
 
@@ -24,7 +24,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { RELEASE_TYPE_LABELS } from '@/types/order'
-import type { StoredEquipment, ReleaseType } from '@/types/order'
+import type { StoredEquipment, ReleaseType, Order } from '@/types/order'
 
 interface ReleaseDialogProps {
   /** 출고 대상 장비 (null이면 다이얼로그 닫힘) */
@@ -39,11 +39,13 @@ interface ReleaseDialogProps {
     releaseDestination?: string
     releaseNotes?: string
   }) => void
-  /** 출고 목적지 기본값 (요청중 장비 → 발주 주소 자동 채움) */
+  /** 출고 목적지 기본값 */
   defaultDestination?: string
+  /** 재고설치 발주 목록 (일정미정 건 매칭용) */
+  orders?: Order[]
 }
 
-export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaultDestination }: ReleaseDialogProps) {
+export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaultDestination, orders }: ReleaseDialogProps) {
   // 출고 유형 (기본: 재설치)
   const [releaseType, setReleaseType] = useState<ReleaseType>('reinstall')
   // 출고일 (기본: 오늘)
@@ -53,7 +55,15 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
   // 출고 메모
   const [releaseNotes, setReleaseNotes] = useState('')
 
-  // 다이얼로그 열릴 때 기본값 적용 (요청중 장비 → 발주 주소)
+  // 재고설치 발주 중 일정미정 건 필터
+  const reinstallOrders = (orders || []).filter(order =>
+    order.status !== 'cancelled' &&
+    order.status !== 'settled' &&
+    order.items.some(item => item.workType === '재고설치') &&
+    !order.installScheduleDate && !order.installCompleteDate
+  )
+
+  // 다이얼로그 열릴 때 기본값 적용
   useEffect(() => {
     if (open && defaultDestination) {
       setReleaseType('reinstall')
@@ -82,8 +92,14 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
     onOpenChange(false)
   }
 
-  // 출고 유형 옵션
-  const releaseTypes: ReleaseType[] = ['reinstall', 'dispose', 'return']
+  /** 재고설치 발주 선택 → 현장정보로 목적지 채움 */
+  const handleOrderSelect = (order: Order) => {
+    const dest = `${order.businessName}${order.address ? ` (${order.address})` : ''}`
+    setReleaseDestination(dest)
+  }
+
+  // 출고 유형 옵션 (재설치/폐기만)
+  const releaseTypes: ReleaseType[] = ['reinstall', 'dispose']
 
   return (
     <AlertDialog open={open} onOpenChange={(v) => { if (!v) resetForm(); onOpenChange(v) }}>
@@ -112,9 +128,7 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
                         releaseType === type
                           ? type === 'reinstall'
                             ? 'bg-green-50 text-green-700 border-green-300 ring-1 ring-green-300'
-                            : type === 'dispose'
-                              ? 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-300'
-                              : 'bg-orange-50 text-orange-700 border-orange-300 ring-1 ring-orange-300'
+                            : 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-300'
                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                       }`}
                       onClick={() => setReleaseType(type)}
@@ -138,13 +152,45 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
 
               {/* 출고 목적지 (재설치 시 표시) */}
               {releaseType === 'reinstall' && (
-                <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-1 block">출고 목적지 (재설치 현장명)</Label>
+                <div className="space-y-2">
+                  <Label className="text-sm font-medium text-gray-700 block">출고 목적지 (재설치 현장)</Label>
+
+                  {/* 재고설치 발주 매칭 목록 */}
+                  {reinstallOrders.length > 0 && (
+                    <div className="space-y-1">
+                      <p className="text-xs text-blue-600 font-medium">재고설치 발주 (일정미정)</p>
+                      <div className="max-h-[140px] overflow-y-auto space-y-1 border rounded-md p-1.5 bg-blue-50/30">
+                        {reinstallOrders.map(order => (
+                          <button
+                            key={order.id}
+                            type="button"
+                            onClick={() => handleOrderSelect(order)}
+                            className="w-full text-left px-2.5 py-2 rounded text-sm bg-white border border-transparent hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium text-gray-800">{order.businessName}</span>
+                              <span className="text-xs text-gray-400">{order.orderDate}</span>
+                            </div>
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {order.affiliate && (
+                                <span className="text-xs text-gray-500">{order.affiliate}</span>
+                              )}
+                              {order.address && (
+                                <span className="text-xs text-gray-400 truncate">{order.address}</span>
+                              )}
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 직접 입력 */}
                   <Input
                     type="text"
                     value={releaseDestination}
                     onChange={(e) => setReleaseDestination(e.target.value)}
-                    placeholder="재설치할 현장명을 입력하세요"
+                    placeholder="위에서 선택하거나 직접 입력하세요"
                   />
                 </div>
               )}
@@ -167,8 +213,7 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
           <AlertDialogAction
             className={`text-white ${
               releaseType === 'reinstall' ? 'bg-green-600 hover:bg-green-700'
-                : releaseType === 'dispose' ? 'bg-red-600 hover:bg-red-700'
-                  : 'bg-orange-600 hover:bg-orange-700'
+                : 'bg-red-600 hover:bg-red-700'
             }`}
             disabled={!releaseDate}
             onClick={handleConfirm}

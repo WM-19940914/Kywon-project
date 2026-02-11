@@ -18,17 +18,17 @@ import { DeliveryTable } from '@/components/delivery/delivery-table'
 import { DeliveryInputDialog } from '@/components/delivery/delivery-input-dialog'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
 import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
-import { Truck, CalendarDays, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Truck, CalendarDays, ChevronLeft, ChevronRight, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useAlert } from '@/components/ui/custom-alert'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function DeliveryPage() {
   const { showAlert } = useAlert()
 
   // Supabase에서 데이터 로드
   const [orders, setOrders] = useState<Order[]>([])
-  const [, setIsLoading] = useState(true)
+  const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // 창고 + 발주 데이터 동시 로드
@@ -214,162 +214,215 @@ export default function DeliveryPage() {
   ]
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold tracking-tight mb-1 flex items-center gap-2">
+      <div className="flex items-center gap-4 mb-6">
+        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
           <Truck className="h-6 w-6" />
-          배송관리
-        </h1>
-        <p className="text-muted-foreground">삼성전자에 발주한 장비의 배송 현황을 관리하세요</p>
-        <p className="text-xs text-gray-400 mt-1">❗ <span className="text-red-500 font-semibold">신규설치 건만 표시됩니다.</span> (철거보관, 이전설치 등 장비 배송이 없는 건은 제외)</p>
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">배송관리</h1>
+          <p className="text-muted-foreground mt-0.5">삼성전자에 발주한 장비의 배송 현황을 관리하세요</p>
+        </div>
       </div>
 
-      {/* 검색 영역 */}
-      <div className="mb-4">
-        <Input
-          placeholder="현장명, 주소, 문서번호, 주문번호로 검색..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="max-w-md"
-        />
-      </div>
+      {/* 신규설치 안내 */}
+      <p className="text-xs text-slate-400 mb-5">
+        <span className="text-red-500 font-semibold">신규설치 건만 표시됩니다.</span> (철거보관, 이전설치 등 장비 배송이 없는 건은 제외)
+      </p>
 
-      {/* 상태 탭 필터 */}
-      <div className="flex items-center gap-2 mb-4 overflow-x-auto">
-        {statusTabs.map(tab => (
-          <button
-            key={tab.label}
-            onClick={() => setStatusFilter(tab.value)}
-            className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap
-              ${statusFilter === tab.value
-                ? tab.value === 'delivered'
-                  ? 'bg-emerald-600 text-white shadow-sm'
-                  : 'bg-primary text-primary-foreground shadow-sm'
-                : 'bg-muted text-muted-foreground hover:bg-muted/80'
+      {/* 상태 탭 필터 (Toss 스타일 border-b 기반) */}
+      <div className="border-b border-slate-200">
+        <div className="flex items-center gap-1 -mb-px">
+          {statusTabs.map(tab => (
+            <button
+              key={tab.label}
+              onClick={() => setStatusFilter(tab.value)}
+              className={`pb-3 px-4 text-sm transition-colors whitespace-nowrap ${
+                statusFilter === tab.value
+                  ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}
-          >
-            {tab.label}
-            <Badge variant="secondary" className="text-xs ml-1 px-1.5 py-0">
-              {tab.count}
-            </Badge>
-          </button>
-        ))}
-
-        {/* 결과 건수 */}
-        <span className="text-sm text-gray-500 ml-auto">
-          {filteredOrders.length}건 표시
-          {searchTerm && (
-            <span className="text-blue-600 font-medium ml-1">(검색중)</span>
-          )}
-        </span>
+            >
+              {tab.label}
+              <span className={`ml-1.5 px-2 rounded-full text-xs ${
+                statusFilter === tab.value
+                  ? 'bg-blue-100 text-blue-600'
+                  : 'bg-slate-100 text-slate-500'
+              }`}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* 배송완료 탭: 년/월 필터 */}
-      {statusFilter === 'delivered' && (
-        <div className="flex items-center gap-2 mb-3 flex-wrap">
-          <Button
-            variant={monthFilterEnabled ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setMonthFilterEnabled(prev => !prev)}
-            className="gap-1.5"
-          >
-            <CalendarDays className="h-4 w-4" />
-            {monthFilterEnabled ? '월별 필터 ON' : '월별 필터'}
-          </Button>
-          {monthFilterEnabled && (
-            <div className="flex items-center gap-1 bg-muted rounded-lg px-1 py-0.5">
-              {/* 이전 달 */}
+      {/* 탭별 안내 문구 */}
+      <div className="mt-4 mb-4">
+        <p className="text-sm text-muted-foreground">
+          {statusFilter === 'pending' && (
+            <span className="inline-flex items-center gap-3">
+              <span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}>
+                <span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span>
+                <span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span>
+                <span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span>
+              </span>
+              <span className="text-muted-foreground">삼성전자에 발주를 신속히 진행하고 진행중으로 변경해주세요.</span>
+            </span>
+          )}
+          {statusFilter === 'ordered' && '삼성전자에 발주 완료된 장비입니다. 구성품별 배송현황을 확인하세요.'}
+          {statusFilter === 'delivered' && '배송완료 처리된 건입니다.'}
+        </p>
+      </div>
+
+      {/* 검색 + 필터 영역 (흰색 카드) */}
+      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-4">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+          {/* 검색 입력 */}
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="현장명, 주소, 문서번호, 주문번호로 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 rounded-lg border-slate-200"
+            />
+          </div>
+
+          {/* 배송완료 탭: 년/월 필터 */}
+          {statusFilter === 'delivered' && (
+            <div className="flex items-center gap-2 flex-wrap">
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => {
-                  if (filterMonth === 1) {
-                    setFilterYear(prev => prev - 1)
-                    setFilterMonth(12)
-                  } else {
-                    setFilterMonth(prev => prev - 1)
-                  }
-                }}
+                variant={monthFilterEnabled ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMonthFilterEnabled(prev => !prev)}
+                className="gap-1.5 rounded-lg"
+              >
+                <CalendarDays className="h-4 w-4" />
+                {monthFilterEnabled ? '월별 필터 ON' : '월별 필터'}
+              </Button>
+              {monthFilterEnabled && (
+                <div className="flex items-center gap-1 bg-slate-100 rounded-lg px-1 py-0.5">
+                  {/* 이전 달 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={() => {
+                      if (filterMonth === 1) {
+                        setFilterYear(prev => prev - 1)
+                        setFilterMonth(12)
+                      } else {
+                        setFilterMonth(prev => prev - 1)
+                      }
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  {/* 년/월 표시 */}
+                  <span className="text-sm font-medium min-w-[100px] text-center">
+                    {filterYear}년 {filterMonth}월
+                  </span>
+                  {/* 다음 달 */}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 rounded-lg"
+                    onClick={() => {
+                      if (filterMonth === 12) {
+                        setFilterYear(prev => prev + 1)
+                        setFilterMonth(1)
+                      } else {
+                        setFilterMonth(prev => prev + 1)
+                      }
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* 결과 건수 */}
+          <span className="text-sm text-slate-500 sm:ml-auto whitespace-nowrap">
+            {filteredOrders.length}건 표시
+            {searchTerm && (
+              <span className="text-blue-600 font-medium ml-1">(검색중)</span>
+            )}
+          </span>
+        </div>
+      </div>
+
+      {/* 스켈레톤 로딩 */}
+      {isLoading ? (
+        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 space-y-4">
+          {/* 테이블 헤더 스켈레톤 */}
+          <div className="flex gap-4">
+            <Skeleton className="h-5 w-24" />
+            <Skeleton className="h-5 w-32" />
+            <Skeleton className="h-5 w-40" />
+            <Skeleton className="h-5 w-28" />
+            <Skeleton className="h-5 w-20" />
+          </div>
+          {/* 테이블 행 스켈레톤 */}
+          {Array.from({ length: 5 }).map((_, i) => (
+            <div key={i} className="flex items-center gap-4 py-3 border-t border-slate-100">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-32" />
+              <Skeleton className="h-4 w-40" />
+              <Skeleton className="h-4 w-28" />
+              <Skeleton className="h-8 w-20 rounded-lg" />
+            </div>
+          ))}
+        </div>
+      ) : (
+        <>
+          {/* 메인 테이블 */}
+          <DeliveryTable
+            orders={displayOrders}
+            onEditDelivery={handleEditDelivery}
+            onViewDetail={handleViewDetail}
+            onChangeStatus={handleChangeDeliveryStatus}
+            onCancelOrder={handleCancelOrder}
+            onSaveItems={async (orderId, items) => {
+              await saveEquipmentItems(orderId, items)
+              setOrders(prev => prev.map(order => {
+                if (order.id !== orderId) return order
+                return { ...order, equipmentItems: items }
+              }))
+            }}
+            readOnly={false}
+            currentTab={statusFilter}
+          />
+
+          {/* 배송완료 탭 페이지네이션 */}
+          {statusFilter === 'delivered' && deliveredTotalPages > 1 && (
+            <div className="flex items-center justify-center gap-2 mt-4">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 rounded-lg border-slate-200"
+                disabled={deliveredPage <= 1}
+                onClick={() => setDeliveredPage(p => p - 1)}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
-              {/* 년/월 표시 */}
-              <span className="text-sm font-medium min-w-[100px] text-center">
-                {filterYear}년 {filterMonth}월
+              <span className="text-sm text-slate-500">
+                {deliveredPage} / {deliveredTotalPages}
               </span>
-              {/* 다음 달 */}
               <Button
-                variant="ghost"
-                size="icon"
-                className="h-7 w-7"
-                onClick={() => {
-                  if (filterMonth === 12) {
-                    setFilterYear(prev => prev + 1)
-                    setFilterMonth(1)
-                  } else {
-                    setFilterMonth(prev => prev + 1)
-                  }
-                }}
+                variant="outline"
+                size="sm"
+                className="h-8 px-2 rounded-lg border-slate-200"
+                disabled={deliveredPage >= deliveredTotalPages}
+                onClick={() => setDeliveredPage(p => p + 1)}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
             </div>
           )}
-        </div>
-      )}
-
-      {/* 탭별 안내 문구 */}
-      <p className="text-sm text-muted-foreground mb-3">
-        {statusFilter === 'pending' && <span className="inline-flex items-center gap-3"><span className="inline-flex items-baseline px-3 py-1.5 rounded-md shadow-sm" style={{ backgroundColor: '#E09520' }}><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>M</span><span className="italic text-white" style={{ fontSize: '1rem', margin: '0 1px 0 1px', paddingRight: '1.5px' }}>e</span><span className="font-extrabold text-sm tracking-wide" style={{ color: '#2D2519' }}>LEA</span></span><span className="text-muted-foreground">삼성전자에 발주를 신속히 진행하고 진행중으로 변경해주세요.</span></span>}
-        {statusFilter === 'ordered' && '삼성전자에 발주 완료된 장비입니다. 구성품별 배송현황을 확인하세요.'}
-        {statusFilter === 'delivered' && '배송완료 처리된 건입니다.'}
-      </p>
-
-      {/* 메인 테이블 */}
-      <DeliveryTable
-        orders={displayOrders}
-        onEditDelivery={handleEditDelivery}
-        onViewDetail={handleViewDetail}
-        onChangeStatus={handleChangeDeliveryStatus}
-        onCancelOrder={handleCancelOrder}
-        onSaveItems={async (orderId, items) => {
-          await saveEquipmentItems(orderId, items)
-          setOrders(prev => prev.map(order => {
-            if (order.id !== orderId) return order
-            return { ...order, equipmentItems: items }
-          }))
-        }}
-        readOnly={false}
-        currentTab={statusFilter}
-      />
-
-      {/* 배송완료 탭 페이지네이션 */}
-      {statusFilter === 'delivered' && deliveredTotalPages > 1 && (
-        <div className="flex items-center justify-center gap-2 mt-4">
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2"
-            disabled={deliveredPage <= 1}
-            onClick={() => setDeliveredPage(p => p - 1)}
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="text-sm text-gray-600">
-            {deliveredPage} / {deliveredTotalPages}
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-8 px-2"
-            disabled={deliveredPage >= deliveredTotalPages}
-            onClick={() => setDeliveredPage(p => p + 1)}
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
-        </div>
+        </>
       )}
 
       {/* 배송정보 입력 모달 */}

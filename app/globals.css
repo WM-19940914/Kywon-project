@@ -91,3 +91,52 @@
     letter-spacing: -0.01em;
   }
 }
+
+/* ========================================
+   전역 UI 효과 (Toss/Notion 스타일)
+   ======================================== */
+
+/* 버튼 클릭 시 살짝 눌리는 효과 */
+button:active:not(:disabled) {
+  transform: scale(0.97);
+  transition: transform 0.1s ease;
+}
+
+/* 페이지 진입 애니메이션 */
+@keyframes page-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-page-enter {
+  animation: page-enter 0.3s ease-out;
+}
+
+/* 커스텀 스크롤바 (얇고 깔끔하게) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* 포커스 링 블루 통일 */
+*:focus-visible {
+  outline: 2px solid hsl(221 83% 53%);
+  outline-offset: 2px;
+  border-radius: 4px;
+}

@@ -1272,17 +1272,32 @@ export async function updateStoredEquipment(id: string, updates: Partial<StoredE
  * @param id - 장비 ID
  */
 export async function deleteStoredEquipment(id: string): Promise<boolean> {
+  console.log('[DAL] 철거보관 장비 삭제 시도, id:', id)
   const supabase = createClient()
+
+  // 1) 연결된 order_items의 stored_equipment_id 참조 해제
+  const { error: unlinkError } = await supabase
+    .from('order_items')
+    .update({ stored_equipment_id: null })
+    .eq('stored_equipment_id', id)
+
+  if (unlinkError) {
+    console.error('[DAL] order_items 참조 해제 실패:', unlinkError.message)
+    // 참조 해제 실패해도 삭제 시도 (참조가 없을 수도 있으므로)
+  }
+
+  // 2) 장비 삭제
   const { error } = await supabase
     .from('stored_equipment')
     .delete()
     .eq('id', id)
 
   if (error) {
-    console.error('철거보관 장비 삭제 실패:', error.message)
+    console.error('[DAL] 철거보관 장비 삭제 실패:', error.message, error)
     return false
   }
 
+  console.log('[DAL] 철거보관 장비 삭제 완료, id:', id)
   return true
 }
 
