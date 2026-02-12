@@ -599,6 +599,9 @@ export default function PriceTablePage() {
                 <th className="px-4 py-3 text-left text-xs text-slate-500 font-semibold w-12"></th>
                 <th className="px-4 py-3 text-left text-xs text-slate-500 font-semibold">품목</th>
                 <th className="px-4 py-3 text-left text-xs text-slate-500 font-semibold">SET 모델명</th>
+                <th className="px-4 py-3 text-right text-xs text-slate-500 font-semibold">삼성 출하가</th>
+                <th className="px-4 py-3 text-center text-xs text-slate-500 font-semibold">DC율</th>
+                <th className="px-4 py-3 text-right text-xs text-slate-500 font-semibold">매입가</th>
                 <th className="px-4 py-3 text-right text-xs text-slate-500 font-semibold">판매가 (VAT별도)</th>
                 <th className="px-4 py-3 text-center text-xs text-slate-500 font-semibold w-24">관리</th>
               </tr>
@@ -614,7 +617,11 @@ export default function PriceTablePage() {
                     {/* SET 모델 행 */}
                     <tr
                       key={row.model}
-                      className="border-b border-slate-200 hover:bg-blue-50/40 transition-colors"
+                      className={`border-b border-slate-200 transition-colors ${
+                        row.model === 'AR60F07C14WS'
+                          ? 'bg-red-50 hover:bg-red-100'
+                          : 'hover:bg-blue-50/40'
+                      }`}
                     >
                       <td
                         className="px-4 py-3 cursor-pointer"
@@ -639,6 +646,31 @@ export default function PriceTablePage() {
                         onClick={() => toggleRow(row.model)}
                       >
                         <span className="font-mono text-sm text-gray-800">{row.model}</span>
+                        {row.model === 'AR60F07C14WS' && (
+                          <span className="ml-2 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-500 text-white">가격확인필요</span>
+                        )}
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right cursor-pointer"
+                        onClick={() => toggleRow(row.model)}
+                      >
+                        <span className="tabular-nums text-slate-500">
+                          {row.listPrice > 0 ? formatPrice(row.listPrice) : '-'}
+                        </span>
+                      </td>
+                      <td
+                        className="px-4 py-3 text-center cursor-pointer"
+                        onClick={() => toggleRow(row.model)}
+                      >
+                        <span className="text-sm font-semibold text-orange-600">45%</span>
+                      </td>
+                      <td
+                        className="px-4 py-3 text-right cursor-pointer"
+                        onClick={() => toggleRow(row.model)}
+                      >
+                        <span className="tabular-nums font-semibold text-emerald-600">
+                          {row.listPrice > 0 ? formatPrice(Math.round(row.listPrice * 0.55)) : '-'}
+                        </span>
                       </td>
                       <td
                         className="px-4 py-3 text-right cursor-pointer"
@@ -672,7 +704,7 @@ export default function PriceTablePage() {
 
                       return (
                         <tr key={`${row.model}-details`} className="bg-slate-50/60">
-                          <td colSpan={5} className="px-4 py-4">
+                          <td colSpan={8} className="px-4 py-4">
                             <div className="ml-8">
                               <div className="text-xs font-semibold text-slate-500 mb-3">
                                 구성품 상세
@@ -685,6 +717,9 @@ export default function PriceTablePage() {
                                     <th className="px-4 py-2 text-left text-xs text-slate-500 font-semibold">구성품</th>
                                     <th className="px-4 py-2 text-left text-xs text-slate-500 font-semibold">모델명</th>
                                     <th className="px-4 py-2 text-center text-xs text-slate-500 font-semibold">수량</th>
+                                    <th className="px-4 py-2 text-right text-xs text-slate-500 font-semibold">삼성 출하가</th>
+                                    <th className="px-4 py-2 text-center text-xs text-slate-500 font-semibold">DC율</th>
+                                    <th className="px-4 py-2 text-right text-xs text-slate-500 font-semibold">매입가</th>
                                     <th className="px-4 py-2 text-right text-xs text-slate-500 font-semibold">판매가 (VAT별도)</th>
                                   </tr>
                                 </thead>
@@ -694,6 +729,15 @@ export default function PriceTablePage() {
                                       <td className="px-4 py-2 text-sm text-gray-700">{comp.type}</td>
                                       <td className="px-4 py-2 text-sm font-mono text-gray-800">{comp.model}</td>
                                       <td className="px-4 py-2 text-sm text-center text-gray-700">{comp.quantity}개</td>
+                                      <td className="px-4 py-2 text-sm text-right tabular-nums text-slate-500">
+                                        {comp.unitPrice?.toLocaleString() || 0}원
+                                      </td>
+                                      <td className="px-4 py-2 text-sm text-center font-semibold text-orange-600">
+                                        45%
+                                      </td>
+                                      <td className="px-4 py-2 text-sm text-right tabular-nums font-semibold text-emerald-600">
+                                        {comp.unitPrice ? Math.round(comp.unitPrice * 0.55).toLocaleString() : 0}원
+                                      </td>
                                       <td className="px-4 py-2 text-sm text-right font-semibold text-blue-600">
                                         {comp.salePrice.toLocaleString()}원
                                       </td>
@@ -702,7 +746,20 @@ export default function PriceTablePage() {
                                   {/* 합계 행 */}
                                   <tr className="bg-blue-50 border-t-2 border-blue-200">
                                     <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-gray-800">
-                                      구성품 판매가 합계
+                                      합계
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-right font-bold text-slate-600">
+                                      {row.components
+                                        .reduce((sum: number, comp: any) => sum + (comp.unitPrice || 0), 0)
+                                        .toLocaleString()}원
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-center font-bold text-orange-600">
+                                      45%
+                                    </td>
+                                    <td className="px-4 py-2 text-sm text-right font-bold text-emerald-600">
+                                      {Math.round(row.components
+                                        .reduce((sum: number, comp: any) => sum + (comp.unitPrice || 0), 0) * 0.55)
+                                        .toLocaleString()}원
                                     </td>
                                     <td className="px-4 py-2 text-sm text-right font-bold text-blue-600">
                                       {row.components

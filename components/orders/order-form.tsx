@@ -624,6 +624,9 @@ export function OrderForm({
                   onChange={(e) => setBusinessName(e.target.value)}
                   placeholder="예: 구몬 화곡지국"
                 />
+                <p className="text-xs text-gray-500 mt-1">
+                  계열사+지국명으로 적어주세요 ex) 구몬 xx지국, Wells영업 xxxx
+                </p>
               </div>
             </CardContent>
           </Card>

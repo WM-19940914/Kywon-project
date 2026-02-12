@@ -1058,6 +1058,7 @@ export interface PriceTableSet {
   model: string
   size: string
   price: number
+  listPrice: number          // SET 출하가 (삼성 출하가 합계)
   year: number
   isActive: boolean
   createdAt?: string
@@ -1083,6 +1084,7 @@ export interface PriceTableRow {
   model: string
   size: string
   price: number
+  listPrice: number          // SET 출하가
   components: Array<{
     model: string
     type: string
@@ -1147,6 +1149,7 @@ export async function fetchPriceTable(year: number = 2026): Promise<PriceTableRo
       model: set.model,
       size: set.size,
       price: set.price,
+      listPrice: set.list_price || 0,
       components: setComponents,
     }
   })
@@ -1630,6 +1633,559 @@ export async function clearSettlementConfirmation(
 
   if (error) {
     console.error('정산 확인 초기화 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+
+// ============================================================
+// 📋 지출결의서 (Expense Reports)
+// ============================================================
+
+/** 지출결의서 항목 타입 */
+export interface ExpenseReportItem {
+  id?: string
+  reportId?: string
+  sortOrder: number
+  businessName: string
+  affiliate: string
+  supplier: string
+  itemType: string
+  specification: string
+  quantity: number
+  listPrice: number
+  discountRate: number
+  optionItem: string
+  purchaseUnitPrice: number
+  purchaseTotalPrice: number
+  mgRate: number
+  salesUnitPrice: number
+  salesTotalPrice: number
+  frontMarginUnit: number
+  frontMarginTotal: number
+  incentiveGradeRebRate: number
+  incentiveGradeReb: number
+  incentiveItemReb: number
+  totalMargin: number
+  sourceType: string
+  orderDate?: string
+}
+
+/** 지출결의서 헤더 타입 */
+export interface ExpenseReport {
+  id: string
+  year: number
+  month: number
+  totalPurchase: number
+  totalSales: number
+  totalFrontMargin: number
+  totalIncentive: number
+  totalMargin: number
+  createdAt: string
+  items: ExpenseReportItem[]
+}
+
+/**
+ * 특정 월의 확정된 지출결의서 조회
+ * 없으면 null 반환
+ */
+export async function fetchExpenseReport(year: number, month: number): Promise<ExpenseReport | null> {
+  const supabase = createClient()
+
+  // 헤더 조회
+  const { data: report, error } = await supabase
+    .from('expense_reports')
+    .select('*')
+    .eq('year', year)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (error) {
+    console.error('지출결의서 조회 실패:', error.message)
+    return null
+  }
+  if (!report) return null
+
+  // 항목 조회
+  const { data: items, error: itemsError } = await supabase
+    .from('expense_report_items')
+    .select('*')
+    .eq('report_id', report.id)
+    .order('sort_order')
+
+  if (itemsError) {
+    console.error('지출결의서 항목 조회 실패:', itemsError.message)
+    return null
+  }
+
+  return {
+    id: report.id,
+    year: report.year,
+    month: report.month,
+    totalPurchase: report.total_purchase,
+    totalSales: report.total_sales,
+    totalFrontMargin: report.total_front_margin,
+    totalIncentive: report.total_incentive,
+    totalMargin: report.total_margin,
+    createdAt: report.created_at,
+    items: (items || []).map((item: any) => ({
+      id: item.id,
+      reportId: item.report_id,
+      sortOrder: item.sort_order,
+      businessName: item.business_name,
+      affiliate: item.affiliate,
+      supplier: item.supplier,
+      itemType: item.item_type,
+      specification: item.specification,
+      quantity: item.quantity,
+      listPrice: item.list_price,
+      discountRate: Number(item.discount_rate),
+      optionItem: item.option_item,
+      purchaseUnitPrice: item.purchase_unit_price,
+      purchaseTotalPrice: item.purchase_total_price,
+      mgRate: Number(item.mg_rate),
+      salesUnitPrice: item.sales_unit_price,
+      salesTotalPrice: item.sales_total_price,
+      frontMarginUnit: item.front_margin_unit,
+      frontMarginTotal: item.front_margin_total,
+      incentiveGradeRebRate: Number(item.incentive_grade_reb_rate) || 0,
+      incentiveGradeReb: item.incentive_grade_reb,
+      incentiveItemReb: item.incentive_item_reb,
+      totalMargin: item.total_margin,
+      sourceType: item.source_type,
+      orderDate: item.order_date,
+    })),
+  }
+}
+
+/**
+ * 지출결의서 확정 저장
+ * 이미 존재하면 삭제 후 재생성 (재작성)
+ */
+export async function saveExpenseReport(
+  year: number,
+  month: number,
+  items: ExpenseReportItem[],
+  totals: { totalPurchase: number; totalSales: number; totalFrontMargin: number; totalIncentive: number; totalMargin: number }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 데이터 삭제 (cascade로 items도 삭제됨)
+  await supabase
+    .from('expense_reports')
+    .delete()
+    .eq('year', year)
+    .eq('month', month)
+
+  // 헤더 생성
+  const { data: report, error: reportError } = await supabase
+    .from('expense_reports')
+    .insert({
+      year,
+      month,
+      total_purchase: totals.totalPurchase,
+      total_sales: totals.totalSales,
+      total_front_margin: totals.totalFrontMargin,
+      total_incentive: totals.totalIncentive,
+      total_margin: totals.totalMargin,
+    })
+    .select('id')
+    .single()
+
+  if (reportError || !report) {
+    console.error('지출결의서 헤더 저장 실패:', reportError?.message)
+    return false
+  }
+
+  // 항목 일괄 저장
+  const rows = items.map((item, index) => ({
+    report_id: report.id,
+    sort_order: index,
+    business_name: item.businessName,
+    affiliate: item.affiliate,
+    supplier: item.supplier,
+    item_type: item.itemType,
+    specification: item.specification,
+    quantity: item.quantity,
+    list_price: item.listPrice,
+    discount_rate: item.discountRate,
+    option_item: item.optionItem,
+    purchase_unit_price: item.purchaseUnitPrice,
+    purchase_total_price: item.purchaseTotalPrice,
+    mg_rate: item.mgRate,
+    sales_unit_price: item.salesUnitPrice,
+    sales_total_price: item.salesTotalPrice,
+    front_margin_unit: item.frontMarginUnit,
+    front_margin_total: item.frontMarginTotal,
+    incentive_grade_reb_rate: item.incentiveGradeRebRate,
+    incentive_grade_reb: item.incentiveGradeReb,
+    incentive_item_reb: item.incentiveItemReb,
+    total_margin: item.totalMargin,
+    source_type: item.sourceType,
+    order_date: item.orderDate || null,
+  }))
+
+  const { error: itemsError } = await supabase
+    .from('expense_report_items')
+    .insert(rows)
+
+  if (itemsError) {
+    console.error('지출결의서 항목 저장 실패:', itemsError.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 지출결의서 삭제 (재작성 시 사용)
+ */
+export async function deleteExpenseReport(year: number, month: number): Promise<boolean> {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('expense_reports')
+    .delete()
+    .eq('year', year)
+    .eq('month', month)
+
+  if (error) {
+    console.error('지출결의서 삭제 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 지출결의서 수정 저장
+ * 항목 전체 삭제 후 재삽입 + 헤더 합계 업데이트
+ */
+export async function updateExpenseReportWithItems(
+  reportId: string,
+  items: ExpenseReportItem[],
+  totals: { totalPurchase: number; totalSales: number; totalFrontMargin: number; totalIncentive: number; totalMargin: number }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 항목 삭제
+  const { error: delError } = await supabase
+    .from('expense_report_items')
+    .delete()
+    .eq('report_id', reportId)
+
+  if (delError) {
+    console.error('항목 삭제 실패:', delError.message)
+    return false
+  }
+
+  // 항목 재삽입
+  const rows = items.map((item, index) => ({
+    report_id: reportId,
+    sort_order: index,
+    business_name: item.businessName,
+    affiliate: item.affiliate,
+    supplier: item.supplier,
+    item_type: item.itemType,
+    specification: item.specification,
+    quantity: item.quantity,
+    list_price: item.listPrice,
+    discount_rate: item.discountRate,
+    option_item: item.optionItem,
+    purchase_unit_price: item.purchaseUnitPrice,
+    purchase_total_price: item.purchaseTotalPrice,
+    mg_rate: item.mgRate,
+    sales_unit_price: item.salesUnitPrice,
+    sales_total_price: item.salesTotalPrice,
+    front_margin_unit: item.frontMarginUnit,
+    front_margin_total: item.frontMarginTotal,
+    incentive_grade_reb_rate: item.incentiveGradeRebRate,
+    incentive_grade_reb: item.incentiveGradeReb,
+    incentive_item_reb: item.incentiveItemReb,
+    total_margin: item.totalMargin,
+    source_type: item.sourceType,
+    order_date: item.orderDate || null,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('expense_report_items')
+    .insert(rows)
+
+  if (insertError) {
+    console.error('항목 재삽입 실패:', insertError.message)
+    return false
+  }
+
+  // 헤더 합계 업데이트
+  const { error: updateError } = await supabase
+    .from('expense_reports')
+    .update({
+      total_purchase: totals.totalPurchase,
+      total_sales: totals.totalSales,
+      total_front_margin: totals.totalFrontMargin,
+      total_incentive: totals.totalIncentive,
+      total_margin: totals.totalMargin,
+    })
+    .eq('id', reportId)
+
+  if (updateError) {
+    console.error('합계 업데이트 실패:', updateError.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 📦 배송 및 매입내역 (Purchase Reports)
+// ============================================================
+
+/** 매입내역 항목 타입 */
+export interface PurchaseReportItem {
+  id?: string
+  reportId?: string
+  sortOrder: number
+  orderId: string
+  businessName: string
+  affiliate: string
+  siteAddress: string
+  orderDateDisplay: string
+  deliveryStatus: string
+  supplier: string
+  orderNumber: string
+  itemOrderDate: string
+  scheduledDeliveryDate: string
+  confirmedDeliveryDate: string
+  componentModel: string
+  componentName: string
+  setModel: string
+  quantity: number
+  unitPrice: number
+  totalPrice: number
+  warehouseName: string
+  warehouseAddress: string
+}
+
+/** 매입내역 보고서 헤더 타입 */
+export interface PurchaseReport {
+  id: string
+  year: number
+  month: number
+  totalPurchase: number
+  orderCount: number
+  itemCount: number
+  createdAt: string
+  items: PurchaseReportItem[]
+}
+
+/**
+ * 특정 월의 확정된 매입내역 조회
+ */
+export async function fetchPurchaseReport(year: number, month: number): Promise<PurchaseReport | null> {
+  const supabase = createClient()
+
+  const { data: report, error } = await supabase
+    .from('purchase_reports')
+    .select('*')
+    .eq('year', year)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (error) {
+    console.error('매입내역 조회 실패:', error.message)
+    return null
+  }
+  if (!report) return null
+
+  const { data: items, error: itemsError } = await supabase
+    .from('purchase_report_items')
+    .select('*')
+    .eq('report_id', report.id)
+    .order('sort_order')
+
+  if (itemsError) {
+    console.error('매입내역 항목 조회 실패:', itemsError.message)
+    return null
+  }
+
+  return {
+    id: report.id,
+    year: report.year,
+    month: report.month,
+    totalPurchase: Number(report.total_purchase),
+    orderCount: report.order_count,
+    itemCount: report.item_count,
+    createdAt: report.created_at,
+    items: (items || []).map((item: any) => ({
+      id: item.id,
+      reportId: item.report_id,
+      sortOrder: item.sort_order,
+      orderId: item.order_id,
+      businessName: item.business_name,
+      affiliate: item.affiliate,
+      siteAddress: item.site_address || '',
+      orderDateDisplay: item.order_date_display || '',
+      deliveryStatus: item.delivery_status || '',
+      supplier: item.supplier || '삼성전자',
+      orderNumber: item.order_number || '',
+      itemOrderDate: item.item_order_date || '',
+      scheduledDeliveryDate: item.scheduled_delivery_date || '',
+      confirmedDeliveryDate: item.confirmed_delivery_date || '',
+      componentModel: item.component_model || '',
+      componentName: item.component_name || '',
+      setModel: item.set_model || '',
+      quantity: item.quantity || 1,
+      unitPrice: Number(item.unit_price) || 0,
+      totalPrice: Number(item.total_price) || 0,
+      warehouseName: item.warehouse_name || '',
+      warehouseAddress: item.warehouse_address || '',
+    })),
+  }
+}
+
+/**
+ * 매입내역 확정 저장 (기존 데이터 삭제 후 재생성)
+ */
+export async function savePurchaseReport(
+  year: number,
+  month: number,
+  items: PurchaseReportItem[],
+  totals: { totalPurchase: number; orderCount: number; itemCount: number }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 삭제 (cascade)
+  await supabase
+    .from('purchase_reports')
+    .delete()
+    .eq('year', year)
+    .eq('month', month)
+
+  // 헤더 생성
+  const { data: report, error: reportError } = await supabase
+    .from('purchase_reports')
+    .insert({
+      year,
+      month,
+      total_purchase: totals.totalPurchase,
+      order_count: totals.orderCount,
+      item_count: totals.itemCount,
+    })
+    .select('id')
+    .single()
+
+  if (reportError || !report) {
+    console.error('매입내역 헤더 저장 실패:', reportError?.message)
+    return false
+  }
+
+  // 항목 저장
+  const rows = items.map((item, index) => ({
+    report_id: report.id,
+    sort_order: index,
+    order_id: item.orderId,
+    business_name: item.businessName,
+    affiliate: item.affiliate,
+    site_address: item.siteAddress,
+    order_date_display: item.orderDateDisplay,
+    delivery_status: item.deliveryStatus,
+    supplier: item.supplier,
+    order_number: item.orderNumber,
+    item_order_date: item.itemOrderDate,
+    scheduled_delivery_date: item.scheduledDeliveryDate,
+    confirmed_delivery_date: item.confirmedDeliveryDate,
+    component_model: item.componentModel,
+    component_name: item.componentName,
+    set_model: item.setModel,
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+    total_price: item.totalPrice,
+    warehouse_name: item.warehouseName,
+    warehouse_address: item.warehouseAddress,
+  }))
+
+  const { error: itemsError } = await supabase
+    .from('purchase_report_items')
+    .insert(rows)
+
+  if (itemsError) {
+    console.error('매입내역 항목 저장 실패:', itemsError.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 매입내역 수정 저장 (항목 삭제 후 재삽입 + 헤더 합계 업데이트)
+ */
+export async function updatePurchaseReportWithItems(
+  reportId: string,
+  items: PurchaseReportItem[],
+  totals: { totalPurchase: number; orderCount: number; itemCount: number }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 항목 삭제
+  const { error: delError } = await supabase
+    .from('purchase_report_items')
+    .delete()
+    .eq('report_id', reportId)
+
+  if (delError) {
+    console.error('매입내역 항목 삭제 실패:', delError.message)
+    return false
+  }
+
+  // 항목 재삽입
+  const rows = items.map((item, index) => ({
+    report_id: reportId,
+    sort_order: index,
+    order_id: item.orderId,
+    business_name: item.businessName,
+    affiliate: item.affiliate,
+    site_address: item.siteAddress,
+    order_date_display: item.orderDateDisplay,
+    delivery_status: item.deliveryStatus,
+    supplier: item.supplier,
+    order_number: item.orderNumber,
+    item_order_date: item.itemOrderDate,
+    scheduled_delivery_date: item.scheduledDeliveryDate,
+    confirmed_delivery_date: item.confirmedDeliveryDate,
+    component_model: item.componentModel,
+    component_name: item.componentName,
+    set_model: item.setModel,
+    quantity: item.quantity,
+    unit_price: item.unitPrice,
+    total_price: item.totalPrice,
+    warehouse_name: item.warehouseName,
+    warehouse_address: item.warehouseAddress,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('purchase_report_items')
+    .insert(rows)
+
+  if (insertError) {
+    console.error('매입내역 항목 재삽입 실패:', insertError.message)
+    return false
+  }
+
+  // 헤더 합계 업데이트
+  const { error: updateError } = await supabase
+    .from('purchase_reports')
+    .update({
+      total_purchase: totals.totalPurchase,
+      order_count: totals.orderCount,
+      item_count: totals.itemCount,
+      updated_at: new Date().toISOString(),
+    })
+    .eq('id', reportId)
+
+  if (updateError) {
+    console.error('매입내역 합계 업데이트 실패:', updateError.message)
     return false
   }
 

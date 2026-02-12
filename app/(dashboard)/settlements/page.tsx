@@ -105,22 +105,28 @@ function calcOrderAmounts(order: Order) {
  * 계열사 그룹 컴포넌트
  * - 계열사명 + 건수 + 합계 헤더
  * - 내부 테이블: 작업종류 | 발주일 | 발주서보기 | 현장명 | 금액
- * - 행 클릭 → 견적서 아코디언
+ * - 견적서 상세 항상 펼침
  */
 function AffiliateGroup({
   affiliateName,
   orders,
-  expandedIds,
-  onToggleExpand,
   onViewOrder,
 }: {
   affiliateName: string
   orders: Order[]
-  expandedIds: Set<string>
-  onToggleExpand: (orderId: string) => void
   onViewOrder: (order: Order) => void
 }) {
   const [isOpen, setIsOpen] = useState(orders.length > 0)
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
+
+  const handleToggleExpand = (orderId: string) => {
+    setExpandedIds(prev => {
+      const next = new Set(prev)
+      if (next.has(orderId)) next.delete(orderId)
+      else next.add(orderId)
+      return next
+    })
+  }
 
   // 계열사 합계 계산
   const totals = orders.reduce((acc, order) => {
@@ -134,7 +140,7 @@ function AffiliateGroup({
 
   return (
     <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && orders.length > 0 ? 'ring-1 ring-blue-200 shadow-md' : ''}`}>
-      {/* 계열사 헤더 */}
+      {/* 계열사 헤더 (아코디언 토글) */}
       <button
         className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
           orders.length > 0
@@ -197,18 +203,16 @@ function AffiliateGroup({
                 </tr>
               </thead>
               <tbody>
-                {orders.map((order, orderIdx) => {
-                  const isExpanded = expandedIds.has(order.id)
+                {orders.map((order) => {
                   const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType))))
-                  const isLast = orderIdx === orders.length - 1
                   const amounts = calcOrderAmounts(order)
 
                   return (
                     <React.Fragment key={order.id}>
-                      {/* 현장 행 */}
+                      {/* 현장 행 (클릭 시 견적서 토글) */}
                       <tr
-                        className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer ${isExpanded ? 'bg-blue-50/40' : ''} ${isLast && !isExpanded ? 'border-b-2 border-b-slate-400' : ''}`}
-                        onClick={() => onToggleExpand(order.id)}
+                        className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer`}
+                        onClick={() => handleToggleExpand(order.id)}
                       >
                         {/* 작업종류 뱃지 */}
                         <td className="p-3">
@@ -249,10 +253,10 @@ function AffiliateGroup({
                         {/* 계열사 */}
                         <td className="p-3 text-center text-xs text-slate-600">{order.affiliate || '-'}</td>
 
-                        {/* 사업자명 + 아코디언 아이콘 */}
+                        {/* 사업자명 */}
                         <td className="p-3 text-center">
                           <div className="flex items-center justify-center gap-1.5">
-                            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`h-3.5 w-3.5 text-slate-400 transition-transform ${expandedIds.has(order.id) ? '' : '-rotate-90'}`} />
                             <p className="font-semibold text-sm truncate">{order.businessName}</p>
                           </div>
                         </td>
@@ -287,10 +291,10 @@ function AffiliateGroup({
                         </td>
                       </tr>
 
-                      {/* 아코디언: 전체 견적서 (장비비 + 설치비) */}
-                      {isExpanded && (
-                        <tr>
-                          <td colSpan={10} className="p-0">
+                      {/* 견적서 상세 (아코디언) */}
+                      {expandedIds.has(order.id) && (
+                      <tr>
+                        <td colSpan={10} className="p-0">
                             <div className="mx-4 my-3">
                               <div className="border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
                                 {/* 견적서 헤더 — gradient + 현장명 */}
@@ -440,17 +444,13 @@ function AffiliateGroup({
           {/* 모바일 카드 리스트 */}
           <div className="md:hidden space-y-3">
             {orders.map(order => {
-              const isExpanded = expandedIds.has(order.id)
               const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType))))
               const amounts = calcOrderAmounts(order)
 
               return (
-                <div key={order.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden ${isExpanded ? 'ring-1 ring-blue-300' : ''}`}>
-                  <div
-                    className="p-4 space-y-3 cursor-pointer"
-                    onClick={() => onToggleExpand(order.id)}
-                  >
-                    {/* 상단: 작업종류 + 아코디언 아이콘 */}
+                <div key={order.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(order.id) ? 'ring-1 ring-blue-300' : ''}`} onClick={() => handleToggleExpand(order.id)}>
+                  <div className="p-4 space-y-3">
+                    {/* 상단: 작업종류 */}
                     <div className="flex items-center justify-between">
                       <div className="flex flex-wrap gap-1">
                         {workTypes.map(type => {
@@ -463,7 +463,6 @@ function AffiliateGroup({
                           )
                         })}
                       </div>
-                      <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                     </div>
 
                     {/* 현장명 + 주소 */}
@@ -494,9 +493,9 @@ function AffiliateGroup({
                     </div>
                   </div>
 
-                  {/* 모바일 아코디언: 견적서 상세 */}
-                  {isExpanded && (
-                    <div className="mx-3 mb-3 border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
+                  {/* 견적서 상세 (아코디언) */}
+                  {expandedIds.has(order.id) && (
+                  <div className="mx-3 mb-3 border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-600">
                         <Receipt className="h-4 w-4 text-white" />
                         <span className="text-sm font-bold text-white tracking-wide">견적서</span>
@@ -581,7 +580,7 @@ function AffiliateGroup({
                           </div>
                         </div>
                       </div>
-                    </div>
+                  </div>
                   )}
                 </div>
               )
@@ -766,9 +765,6 @@ export default function SettlementsPage() {
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
 
-  // 아코디언 펼침 상태
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
-
   // 발주서 상세 다이얼로그 상태
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
@@ -815,16 +811,6 @@ export default function SettlementsPage() {
       setConfirmation(data)
     }
   }, [selectedYear, selectedMonth])
-
-  /** 아코디언 토글 */
-  const handleToggleExpand = useCallback((orderId: string) => {
-    setExpandedIds(prev => {
-      const next = new Set(prev)
-      if (next.has(orderId)) next.delete(orderId)
-      else next.add(orderId)
-      return next
-    })
-  }, [])
 
   /** 발주서 상세 보기 */
   const handleViewOrder = useCallback((order: Order) => {
@@ -1230,8 +1216,6 @@ export default function SettlementsPage() {
               key={group.name}
               affiliateName={group.name}
               orders={group.orders}
-              expandedIds={expandedIds}
-              onToggleExpand={handleToggleExpand}
               onViewOrder={handleViewOrder}
             />
           ))}

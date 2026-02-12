@@ -16,7 +16,8 @@ import { fetchOrders } from '@/lib/supabase/dal'
 import type { Order } from '@/types/order'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CreditCard, FileText, ShoppingCart, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
-import { ExpenseReportTab } from '@/components/billing/expense-report-tab'
+// CreditCard는 페이지 헤더 아이콘에 사용
+import { DetailedExpenseReportTab } from '@/components/billing/detailed-expense-report-tab'
 import { SamsungPurchaseTab } from '@/components/billing/samsung-purchase-tab'
 import { MonthlySummaryTab } from '@/components/billing/monthly-summary-tab'
 
@@ -25,7 +26,7 @@ type BillingTab = 'expense-report' | 'samsung-purchase' | 'monthly-summary'
 
 const TAB_CONFIG: { key: BillingTab; label: string; icon: React.ReactNode }[] = [
   { key: 'expense-report', label: '지출결의서', icon: <FileText className="h-4 w-4" /> },
-  { key: 'samsung-purchase', label: '삼성매입', icon: <ShoppingCart className="h-4 w-4" /> },
+  { key: 'samsung-purchase', label: '배송 및 매입내역', icon: <ShoppingCart className="h-4 w-4" /> },
   { key: 'monthly-summary', label: '정산관리', icon: <BarChart3 className="h-4 w-4" /> },
 ]
 
@@ -243,10 +244,15 @@ export default function MelleaBillingPage() {
       {!isLoading && (
         <>
           {activeTab === 'expense-report' && (
-            <ExpenseReportTab orders={filteredOrders} calcAmounts={calcBillingAmounts} />
+            <DetailedExpenseReportTab
+              orders={filteredOrders}
+              calcAmounts={calcBillingAmounts}
+              selectedYear={selectedYear}
+              selectedMonth={selectedMonth}
+            />
           )}
           {activeTab === 'samsung-purchase' && (
-            <SamsungPurchaseTab orders={filteredOrders} />
+            <SamsungPurchaseTab orders={filteredOrders} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
           {activeTab === 'monthly-summary' && (
             <MonthlySummaryTab orders={filteredOrders} calcAmounts={calcBillingAmounts} />
