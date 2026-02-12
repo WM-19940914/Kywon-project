@@ -141,10 +141,9 @@ export const menuItems: MenuGroup[] = [
     title: '멜레아 전용',
     items: [
       {
-        title: '정산하러가기',
+        title: '멜레아 정산',
         url: '/mellea/billing',
         icon: CreditCard,
-        disabled: true,
       },
     ],
   },

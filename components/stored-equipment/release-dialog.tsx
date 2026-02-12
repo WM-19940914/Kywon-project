@@ -37,6 +37,7 @@ interface ReleaseDialogProps {
     releaseType: string
     releaseDate: string
     releaseDestination?: string
+    releaseAddress?: string
     releaseNotes?: string
   }) => void
   /** 출고 목적지 기본값 */
@@ -50,8 +51,10 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
   const [releaseType, setReleaseType] = useState<ReleaseType>('reinstall')
   // 출고일 (기본: 오늘)
   const [releaseDate, setReleaseDate] = useState(new Date().toISOString().split('T')[0])
-  // 출고 목적지
+  // 출고 목적지 (설치 현장명)
   const [releaseDestination, setReleaseDestination] = useState('')
+  // 출고 목적지 주소
+  const [releaseAddress, setReleaseAddress] = useState('')
   // 출고 메모
   const [releaseNotes, setReleaseNotes] = useState('')
 
@@ -76,6 +79,7 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
     setReleaseType('reinstall')
     setReleaseDate(new Date().toISOString().split('T')[0])
     setReleaseDestination('')
+    setReleaseAddress('')
     setReleaseNotes('')
   }
 
@@ -86,16 +90,17 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
       releaseType,
       releaseDate,
       releaseDestination: releaseDestination || undefined,
+      releaseAddress: releaseAddress || undefined,
       releaseNotes: releaseNotes || undefined,
     })
     resetForm()
     onOpenChange(false)
   }
 
-  /** 재고설치 발주 선택 → 현장정보로 목적지 채움 */
+  /** 재고설치 발주 선택 → 현장명/주소 분리 채움 */
   const handleOrderSelect = (order: Order) => {
-    const dest = `${order.businessName}${order.address ? ` (${order.address})` : ''}`
-    setReleaseDestination(dest)
+    setReleaseDestination(order.businessName)
+    setReleaseAddress(order.address || '')
   }
 
   // 출고 유형 옵션 (재설치/폐기만)
@@ -185,12 +190,19 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
                     </div>
                   )}
 
-                  {/* 직접 입력 */}
+                  {/* 직접 입력 — 현장명 */}
                   <Input
                     type="text"
                     value={releaseDestination}
                     onChange={(e) => setReleaseDestination(e.target.value)}
-                    placeholder="위에서 선택하거나 직접 입력하세요"
+                    placeholder="설치 현장명 (위에서 선택하거나 직접 입력)"
+                  />
+                  {/* 직접 입력 — 주소 */}
+                  <Input
+                    type="text"
+                    value={releaseAddress}
+                    onChange={(e) => setReleaseAddress(e.target.value)}
+                    placeholder="주소 (선택)"
                   />
                 </div>
               )}

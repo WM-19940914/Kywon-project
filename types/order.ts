@@ -227,7 +227,7 @@ export const WORK_TYPE_BADGE_STYLES: Record<string, { badge: string; icon: strin
   '이전설치': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
   '철거보관': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
   '철거폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
-  '재고설치': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
+  '재고설치': { badge: 'text-red-700 bg-red-50 border-red-200', icon: 'text-red-500' },
   '반납폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
 }
 const DEFAULT_BADGE_STYLE = { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' }
@@ -553,6 +553,32 @@ export type StoredEquipmentStatus = 'stored' | 'released'
  */
 export type ReleaseType = 'reinstall' | 'dispose'
 
+/**
+ * 장비 유형 — 실내기/실외기/SET 등 구분
+ */
+export type EquipmentUnitType = 'set' | 'indoor' | 'outdoor' | 'etc'
+
+/** 장비 유형 한글 라벨 */
+export const EQUIPMENT_UNIT_TYPE_LABELS: Record<EquipmentUnitType, string> = {
+  'set': 'SET',
+  'indoor': '실내기',
+  'outdoor': '실외기',
+  'etc': '기타',
+}
+
+/** 장비 유형 색상 (뱃지용) */
+export const EQUIPMENT_UNIT_TYPE_COLORS: Record<EquipmentUnitType, string> = {
+  'set': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'indoor': 'bg-sky-50 text-sky-700 border-sky-200',
+  'outdoor': 'bg-amber-50 text-amber-700 border-amber-200',
+  'etc': 'bg-gray-50 text-gray-500 border-gray-200',
+}
+
+/** 장비 유형 옵션 (드롭다운용) */
+export const EQUIPMENT_UNIT_TYPE_OPTIONS: EquipmentUnitType[] = [
+  'set', 'indoor', 'outdoor', 'etc',
+]
+
 /** 철거보관 장비 인터페이스 */
 export interface StoredEquipment {
   id: string
@@ -561,6 +587,7 @@ export interface StoredEquipment {
   affiliate?: string                  // 계열사
   address?: string                    // 현장 주소
   category: string                    // 품목 (스탠드에어컨, 벽걸이에어컨 등)
+  equipmentUnitType?: EquipmentUnitType // 장비 유형 (SET/실내기/실외기 등)
   model?: string                      // 모델명
   size?: string                       // 평형
   quantity: number                    // 수량
@@ -578,13 +605,32 @@ export interface StoredEquipment {
   status: StoredEquipmentStatus       // 보관중 / 출고완료
   releaseType?: ReleaseType           // 출고 유형
   releaseDate?: string                // 출고일
-  releaseDestination?: string         // 출고 목적지
+  releaseDestination?: string         // 출고 목적지 (설치 현장명)
+  releaseAddress?: string             // 출고 목적지 주소
   releaseNotes?: string               // 출고 메모
 
   // 시스템
   createdAt?: string
   updatedAt?: string
 }
+
+/**
+ * 평형 옵션 (드롭다운용)
+ * 에어컨 규격에 맞는 표준 평형 목록
+ */
+export const SIZE_OPTIONS = [
+  '7평',
+  '10평',
+  '13평',
+  '15평',
+  '18평',
+  '23평',
+  '28평',
+  '30평',
+  '36평',
+  '40평',
+  '60평',
+] as const
 
 /**
  * 제조사 옵션 (드롭다운용)

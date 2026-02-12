@@ -31,9 +31,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import type { StoredEquipment, Order } from '@/types/order'
+import type { StoredEquipment, Order, EquipmentUnitType } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
-import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS, MANUFACTURER_OPTIONS } from '@/types/order'
+import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS, MANUFACTURER_OPTIONS, SIZE_OPTIONS, EQUIPMENT_UNIT_TYPE_OPTIONS, EQUIPMENT_UNIT_TYPE_LABELS } from '@/types/order'
 import { Calendar, Plus, Trash2, BookOpen, Search as SearchIcon } from 'lucide-react'
 import { StoredEquipmentPriceSheet, type EquipmentRow, type ComponentInfo } from './stored-equipment-price-sheet'
 
@@ -41,6 +41,7 @@ import { StoredEquipmentPriceSheet, type EquipmentRow, type ComponentInfo } from
 interface EquipmentRowState {
   id: string // 고유 키 (렌더링용)
   category: string
+  equipmentUnitType: string // 장비 유형 (SET/실내기/실외기 등)
   model: string
   size: string
   manufacturer: string
@@ -54,6 +55,7 @@ function createEmptyRow(): EquipmentRowState {
   return {
     id: crypto.randomUUID(),
     category: '스탠드에어컨',
+    equipmentUnitType: '',
     model: '',
     size: '',
     manufacturer: '삼성',
@@ -70,6 +72,8 @@ interface StoredEquipmentFormDialogProps {
   onOpenChange: (open: boolean) => void
   /** 저장 콜백 (등록 또는 수정) */
   onSave: (data: Omit<StoredEquipment, 'id' | 'createdAt' | 'updatedAt'>) => void
+  /** 신규 등록 콜백 (수정 모드에서 행 추가분 저장용) */
+  onCreate?: (data: Omit<StoredEquipment, 'id' | 'createdAt' | 'updatedAt'>) => void
   /** 창고 목록 (드롭다운용) */
   warehouses: Warehouse[]
   /** 발주 목록 (발주 선택 기능용) */
@@ -83,6 +87,7 @@ export function StoredEquipmentFormDialog({
   open,
   onOpenChange,
   onSave,
+  onCreate,
   warehouses,
   orders,
   items,
@@ -162,6 +167,7 @@ export function StoredEquipmentFormDialog({
       setEquipmentRows([{
         id: crypto.randomUUID(),
         category: equipment.category || '스탠드에어컨',
+        equipmentUnitType: equipment.equipmentUnitType || '',
         model: equipment.model || '',
         size: equipment.size || '',
         manufacturer: equipment.manufacturer || '삼성',
@@ -245,6 +251,7 @@ export function StoredEquipmentFormDialog({
     const newRows: EquipmentRowState[] = rows.map(r => ({
       id: crypto.randomUUID(),
       category: r.category,
+      equipmentUnitType: '',
       model: r.model,
       size: r.size,
       manufacturer: r.manufacturer,
@@ -264,34 +271,52 @@ export function StoredEquipmentFormDialog({
     })
   }
 
-  /** 저장 처리 — 각 장비 행별로 onSave 호출 */
+  /** 저장 처리 — 수정 모드: 첫 행은 수정, 추가 행은 새로 등록 */
   const handleSave = () => {
     // 유효한 장비 행만 필터 (품목이 있는 행)
     const validRows = equipmentRows.filter(row => row.category)
     if (!siteName.trim() || validRows.length === 0 || !warehouseId) return
 
-    for (const row of validRows) {
-      onSave({
-        orderId: selectedOrderId || undefined,
-        siteName: siteName.trim(),
-        affiliate: affiliate || undefined,
-        address: address || undefined,
+    // 공통 데이터 (현장정보 + 보관정보)
+    const commonData = {
+      orderId: selectedOrderId || undefined,
+      siteName: siteName.trim(),
+      affiliate: affiliate || undefined,
+      address: address || undefined,
+      warehouseId,
+      removalDate: removalDate || undefined,
+      notes: notes || undefined,
+      status: equipment?.status || 'stored' as const,
+      releaseType: equipment?.releaseType,
+      releaseDate: equipment?.releaseDate,
+      releaseDestination: equipment?.releaseDestination,
+      releaseAddress: equipment?.releaseAddress,
+      releaseNotes: equipment?.releaseNotes,
+    }
+
+    validRows.forEach((row, idx) => {
+      const rowData = {
+        ...commonData,
         category: row.category,
+        equipmentUnitType: (row.equipmentUnitType || undefined) as EquipmentUnitType | undefined,
         model: row.model || undefined,
         size: row.size || undefined,
         quantity: row.quantity,
         manufacturer: row.manufacturer || undefined,
         manufacturingDate: row.manufacturingDate || undefined,
-        warehouseId,
-        removalDate: removalDate || undefined,
-        notes: notes || undefined,
-        status: equipment?.status || 'stored',
-        releaseType: equipment?.releaseType,
-        releaseDate: equipment?.releaseDate,
-        releaseDestination: equipment?.releaseDestination,
-        releaseNotes: equipment?.releaseNotes,
-      })
-    }
+      }
+
+      if (idx === 0) {
+        // 첫 번째 행 → 기존 장비 수정 (또는 신규 등록)
+        onSave(rowData)
+      } else if (onCreate) {
+        // 추가 행 → 무조건 새로 등록
+        onCreate(rowData)
+      } else {
+        // onCreate가 없으면 onSave로 대체 (등록 모드)
+        onSave(rowData)
+      }
+    })
     onOpenChange(false)
   }
 
@@ -436,6 +461,7 @@ export function StoredEquipmentFormDialog({
                 <thead>
                   <tr className="bg-gray-50 text-gray-600 text-xs">
                     <th className="px-2 py-2 text-left font-semibold w-[110px]">품목</th>
+                    <th className="px-2 py-2 text-left font-semibold w-[70px]">유형</th>
                     <th className="px-2 py-2 text-left font-semibold">모델명</th>
                     <th className="px-2 py-2 text-left font-semibold w-[60px]">평형</th>
                     <th className="px-2 py-2 text-left font-semibold w-[75px]">제조사</th>
@@ -601,6 +627,22 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         </select>
       </td>
 
+      {/* 유형 (SET/실내기/실외기 등) */}
+      <td className="px-1 py-1.5">
+        <select
+          value={row.equipmentUnitType}
+          onChange={(e) => onUpdate(row.id, 'equipmentUnitType', e.target.value)}
+          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+        >
+          <option value="">선택</option>
+          {EQUIPMENT_UNIT_TYPE_OPTIONS.map(opt => (
+            <option key={opt} value={opt}>
+              {EQUIPMENT_UNIT_TYPE_LABELS[opt]}{opt === 'set' ? ' (자재x)' : ''}
+            </option>
+          ))}
+        </select>
+      </td>
+
       {/* 모델명 + 구성품 정보 */}
       <td className="px-1 py-1.5">
         <input
@@ -621,14 +663,18 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         )}
       </td>
 
-      {/* 평형 */}
+      {/* 평형 (드롭다운) */}
       <td className="px-1 py-1.5">
-        <input
+        <select
           value={row.size}
           onChange={(e) => onUpdate(row.id, 'size', e.target.value)}
-          placeholder="평형"
-          className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-blue-400"
-        />
+          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+        >
+          <option value="">선택</option>
+          {SIZE_OPTIONS.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
       </td>
 
       {/* 제조사 */}

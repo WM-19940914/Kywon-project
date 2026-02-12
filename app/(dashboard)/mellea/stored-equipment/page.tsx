@@ -68,6 +68,10 @@ export default function StoredEquipmentPage() {
   const [affiliateFilter, setAffiliateFilter] = useState<string>('all')
   const [categoryFilter, setCategoryFilter] = useState<string>('all')
 
+  // ─── 출고완료 페이지네이션 ───
+  const ITEMS_PER_PAGE = 10
+  const [currentPage, setCurrentPage] = useState(1)
+
   // ─── 다이얼로그 상태 ───
   const [formOpen, setFormOpen] = useState(false)
   const [editTarget, setEditTarget] = useState<StoredEquipment | null>(null)
@@ -119,8 +123,26 @@ export default function StoredEquipmentPage() {
         (i.notes || '').toLowerCase().includes(term)
       )
     }
+    // 제조년월 기준 내림차순 정렬 (최신 제품이 위로, 없으면 맨 아래)
+    result.sort((a, b) => {
+      const dateA = a.manufacturingDate || ''
+      const dateB = b.manufacturingDate || ''
+      if (!dateA && !dateB) return 0
+      if (!dateA) return 1
+      if (!dateB) return -1
+      return dateB.localeCompare(dateA)
+    })
     return result
   }, [items, activeTab, warehouseFilter, affiliateFilter, categoryFilter, searchTerm])
+
+  // ─── 출고완료 페이지네이션 계산 ───
+  const totalPages = activeTab === 'released' ? Math.max(1, Math.ceil(filteredItems.length / ITEMS_PER_PAGE)) : 1
+  const displayItems = activeTab === 'released'
+    ? filteredItems.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)
+    : filteredItems
+
+  // 필터 변경 시 페이지 리셋
+  useEffect(() => { setCurrentPage(1) }, [warehouseFilter, affiliateFilter, categoryFilter, searchTerm])
 
   // ─── 핸들러 ───
 
@@ -166,6 +188,7 @@ export default function StoredEquipmentPage() {
     releaseType: string
     releaseDate: string
     releaseDestination?: string
+    releaseAddress?: string
     releaseNotes?: string
   }) => {
     const success = await releaseStoredEquipment(id, info)
@@ -178,6 +201,7 @@ export default function StoredEquipmentPage() {
           releaseType: info.releaseType as StoredEquipment['releaseType'],
           releaseDate: info.releaseDate,
           releaseDestination: info.releaseDestination,
+          releaseAddress: info.releaseAddress,
           releaseNotes: info.releaseNotes,
         }
       }))
@@ -311,7 +335,7 @@ export default function StoredEquipmentPage() {
           {tabs.map(tab => (
             <button
               key={tab.value}
-              onClick={() => setActiveTab(tab.value)}
+              onClick={() => { setActiveTab(tab.value); setCurrentPage(1) }}
               className={`pb-3 px-4 text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.value
                   ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
@@ -385,7 +409,7 @@ export default function StoredEquipmentPage() {
 
       {/* ═══ 테이블 ═══ */}
       <StoredEquipmentTable
-        items={filteredItems}
+        items={displayItems}
         activeTab={activeTab}
         warehouses={warehouses}
         orders={orders}
@@ -394,6 +418,42 @@ export default function StoredEquipmentPage() {
         onDelete={handleDelete}
         onRevertRelease={handleRevertRelease}
       />
+
+      {/* ═══ 출고완료 페이지네이션 ═══ */}
+      {activeTab === 'released' && totalPages > 1 && (
+        <div className="flex items-center justify-center gap-1 mt-4">
+          <button
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            이전
+          </button>
+          {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+            <button
+              key={page}
+              onClick={() => setCurrentPage(page)}
+              className={`w-8 h-8 text-xs font-medium rounded-md ${
+                currentPage === page
+                  ? 'bg-blue-600 text-white'
+                  : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              {page}
+            </button>
+          ))}
+          <button
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+            className="px-3 py-1.5 text-xs font-medium rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed"
+          >
+            다음
+          </button>
+          <span className="text-[11px] text-slate-400 ml-2">
+            총 {filteredItems.length}건
+          </span>
+        </div>
+      )}
 
       {/* ═══ 등록/수정 다이얼로그 ═══ */}
       <StoredEquipmentFormDialog
@@ -404,6 +464,7 @@ export default function StoredEquipmentPage() {
           if (!open) setEditTarget(null)
         }}
         onSave={editTarget ? handleUpdate : handleCreate}
+        onCreate={handleCreate}
         warehouses={warehouses}
         orders={orders}
         items={items}

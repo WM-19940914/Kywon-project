@@ -28,15 +28,24 @@ import {
   FileText,
   LogOut,
   MapPin,
+  MoreVertical,
   Package,
   Trash2,
   Undo2,
   Warehouse as WarehouseIcon,
 } from 'lucide-react'
-import type { StoredEquipment, StoredEquipmentStatus, ReleaseType, Order } from '@/types/order'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import type { StoredEquipment, StoredEquipmentStatus, ReleaseType, Order, EquipmentUnitType } from '@/types/order'
 import {
   RELEASE_TYPE_LABELS,
   RELEASE_TYPE_COLORS,
+  EQUIPMENT_UNIT_TYPE_LABELS,
+  EQUIPMENT_UNIT_TYPE_COLORS,
 } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -151,28 +160,33 @@ export function StoredEquipmentTable({
   return (
     <>
       {/* ═══ 데스크톱 테이블 (md 이상) ═══ */}
-      <div className="hidden md:block border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-        <table className="w-full">
+      <div className="hidden md:block border border-slate-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
+        <table className="w-full" style={{ minWidth: activeTab === 'released' ? '1100px' : '850px' }}>
           <thead>
             <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-4 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '140px' }}>철거된 장소</th>
-              <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '85px' }}>철거일</th>
-              <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '85px' }}>제조년월</th>
-              <th className="text-left px-4 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>장비 정보</th>
-              <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '80px' }}>발주서</th>
-              <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '50px' }}>수량</th>
-              <th className="text-left px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '65px' }}>제조사</th>
+              <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '130px' }}>철거된 장소</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '78px' }}>철거일</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '74px' }}>제조년월</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '150px' }}>장비 정보</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '54px' }}>유형</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>평형</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '38px' }}>수량</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '50px' }}>제조사</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>발주서</th>
               {activeTab === 'released' && (
                 <>
-                  <th className="text-left px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '80px' }}>출고유형</th>
-                  <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '85px' }}>출고일</th>
+                  <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '60px' }}>출고유형</th>
+                  <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '78px' }}>출고일</th>
                 </>
               )}
-              <th className="text-left px-4 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>
-                {activeTab === 'released' ? '설치 장소' : '보관 창고'}
+              <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: activeTab === 'released' ? '150px' : '140px' }}>
+                {activeTab === 'released' ? '설치 현장' : '보관 창고'}
               </th>
+              {activeTab === 'released' && (
+                <th className="text-left px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '80px' }}>주소</th>
+              )}
               {!readOnly && (
-                <th className="text-center px-3 py-3 font-semibold text-xs text-slate-500 uppercase tracking-wider" style={{ width: activeTab === 'stored' ? '130px' : '80px' }}>액션</th>
+                <th className="text-center px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider" style={{ width: '32px' }}></th>
               )}
             </tr>
           </thead>
@@ -180,35 +194,70 @@ export function StoredEquipmentTable({
             {items.map((item, idx) => (
               <tr key={item.id} className={`transition-colors hover:bg-blue-50/30 ${idx % 2 === 1 ? 'bg-slate-50/30' : 'bg-white'}`}>
                 {/* 철거된 장소 */}
-                <td className="px-4 py-3">
+                <td className="px-2 py-1.5">
                   {item.affiliate && (
-                    <p className="text-[11px] text-slate-400 font-medium mb-0.5">{item.affiliate}</p>
+                    <p className="text-[10px] text-slate-400 font-medium leading-tight">{item.affiliate}</p>
                   )}
-                  <p className="text-sm font-semibold text-slate-800 truncate" title={item.siteName}>{item.siteName}</p>
+                  <p className="text-xs font-semibold text-slate-800 truncate" title={item.siteName}>{item.siteName}</p>
                 </td>
 
                 {/* 철거일 */}
-                <td className="px-3 py-3 text-center">
-                  <span className="text-sm text-red-600 font-bold tabular-nums">
+                <td className="px-1.5 py-1.5 text-center">
+                  <span className="text-[11px] text-red-600 font-bold tabular-nums">
                     {item.removalDate ? formatDate(item.removalDate) : '-'}
                   </span>
                 </td>
 
                 {/* 제조년월 */}
-                <td className="px-3 py-3 text-center">
-                  <span className="text-sm font-bold text-blue-700 tabular-nums">
+                <td className="px-1.5 py-1.5 text-center">
+                  <span className="text-[11px] font-bold text-blue-700 tabular-nums">
                     {item.manufacturingDate ? item.manufacturingDate.replace('-', '.') : '-'}
                   </span>
                 </td>
 
                 {/* 장비 정보 */}
-                <td className="px-4 py-3">
-                  <p className="text-sm text-slate-800 font-semibold">{item.category}</p>
-                  <p className="text-sm text-slate-500 truncate" title={item.model || '-'}>{item.model || '-'}</p>
+                <td className="px-2 py-1.5 text-center">
+                  <p className="text-[10px] text-slate-400">{item.category}</p>
+                  <p className="text-xs text-slate-800 font-semibold truncate" title={item.model || '-'}>{item.model || '-'}</p>
+                </td>
+
+                {/* 유형 (SET/실내기/실외기 등) */}
+                <td className="px-1 py-1.5 text-center">
+                  {item.equipmentUnitType ? (
+                    <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border leading-tight ${EQUIPMENT_UNIT_TYPE_COLORS[item.equipmentUnitType]}`}>
+                      {EQUIPMENT_UNIT_TYPE_LABELS[item.equipmentUnitType]}
+                      {item.equipmentUnitType === 'set' && (
+                        <span className="block text-[8px] font-normal text-slate-400">(자재x)</span>
+                      )}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-300">-</span>
+                  )}
+                </td>
+
+                {/* 평형 */}
+                <td className="px-1 py-1.5 text-center">
+                  {item.size ? (
+                    <span className="text-[11px] font-bold text-violet-700">
+                      {item.size}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-slate-300">-</span>
+                  )}
+                </td>
+
+                {/* 수량 */}
+                <td className="px-1 py-1.5 text-center">
+                  <span className="text-xs font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
+                </td>
+
+                {/* 제조사 */}
+                <td className="px-1.5 py-1.5">
+                  <span className="text-[11px] text-slate-600">{item.manufacturer || '-'}</span>
                 </td>
 
                 {/* 발주서 */}
-                <td className="px-3 py-3 text-center">
+                <td className="px-1 py-1.5 text-center">
                   {(() => {
                     const order = getOrder(item.orderId)
                     if (order) {
@@ -216,118 +265,122 @@ export function StoredEquipmentTable({
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="h-7 px-2 text-xs gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                          className="h-6 px-1.5 text-[11px] gap-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
                           onClick={() => handleViewOrder(item.orderId)}
                         >
-                          <FileText className="h-3 w-3" />
+                          <FileText className="h-2.5 w-2.5" />
                           보기
                         </Button>
                       )
                     }
-                    return <span className="text-xs text-slate-300">수동</span>
+                    return <span className="text-[10px] text-slate-300">수동</span>
                   })()}
-                </td>
-
-                {/* 수량 */}
-                <td className="px-3 py-3 text-center">
-                  <span className="text-sm font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
-                </td>
-
-                {/* 제조사 */}
-                <td className="px-3 py-3">
-                  <span className="text-sm text-slate-600">{item.manufacturer || '-'}</span>
                 </td>
 
                 {/* 출고 정보 (출고완료 탭) */}
                 {activeTab === 'released' && (
                   <>
-                    <td className="px-3 py-3">
+                    <td className="px-1.5 py-1.5">
                       {item.releaseType ? (
-                        <Badge className={`${RELEASE_TYPE_COLORS[item.releaseType as ReleaseType]} text-xs font-medium`}>
+                        <Badge className={`${RELEASE_TYPE_COLORS[item.releaseType as ReleaseType]} text-[10px] font-medium`}>
                           {RELEASE_TYPE_LABELS[item.releaseType as ReleaseType]}
                         </Badge>
                       ) : '-'}
                     </td>
-                    <td className="px-3 py-3 text-center">
-                      <span className="text-sm text-slate-600 tabular-nums">{formatDate(item.releaseDate)}</span>
+                    <td className="px-1.5 py-1.5 text-center">
+                      <span className="text-[11px] text-slate-600 tabular-nums">{formatDate(item.releaseDate)}</span>
                     </td>
                   </>
                 )}
 
-                {/* 보관 창고 / 설치 장소 */}
-                <td className="px-4 py-3">
-                  {activeTab === 'released' ? (
-                    item.releaseDestination ? (
-                      <div className="flex items-start gap-1.5">
-                        <MapPin className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
-                        <p className="text-sm font-medium text-slate-800">{item.releaseDestination}</p>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-slate-300">-</span>
+                {/* 보관 창고 / 설치 현장 + 주소 */}
+                {activeTab === 'released' ? (
+                  (() => {
+                    // releaseAddress가 있으면 분리된 데이터, 없으면 releaseDestination에서 파싱
+                    let siteName = item.releaseDestination || ''
+                    let address = item.releaseAddress || ''
+                    // 기존 데이터: "현장명 (주소)" 형태 → 자동 분리
+                    if (!address && siteName.includes(' (') && siteName.endsWith(')')) {
+                      const idx = siteName.indexOf(' (')
+                      address = siteName.slice(idx + 2, -1)
+                      siteName = siteName.slice(0, idx)
+                    }
+                    return (
+                      <>
+                        <td className="px-2 py-1.5">
+                          {siteName ? (
+                            <p className="text-xs font-medium text-slate-800 truncate" title={siteName}>{siteName}</p>
+                          ) : (
+                            <span className="text-[10px] text-slate-300">-</span>
+                          )}
+                        </td>
+                        <td className="px-1 py-1.5">
+                          {address ? (
+                            <p className="text-[10px] text-slate-400 truncate" title={address}>{address}</p>
+                          ) : (
+                            <span className="text-[10px] text-slate-300">-</span>
+                          )}
+                        </td>
+                      </>
                     )
-                  ) : (
-                    (() => {
+                  })()
+                ) : (
+                  <td className="px-2 py-1.5">
+                    {(() => {
                       const warehouse = getWarehouse(item.warehouseId)
                       if (warehouse) {
                         return (
                           <div>
-                            <div className="flex items-center gap-1.5">
-                              <WarehouseIcon className="h-3.5 w-3.5 text-slate-400" />
-                              <span className="text-sm font-medium text-slate-700">{warehouse.name}</span>
+                            <div className="flex items-center gap-1">
+                              <WarehouseIcon className="h-3 w-3 text-slate-400" />
+                              <span className="text-xs font-medium text-slate-700">{warehouse.name}</span>
                             </div>
                             {warehouse.address && (
-                              <p className="text-xs text-slate-400 ml-5 mt-0.5">{warehouse.address}</p>
+                              <p className="text-[9px] text-slate-400 ml-4 leading-tight truncate" title={warehouse.address}>{warehouse.address}</p>
                             )}
                           </div>
                         )
                       }
-                      return <span className="text-sm text-slate-300">-</span>
-                    })()
-                  )}
-                </td>
+                      return <span className="text-[11px] text-slate-300">-</span>
+                    })()}
+                  </td>
+                )}
 
-                {/* 액션 */}
+                {/* 액션 (세로 점3개 메뉴) */}
                 {!readOnly && (
-                  <td className="px-3 py-3 text-center">
-                    {activeTab === 'stored' ? (
-                      <div className="flex items-center justify-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 px-2.5 text-xs gap-1 border-slate-200 hover:border-slate-300"
-                          onClick={() => onEdit(item)}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                          수정
+                  <td className="px-1 py-1.5 text-center">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600">
+                          <MoreVertical className="h-3.5 w-3.5" />
                         </Button>
-                        <Button
-                          size="sm"
-                          className="h-7 px-2.5 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                          onClick={() => onRelease(item)}
-                        >
-                          <LogOut className="h-3 w-3" />
-                          출고
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
-                          onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-7 px-2.5 text-xs gap-1 text-slate-500 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-50"
-                        onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
-                      >
-                        <Undo2 className="h-3 w-3" />
-                        되돌리기
-                      </Button>
-                    )}
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-32">
+                        {activeTab === 'stored' ? (
+                          <>
+                            <DropdownMenuItem onClick={() => onEdit(item)} className="text-xs gap-2">
+                              <Edit2 className="h-3 w-3" /> 수정
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-blue-600">
+                              <LogOut className="h-3 w-3" /> 출고
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
+                              className="text-xs gap-2 text-red-600 focus:text-red-600"
+                            >
+                              <Trash2 className="h-3 w-3" /> 삭제
+                            </DropdownMenuItem>
+                          </>
+                        ) : (
+                          <DropdownMenuItem
+                            onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
+                            className="text-xs gap-2 text-amber-600"
+                          >
+                            <Undo2 className="h-3 w-3" /> 되돌리기
+                          </DropdownMenuItem>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
                   </td>
                 )}
               </tr>
@@ -359,10 +412,20 @@ export function StoredEquipmentTable({
 
               {/* 장비 정보 */}
               <div className="px-4 pb-3">
-                <div className="flex items-center gap-2 mb-1.5">
+                <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                   <Badge variant="outline" className="text-xs font-semibold text-blue-700 border-blue-200 bg-blue-50/50">
                     {item.category}
                   </Badge>
+                  {item.equipmentUnitType && (
+                    <Badge variant="outline" className={`text-xs font-bold ${EQUIPMENT_UNIT_TYPE_COLORS[item.equipmentUnitType]}`}>
+                      {EQUIPMENT_UNIT_TYPE_LABELS[item.equipmentUnitType]}
+                    </Badge>
+                  )}
+                  {item.size && (
+                    <Badge variant="outline" className="text-xs font-bold text-violet-700 border-violet-200 bg-violet-50/50">
+                      {item.size}
+                    </Badge>
+                  )}
                   {item.manufacturer && (
                     <span className="text-xs text-slate-400">{item.manufacturer}</span>
                   )}
@@ -436,49 +499,40 @@ export function StoredEquipmentTable({
                   <span className="text-xs text-slate-300 px-1">수동등록</span>
                 )}
 
-                {/* 액션 */}
+                {/* 액션 (세로 점3개 메뉴) */}
                 {!readOnly && (
-                  <div className="flex items-center gap-1.5">
-                    {activeTab === 'stored' ? (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-8 px-2.5 text-xs gap-1 border-slate-200"
-                          onClick={() => onEdit(item)}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                          수정
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-8 px-2.5 text-xs gap-1 bg-blue-600 hover:bg-blue-700 text-white shadow-sm"
-                          onClick={() => onRelease(item)}
-                        >
-                          <LogOut className="h-3 w-3" />
-                          출고
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 w-8 p-0 text-slate-300 hover:text-red-500 hover:bg-red-50"
-                          onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="h-8 px-2.5 text-xs gap-1 text-slate-500 hover:text-amber-700 hover:border-amber-300 hover:bg-amber-50"
-                        onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
-                      >
-                        <Undo2 className="h-3 w-3" />
-                        되돌리기
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" className="h-8 w-8 p-0 text-slate-400 hover:text-slate-600">
+                        <MoreVertical className="h-4 w-4" />
                       </Button>
-                    )}
-                  </div>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" className="w-32">
+                      {activeTab === 'stored' ? (
+                        <>
+                          <DropdownMenuItem onClick={() => onEdit(item)} className="text-xs gap-2">
+                            <Edit2 className="h-3 w-3" /> 수정
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-blue-600">
+                            <LogOut className="h-3 w-3" /> 출고
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
+                            className="text-xs gap-2 text-red-600 focus:text-red-600"
+                          >
+                            <Trash2 className="h-3 w-3" /> 삭제
+                          </DropdownMenuItem>
+                        </>
+                      ) : (
+                        <DropdownMenuItem
+                          onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
+                          className="text-xs gap-2 text-amber-600"
+                        >
+                          <Undo2 className="h-3 w-3" /> 되돌리기
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 )}
               </div>
             </div>
