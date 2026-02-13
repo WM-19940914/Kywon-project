@@ -4,7 +4,7 @@
  * Next.js의 Server Action을 사용합니다.
  * 비유: "경비실 뒤편의 출입관리 시스템" — 실제 인증 처리를 담당합니다.
  *
- * 사용자가 입력한 "사용자이름"을 "{username}@mellea.local" 형태로 변환해서
+ * 사용자가 입력한 "사용자이름"을 "{username}@melea.local" 형태로 변환해서
  * Supabase Auth에 로그인 요청을 보냅니다.
  */
 
@@ -33,8 +33,8 @@ export async function login(
     return { error: '사용자이름과 비밀번호를 입력해주세요.' }
   }
 
-  // 사용자이름 → 이메일 변환 (예: opendnals123 → opendnals123@mellea.local)
-  const email = `${username}@mellea.local`
+  // 사용자이름 → 이메일 변환 (예: opendnals123 → opendnals123@melea.local)
+  const email = `${username}@melea.local`
 
   // Supabase Auth로 로그인 시도
   const { error } = await supabase.auth.signInWithPassword({

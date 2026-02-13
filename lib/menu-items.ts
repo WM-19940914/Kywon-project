@@ -20,7 +20,8 @@ import {
   CalendarCheck,  // 설치일정 관리
   Receipt,        // 에스원 정산관리
   ShoppingCart,   // 선구매 장비
-  Settings        // 설정
+  Settings,       // 설정
+  Server,         // 서버관리
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 
@@ -158,4 +159,11 @@ export const settingsMenuItem: MenuItem = {
   title: '설정',
   url: '/settings',
   icon: Settings,
+}
+
+/** 관리자 페이지 메뉴 — opendnals123 전용 */
+export const serverAdminMenuItem: MenuItem = {
+  title: '관리자 페이지',
+  url: '/admin/server',
+  icon: Server,
 }

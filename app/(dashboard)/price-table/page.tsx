@@ -389,6 +389,12 @@ export default function PriceTablePage() {
   // 탭 상태: 장비 단가 / 설치비 단가
   const [activeTab, setActiveTab] = useState<'equipment' | 'installation'>('equipment')
 
+  // 단가계약 항목 (DB에서 불러옴)
+  const [newInstallRows, setNewInstallRows] = useState<{ category: string; model: string; price: number }[]>([])
+  const [relocationRows, setRelocationRows] = useState<{ category: string; model: string; price: number }[]>([])
+  const [additionalRows, setAdditionalRows] = useState<{ category: string; model: string; price: number }[]>([])
+  const [returnRows, setReturnRows] = useState<{ category: string; model: string; price: number }[]>([])
+
   // 전기공사 / 기타공사 state + DB 연동
   const [elecRows, setElecRows] = useState<{ category: string; model: string }[]>([])
   const [etcRows, setEtcRows] = useState<{ category: string; model: string }[]>([])
@@ -397,6 +403,18 @@ export default function PriceTablePage() {
 
   // DB에서 불러오기
   useEffect(() => {
+    fetchInstallationPriceItems('new_install').then(items => {
+      setNewInstallRows(items.map(r => ({ category: r.category, model: r.model, price: r.price })))
+    })
+    fetchInstallationPriceItems('relocation').then(items => {
+      setRelocationRows(items.map(r => ({ category: r.category, model: r.model, price: r.price })))
+    })
+    fetchInstallationPriceItems('additional').then(items => {
+      setAdditionalRows(items.map(r => ({ category: r.category, model: r.model, price: r.price })))
+    })
+    fetchInstallationPriceItems('return').then(items => {
+      setReturnRows(items.map(r => ({ category: r.category, model: r.model, price: r.price })))
+    })
     fetchInstallationPriceItems('electric').then(items => {
       if (items.length > 0) setElecRows(items.map(r => ({ category: r.category, model: r.model })))
     })
@@ -967,26 +985,17 @@ export default function PriceTablePage() {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>품목</th>
+                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>품목</th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>모델명</th>
                 <th className="px-5 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '120px' }}>단가 (VAT별도)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {[
-                { category: '신규 설치비_스탠드형', model: '58평형 이상', price: '360,000' },
-                { category: '신규 설치비_스탠드형', model: '30평형 이상', price: '280,000' },
-                { category: '신규 설치비_스탠드형', model: '23평형', price: '150,000' },
-                { category: '신규 설치비_스탠드형', model: '23평형 미만', price: '130,000' },
-                { category: '신규 설치비_벽걸이형', model: '13평형', price: '60,000' },
-                { category: '신규 설치비_벽걸이형', model: '9평형', price: '60,000' },
-                { category: '신규 설치비_벽걸이형', model: '7평형', price: '60,000' },
-                { category: '신규 설치비_벽걸이형', model: '6평형', price: '60,000' },
-              ].map((row, i) => (
+              {newInstallRows.map((row, i) => (
                 <tr key={`ns-${i}`} className="hover:bg-blue-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className="px-4 py-2 text-slate-600">{row.model}</td>
-                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
+                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
                 </tr>
               ))}
             </tbody>
@@ -1002,26 +1011,17 @@ export default function PriceTablePage() {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>품목</th>
+                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>품목</th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>모델명</th>
                 <th className="px-5 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '120px' }}>단가 (VAT별도)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {[
-                { category: '이전 설치비_스탠드형', model: '58평형 이상', price: '360,000' },
-                { category: '이전 설치비_스탠드형', model: '30평형 이상', price: '300,000' },
-                { category: '이전 설치비_스탠드형', model: '23평형', price: '150,000' },
-                { category: '이전 설치비_스탠드형', model: '23평형 미만', price: '130,000' },
-                { category: '이전 설치비_벽걸이형', model: '13평형', price: '60,000' },
-                { category: '이전 설치비_벽걸이형', model: '9평형', price: '60,000' },
-                { category: '이전 설치비_벽걸이형', model: '7평형', price: '60,000' },
-                { category: '이전 설치비_벽걸이형', model: '6평형', price: '60,000' },
-              ].map((row, i) => (
+              {relocationRows.map((row, i) => (
                 <tr key={`os-${i}`} className="hover:bg-violet-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className="px-4 py-2 text-slate-600">{row.model}</td>
-                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
+                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
                 </tr>
               ))}
             </tbody>
@@ -1037,28 +1037,17 @@ export default function PriceTablePage() {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>품목</th>
+                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>품목</th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>모델명</th>
                 <th className="px-5 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '120px' }}>단가 (VAT별도)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              {[
-                { category: '냉매관 설치', model: '냉매관 Φ22.09mm', price: '17,000' },
-                { category: '냉매관 설치', model: '냉매관 Φ19.05mm', price: '14,000' },
-                { category: '냉매관 설치', model: '냉매관 Φ15.88mm_K', price: '13,000' },
-                { category: '냉매관 설치', model: '냉매관 Φ12.70mm', price: '9,000' },
-                { category: '냉매관 설치', model: '냉매관 Φ09.52mm', price: '7,900' },
-                { category: '냉매관 설치', model: '냉매관 Φ06.35mm', price: '2,500' },
-                { category: '실내전원통신', model: '-', price: '7,500' },
-                { category: '배수펌프', model: '10m', price: '100,000' },
-                { category: '실외기거치대', model: '앵글', price: '100,000' },
-                { category: '실외기거치대', model: '일자받침대', price: '28,000' },
-              ].map((row, i) => (
+              {additionalRows.map((row, i) => (
                 <tr key={`ex-${i}`} className="hover:bg-emerald-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
-                  <td className={`px-4 py-2 ${row.model === '-' ? 'text-slate-400' : 'text-slate-600'} ${i < 6 ? 'font-mono text-[11px]' : ''}`}>{row.model}</td>
-                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
+                  <td className={`px-4 py-2 ${row.model === '-' ? 'text-slate-400' : 'text-slate-600'} ${row.category === '냉매관 설치' ? 'font-mono text-[11px]' : ''}`}>{row.model}</td>
+                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
                 </tr>
               ))}
             </tbody>
@@ -1075,22 +1064,19 @@ export default function PriceTablePage() {
           <table className="w-full text-[12px]">
             <thead>
               <tr className="bg-slate-50/80">
-                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>품목</th>
+                <th className="px-5 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '180px' }}>품목</th>
                 <th className="px-4 py-2.5 text-left text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '130px' }}>모델명</th>
                 <th className="px-5 py-2.5 text-right text-[11px] font-semibold text-slate-500 uppercase tracking-wider" style={{ width: '120px' }}>단가 (VAT별도)</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
-              <tr className="hover:bg-amber-50/30 transition-colors">
-                <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">반납 보관비</td>
-                <td className="px-4 py-2 text-slate-400">-</td>
-                <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">100,000원</td>
-              </tr>
-              <tr className="hover:bg-amber-50/30 transition-colors">
-                <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">반납 폐기비</td>
-                <td className="px-4 py-2 text-slate-400">-</td>
-                <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">100,000원</td>
-              </tr>
+              {returnRows.map((row, i) => (
+                <tr key={`rt-${i}`} className="hover:bg-amber-50/30 transition-colors">
+                  <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
+                  <td className="px-4 py-2 text-slate-400">{row.model}</td>
+                  <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
+                </tr>
+              ))}
             </tbody>
           </table>
         </div>

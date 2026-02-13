@@ -15,7 +15,7 @@ export type UserRole = 'admin' | 'melea' | 's1eng' | 'kyowon' | 'affiliate'
 export const ROLE_LABELS: Record<UserRole, string> = {
   admin: '관리자',
   melea: '멜레아',
-  s1eng: '에스원ENG',
+  s1eng: '에스원이엔지',
   kyowon: '교원그룹',
   affiliate: '계열사',
 }
@@ -51,7 +51,7 @@ export const ROLE_MENU_ACCESS: Record<UserRole, Record<string, boolean>> = {
   },
   s1eng: {
     '': true,
-    '교원그룹': false,
+    '교원그룹': true,
     '교원 · 멜레아': false,
     '멜레아 · 에스원': true,
     '멜레아 전용': false,

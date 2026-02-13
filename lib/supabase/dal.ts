@@ -2243,19 +2243,23 @@ export async function updatePurchaseReportWithItems(
 // ⚡ 설치비 단가표 항목 (Installation Price Items)
 // ============================================================
 
+/** 설치비 단가표 항목 타입 구분 */
+export type InstallationPriceType = 'new_install' | 'relocation' | 'additional' | 'return' | 'electric' | 'etc'
+
 /** 설치비 단가표 항목 타입 */
 export interface InstallationPriceItem {
   id?: string
-  type: 'electric' | 'etc'
+  type: InstallationPriceType
   category: string
   model: string
+  price: number
   sortOrder: number
 }
 
 /**
  * 설치비 단가표 항목 전체 조회 (타입별)
  */
-export async function fetchInstallationPriceItems(type: 'electric' | 'etc'): Promise<InstallationPriceItem[]> {
+export async function fetchInstallationPriceItems(type: InstallationPriceType): Promise<InstallationPriceItem[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('installation_price_items')
@@ -2273,6 +2277,7 @@ export async function fetchInstallationPriceItems(type: 'electric' | 'etc'): Pro
     type: row.type,
     category: row.category,
     model: row.model,
+    price: row.price ?? 0,
     sortOrder: row.sort_order,
   }))
 }
@@ -2281,8 +2286,8 @@ export async function fetchInstallationPriceItems(type: 'electric' | 'etc'): Pro
  * 설치비 단가표 항목 일괄 저장 (삭제 후 재삽입)
  */
 export async function saveInstallationPriceItems(
-  type: 'electric' | 'etc',
-  items: { category: string; model: string }[]
+  type: InstallationPriceType,
+  items: { category: string; model: string; price?: number }[]
 ): Promise<boolean> {
   const supabase = createClient()
 
@@ -2304,6 +2309,7 @@ export async function saveInstallationPriceItems(
     type,
     category: item.category,
     model: item.model,
+    price: item.price ?? 0,
     sort_order: i,
   }))
 
@@ -2501,6 +2507,243 @@ export async function deletePrepurchaseUsage(
       .from('prepurchase_equipment')
       .update({ used_quantity: Math.max(0, (current.used_quantity || 0) - quantity) })
       .eq('id', prepurchaseId)
+  }
+
+  return true
+}
+
+// ============================================================
+// 📊 정산관리 스냅샷 (Settlement Reports)
+// ============================================================
+
+/** 정산관리 헤더 타입 */
+export interface SettlementReport {
+  id: string
+  year: number
+  month: number
+  installCount: number
+  installSubtotal: number
+  installVat: number
+  installTotal: number
+  asCount: number
+  asTotal: number
+  createdAt: string
+  items: SettlementReportItem[]
+  asItems: SettlementReportAsItem[]
+}
+
+/** 설치정산 항목 타입 */
+export interface SettlementReportItem {
+  id?: string
+  reportId?: string
+  sortOrder: number
+  orderId: string
+  businessName: string
+  affiliate: string
+  workTypes: string
+  orderDate: string
+  installCompleteDate: string
+  subtotalWithProfit: number
+  vat: number
+  grandTotal: number
+  quoteSnapshot: any
+  sitePhotos?: any
+}
+
+/** AS정산 항목 타입 */
+export interface SettlementReportAsItem {
+  id?: string
+  reportId?: string
+  sortOrder: number
+  asRequestId: string
+  affiliate: string
+  businessName: string
+  contactName: string
+  contactPhone: string
+  modelName: string
+  asReason: string
+  receptionDate: string
+  processedDate: string
+  asCost: number
+  receptionFee: number
+  processingDetails: string
+  totalAmount: number
+}
+
+/**
+ * 정산관리 스냅샷 조회
+ */
+export async function fetchSettlementReport(year: number, month: number): Promise<SettlementReport | null> {
+  const supabase = createClient()
+
+  const { data: report, error } = await supabase
+    .from('settlement_reports')
+    .select('*')
+    .eq('year', year)
+    .eq('month', month)
+    .maybeSingle()
+
+  if (error) {
+    console.error('정산관리 조회 실패:', error.message)
+    return null
+  }
+  if (!report) return null
+
+  const { data: items } = await supabase
+    .from('settlement_report_items')
+    .select('*')
+    .eq('report_id', report.id)
+    .order('sort_order')
+
+  const { data: asItems } = await supabase
+    .from('settlement_report_as_items')
+    .select('*')
+    .eq('report_id', report.id)
+    .order('sort_order')
+
+  return {
+    id: report.id,
+    year: report.year,
+    month: report.month,
+    installCount: report.install_count,
+    installSubtotal: report.install_subtotal,
+    installVat: report.install_vat,
+    installTotal: report.install_total,
+    asCount: report.as_count,
+    asTotal: report.as_total,
+    createdAt: report.created_at,
+    items: (items || []).map((item: any) => ({
+      id: item.id,
+      reportId: item.report_id,
+      sortOrder: item.sort_order,
+      orderId: item.order_id,
+      businessName: item.business_name,
+      affiliate: item.affiliate,
+      workTypes: item.work_types,
+      orderDate: item.order_date,
+      installCompleteDate: item.install_complete_date,
+      subtotalWithProfit: item.subtotal_with_profit,
+      vat: item.vat,
+      grandTotal: item.grand_total,
+      quoteSnapshot: item.quote_snapshot,
+      sitePhotos: item.site_photos,
+    })),
+    asItems: (asItems || []).map((item: any) => ({
+      id: item.id,
+      reportId: item.report_id,
+      sortOrder: item.sort_order,
+      asRequestId: item.as_request_id,
+      affiliate: item.affiliate,
+      businessName: item.business_name,
+      contactName: item.contact_name,
+      contactPhone: item.contact_phone,
+      modelName: item.model_name,
+      asReason: item.as_reason,
+      receptionDate: item.reception_date,
+      processedDate: item.processed_date,
+      asCost: item.as_cost,
+      receptionFee: item.reception_fee,
+      processingDetails: item.processing_details,
+      totalAmount: item.total_amount,
+    })),
+  }
+}
+
+/**
+ * 정산관리 스냅샷 저장 (기존 삭제 → 재생성)
+ */
+export async function saveSettlementReport(
+  year: number,
+  month: number,
+  installItems: SettlementReportItem[],
+  asItems: SettlementReportAsItem[],
+  totals: {
+    installCount: number; installSubtotal: number; installVat: number; installTotal: number
+    asCount: number; asTotal: number
+  }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  await supabase
+    .from('settlement_reports')
+    .delete()
+    .eq('year', year)
+    .eq('month', month)
+
+  const { data: report, error: reportError } = await supabase
+    .from('settlement_reports')
+    .insert({
+      year,
+      month,
+      install_count: totals.installCount,
+      install_subtotal: totals.installSubtotal,
+      install_vat: totals.installVat,
+      install_total: totals.installTotal,
+      as_count: totals.asCount,
+      as_total: totals.asTotal,
+    })
+    .select('id')
+    .single()
+
+  if (reportError || !report) {
+    console.error('정산관리 헤더 저장 실패:', reportError?.message)
+    return false
+  }
+
+  if (installItems.length > 0) {
+    const rows = installItems.map((item, i) => ({
+      report_id: report.id,
+      sort_order: i,
+      order_id: item.orderId,
+      business_name: item.businessName,
+      affiliate: item.affiliate,
+      work_types: item.workTypes,
+      order_date: item.orderDate,
+      install_complete_date: item.installCompleteDate,
+      subtotal_with_profit: item.subtotalWithProfit,
+      vat: item.vat,
+      grand_total: item.grandTotal,
+      quote_snapshot: item.quoteSnapshot,
+      site_photos: item.sitePhotos,
+    }))
+
+    const { error: itemsError } = await supabase
+      .from('settlement_report_items')
+      .insert(rows)
+
+    if (itemsError) {
+      console.error('설치정산 항목 저장 실패:', itemsError.message)
+      return false
+    }
+  }
+
+  if (asItems.length > 0) {
+    const asRows = asItems.map((item, i) => ({
+      report_id: report.id,
+      sort_order: i,
+      as_request_id: item.asRequestId,
+      affiliate: item.affiliate,
+      business_name: item.businessName,
+      contact_name: item.contactName,
+      contact_phone: item.contactPhone,
+      model_name: item.modelName,
+      as_reason: item.asReason,
+      reception_date: item.receptionDate,
+      processed_date: item.processedDate,
+      as_cost: item.asCost,
+      reception_fee: item.receptionFee,
+      processing_details: item.processingDetails,
+      total_amount: item.totalAmount,
+    }))
+
+    const { error: asError } = await supabase
+      .from('settlement_report_as_items')
+      .insert(asRows)
+
+    if (asError) {
+      console.error('AS정산 항목 저장 실패:', asError.message)
+      return false
+    }
   }
 
   return true

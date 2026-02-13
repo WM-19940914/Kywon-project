@@ -81,13 +81,12 @@ export default function LoginPage() {
             }}
           >
             <span style={{ color: '#2D2519', fontWeight: 800, fontSize: '2rem', letterSpacing: '-0.5px' }}>M</span>
-            <span style={{ color: '#ffffff', fontStyle: 'italic', fontSize: '2.3rem', fontWeight: 500, lineHeight: 1, margin: '0 -1px' }}>e</span>
+            <span style={{ color: '#ffffff', fontStyle: 'italic', fontSize: '2.3rem', fontWeight: 500, lineHeight: 1, marginLeft: '-1px', marginRight: '4px' }}>e</span>
             <span style={{ color: '#2D2519', fontWeight: 800, fontSize: '2rem', letterSpacing: '-0.5px' }}>LEA</span>
           </div>
           <h1 className="text-[17px] font-bold text-slate-700 tracking-tight">
             교원그룹 에어컨 발주관리 시스템
           </h1>
-          <p className="text-[13px] text-slate-400 mt-1.5">계정 정보를 입력하여 로그인하세요</p>
         </div>
 
         {/* 로그인 폼 */}
@@ -162,11 +161,14 @@ export default function LoginPage() {
             <span style={{ color: '#2D2519', fontWeight: 800, fontSize: '16px', marginLeft: '2px' }}>교원</span>
           </div>
 
-          <p className="text-center text-[11px] text-slate-300 tracking-wide">
-            MeLEA 담당자 김우민 010-5498-6918
-          </p>
         </div>
+
+        {/* 카드 우측 하단 계정문의 */}
+        <p className="text-right text-[9px] text-slate-300/70 mt-3 pr-1">
+          계정문의 : 김우민 (010-5498-6918)
+        </p>
       </div>
+
     </div>
   )
 }

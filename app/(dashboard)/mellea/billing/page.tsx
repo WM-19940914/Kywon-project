@@ -255,7 +255,7 @@ export default function MelleaBillingPage() {
             <SamsungPurchaseTab orders={filteredOrders} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
           {activeTab === 'monthly-summary' && (
-            <MonthlySummaryTab orders={filteredOrders} calcAmounts={calcBillingAmounts} selectedYear={selectedYear} selectedMonth={selectedMonth} />
+            <MonthlySummaryTab orders={filteredOrders} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
         </>
       )}

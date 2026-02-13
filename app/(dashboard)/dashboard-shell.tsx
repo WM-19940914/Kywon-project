@@ -13,7 +13,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ChevronDown, LogOut } from 'lucide-react'
+import { ChevronDown, LogOut, User } from 'lucide-react'
 import { Toaster } from 'sonner'
 
 import {
@@ -29,9 +29,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { menuItems } from '@/lib/menu-items'
+import { menuItems, serverAdminMenuItem } from '@/lib/menu-items'
 import { AlertProvider } from '@/components/ui/custom-alert'
 import { ROLE_MENU_ACCESS, ROLE_LABELS, type UserProfile } from '@/lib/auth/roles'
+import { UserProvider } from '@/lib/auth/user-context'
 import { logout } from '@/app/login/actions'
 
 /** 그룹별 컬러 테마 — 도트 색상, 라벨 텍스트, 액티브 아이템 강조색 */
@@ -68,14 +69,18 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
   })
 
   return (
+    <UserProvider user={user}>
     <AlertProvider>
     <SidebarProvider>
       <Sidebar>
         {/* ── 사이드바 상단 로고 — 그래디언트 박스 + 브랜드 텍스트 ── */}
         <SidebarHeader className="border-b border-sidebar-border px-5 py-4">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 text-white font-bold text-sm shadow-lg shadow-blue-500/25">
-              AC
+            {/* MeLEA 브랜드 로고 */}
+            <div className="flex items-center rounded-lg px-2.5 py-1.5 shadow-lg shadow-orange-500/20" style={{ backgroundColor: '#E09520' }}>
+              <span className="font-extrabold text-sm leading-none" style={{ color: '#2D2519' }}>M</span>
+              <span className="font-bold italic leading-none" style={{ color: '#FFFFFF', fontSize: '0.95rem', paddingRight: '1.5px' }}>e</span>
+              <span className="font-extrabold text-sm leading-none" style={{ color: '#2D2519' }}>LEA</span>
             </div>
             <div>
               <h2 className="font-semibold text-[13px] text-sidebar-foreground leading-tight">에어컨 발주</h2>
@@ -183,12 +188,30 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
           })}
         </SidebarContent>
 
+        {/* ── opendnals123 전용 서버관리 메뉴 ── */}
+        {user.username === 'opendnals123' && (
+          <div className="px-3 pb-1">
+            <div className="mx-1 mb-2 border-t border-sidebar-border/60" />
+            <Link
+              href={serverAdminMenuItem.url}
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] transition-all duration-150 ${
+                pathname === serverAdminMenuItem.url
+                  ? 'bg-white/[0.08] text-sidebar-foreground'
+                  : 'text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-white/[0.04]'
+              }`}
+            >
+              <serverAdminMenuItem.icon className="h-3.5 w-3.5" />
+              <span>{serverAdminMenuItem.title}</span>
+            </Link>
+          </div>
+        )}
+
         {/* ── 사이드바 하단 — 로그인한 사용자 정보 + 로그아웃 ── */}
         <SidebarFooter className="border-t border-sidebar-border px-5 py-3">
           <div className="flex items-center gap-2.5 px-2">
             {/* 사용자 아바타 */}
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-violet-500 text-white text-[10px] font-bold shadow-md shadow-blue-500/20">
-              {user.displayName.slice(0, 2)}
+            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-sidebar-foreground/20 text-sidebar-foreground/70">
+              <User className="h-4.5 w-4.5" />
             </div>
             {/* 이름 + 역할 */}
             <div className="flex-1 min-w-0">
@@ -203,10 +226,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             <form action={logout}>
               <button
                 type="submit"
-                className="p-1.5 rounded-lg hover:bg-white/10 text-sidebar-foreground/40 hover:text-sidebar-foreground/70 transition-colors"
+                className="flex items-center gap-1.5 px-2 py-1.5 rounded-lg hover:bg-white/10 text-sidebar-foreground/40 hover:text-sidebar-foreground/70 transition-colors"
                 title="로그아웃"
               >
-                <LogOut className="h-4 w-4" />
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="text-[11px]">로그아웃</span>
               </button>
             </form>
           </div>
@@ -229,5 +253,6 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
       </div>
     </SidebarProvider>
     </AlertProvider>
+    </UserProvider>
   )
 }

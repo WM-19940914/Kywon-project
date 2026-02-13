@@ -386,7 +386,7 @@ export function StoredEquipmentTable({
                     </td>
 
                     {/* ── 모델명 [INDIVIDUAL] ── */}
-                    <td className="px-2 py-1.5">
+                    <td className="px-2 py-1.5 text-center">
                       <p className="text-xs text-slate-800 font-semibold font-mono truncate" title={item.model || '-'}>{item.model || '-'}</p>
                       <p className="text-[10px] text-slate-400">{item.category}</p>
                     </td>

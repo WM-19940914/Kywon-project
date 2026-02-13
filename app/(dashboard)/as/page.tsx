@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { useAlert } from '@/components/ui/custom-alert'
+import { useUserProfile } from '@/lib/auth/user-context'
 import { Wrench, Plus, CheckCircle2, Search, ChevronLeft, ChevronRight, FileText, Receipt, Coins } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
@@ -44,6 +45,7 @@ const TAB_CONFIG: { key: ASRequestStatus; label: string }[] = [
 
 export default function ASPage() {
   const { showAlert } = useAlert()
+  const userProfile = useUserProfile()
 
   const [requests, setRequests] = useState<ASRequest[]>([])
   const [isLoading, setIsLoading] = useState(true)
@@ -315,10 +317,13 @@ export default function ASPage() {
         </div>
       </div>
 
-      {/* 4탭 (border-b 스타일) */}
+      {/* 탭 (border-b 스타일) — 계열사 역할은 정산대기/정산완료 탭 숨김 */}
       <div className="border-b border-slate-200 mb-6">
         <div className="flex items-center gap-1 -mb-px overflow-x-auto">
-          {TAB_CONFIG.map(tab => (
+          {TAB_CONFIG.filter(tab => {
+            if (userProfile?.role === 'affiliate' && (tab.key === 'completed' || tab.key === 'settled')) return false
+            return true
+          }).map(tab => (
             <button
               key={tab.key}
               className={`pb-3 px-4 text-sm font-medium transition-colors whitespace-nowrap

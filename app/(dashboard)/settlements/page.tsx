@@ -938,11 +938,61 @@ export default function SettlementsPage() {
       totalAmount: req.totalAmount || 0,
     }))
 
+    // 시트3: 견적서 상세 (현장별 장비비+설치비 항목을 행으로 펼침)
+    const quoteColumns: ExcelColumn<Record<string, unknown>>[] = [
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '작업종류', key: 'workTypes', width: 18 },
+      { header: '구분', key: 'itemCategory', width: 10 },
+      { header: '항목명', key: 'itemName', width: 30 },
+      { header: '수량', key: 'quantity', width: 8, numberFormat: '#,##0' },
+      { header: '단가', key: 'unitPrice', width: 14, numberFormat: '#,##0' },
+      { header: '금액', key: 'totalPrice', width: 14, numberFormat: '#,##0' },
+    ]
+    const quoteData: Record<string, unknown>[] = []
+    filteredOrders.forEach(order => {
+      const quote = order.customerQuote
+      if (!quote?.items?.length) return
+      const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType)))).join(', ')
+      const base = {
+        affiliate: order.affiliate || '기타',
+        businessName: order.businessName,
+        workTypes,
+      }
+      // 장비비 항목
+      quote.items
+        .filter(i => i.category === 'equipment')
+        .forEach(item => {
+          quoteData.push({
+            ...base,
+            itemCategory: '장비비',
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+          })
+        })
+      // 설치비 항목
+      quote.items
+        .filter(i => i.category === 'installation')
+        .forEach(item => {
+          quoteData.push({
+            ...base,
+            itemCategory: '설치비',
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unitPrice: item.unitPrice,
+            totalPrice: item.totalPrice,
+          })
+        })
+    })
+
     const monthLabel = `${selectedYear}년${selectedMonth}월`
     exportMultiSheetExcel({
       sheets: [
         { sheetName: '설치정산', data: installData, columns: installColumns },
         { sheetName: 'AS정산', data: asData, columns: asColumns },
+        { sheetName: '견적서 상세', data: quoteData, columns: quoteColumns },
       ],
       fileName: buildExcelFileName('정산관리', monthLabel),
     })
