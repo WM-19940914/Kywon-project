@@ -22,6 +22,8 @@ import { Truck, CalendarDays, ChevronLeft, ChevronRight, Search } from 'lucide-r
 import { Button } from '@/components/ui/button'
 import { useAlert } from '@/components/ui/custom-alert'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportFlattenedToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 
 export default function DeliveryPage() {
   const { showAlert } = useAlert()
@@ -206,6 +208,34 @@ export default function DeliveryPage() {
     ? filteredOrders.slice((deliveredPage - 1) * DELIVERED_PAGE_SIZE, deliveredPage * DELIVERED_PAGE_SIZE)
     : filteredOrders
 
+  /** 엑셀 다운로드 — 발주(부모) + 구성품(자식) 펼쳐서 추출 */
+  const handleExcelExport = () => {
+    const tabLabel = statusFilter === 'pending' ? '발주대기' : statusFilter === 'ordered' ? '진행중' : '배송완료'
+    const parentColumns: ExcelColumn<Order>[] = [
+      { header: '문서번호', key: 'documentNumber', width: 16 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '주소', key: 'address', width: 30 },
+    ]
+    const childColumns: ExcelColumn<EquipmentItem>[] = [
+      { header: '구성품명', key: 'componentName', width: 14 },
+      { header: '모델명', key: 'componentModel', width: 22 },
+      { header: '매입처', key: 'supplier', width: 10 },
+      { header: '주문번호', key: 'orderNumber', width: 16 },
+      { header: '배송일', key: 'confirmedDeliveryDate', width: 12 },
+      { header: '수량', key: 'quantity', width: 6, numberFormat: '#,##0' },
+      { header: '매입단가', key: 'unitPrice', width: 12, numberFormat: '#,##0' },
+    ]
+    exportFlattenedToExcel({
+      parents: filteredOrders,
+      getChildren: (order) => order.equipmentItems || [],
+      parentColumns,
+      childColumns,
+      fileName: buildExcelFileName('배송관리', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   /** 상태 탭 정의 (3단계: 발주대기/진행중/배송완료) */
   const statusTabs: { label: string; value: DeliveryStatus; count: number }[] = [
     { label: '발주대기', value: 'pending', count: statusCounts.pending },
@@ -344,8 +374,11 @@ export default function DeliveryPage() {
             </div>
           )}
 
-          {/* 결과 건수 */}
-          <span className="text-sm text-slate-500 sm:ml-auto whitespace-nowrap">
+          {/* 엑셀 + 결과 건수 */}
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
+          </div>
+          <span className="text-sm text-slate-500 whitespace-nowrap">
             {filteredOrders.length}건 표시
             {searchTerm && (
               <span className="text-blue-600 font-medium ml-1">(검색중)</span>

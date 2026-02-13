@@ -13,6 +13,9 @@
 import React, { useMemo } from 'react'
 import type { Order } from '@/types/order'
 import { TrendingUp, TrendingDown, ShoppingCart, Wrench, CircleDollarSign, AlertTriangle, BarChart3 } from 'lucide-react'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn } from '@/lib/excel-export'
 
 /** calcBillingAmounts 반환 타입 */
 interface BillingAmounts {
@@ -26,9 +29,11 @@ interface BillingAmounts {
 interface MonthlySummaryTabProps {
   orders: Order[]
   calcAmounts: (order: Order) => BillingAmounts
+  selectedYear: number
+  selectedMonth: number
 }
 
-export function MonthlySummaryTab({ orders, calcAmounts }: MonthlySummaryTabProps) {
+export function MonthlySummaryTab({ orders, calcAmounts, selectedYear, selectedMonth }: MonthlySummaryTabProps) {
   // 전체 합계 계산
   const totals = useMemo(() => {
     const result = orders.reduce(
@@ -49,6 +54,36 @@ export function MonthlySummaryTab({ orders, calcAmounts }: MonthlySummaryTabProp
     return { ...result, marginRate }
   }, [orders, calcAmounts])
 
+  /** 엑셀 다운로드 — 정산요약 */
+  const handleExcelExport = () => {
+    // 발주건별 상세 요약을 엑셀로 추출
+    interface SummaryRow { businessName: string; sales: number; samsungPurchase: number; installCost: number; margin: number }
+    const columns: ExcelColumn<SummaryRow>[] = [
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '매출(VAT포함)', key: 'sales', width: 14, numberFormat: '#,##0' },
+      { header: '삼성매입비', key: 'samsungPurchase', width: 14, numberFormat: '#,##0' },
+      { header: '에스원설치비', key: 'installCost', width: 14, numberFormat: '#,##0' },
+      { header: '순이익', key: 'margin', width: 14, numberFormat: '#,##0' },
+    ]
+    const data: SummaryRow[] = orders.map(order => {
+      const amounts = calcAmounts(order)
+      return {
+        businessName: order.businessName,
+        sales: amounts.sales,
+        samsungPurchase: amounts.samsungPurchase,
+        installCost: amounts.installCost,
+        margin: amounts.margin,
+      }
+    })
+    const monthLabel = `${selectedYear}년${selectedMonth}월`
+    exportToExcel({
+      data,
+      columns,
+      fileName: buildExcelFileName('멜레아정산_정산관리', monthLabel),
+      sheetName: '정산관리',
+    })
+  }
+
   if (orders.length === 0) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -62,6 +97,11 @@ export function MonthlySummaryTab({ orders, calcAmounts }: MonthlySummaryTabProp
 
   return (
     <div className="space-y-6">
+      {/* 엑셀 다운로드 */}
+      <div className="flex justify-end">
+        <ExcelExportButton onClick={handleExcelExport} disabled={orders.length === 0} />
+      </div>
+
       {/* 4개 요약 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {/* 매출 합계 */}

@@ -18,8 +18,10 @@ import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ClipboardList, Search, LayoutGrid, List } from 'lucide-react'
+import { ClipboardList, Search } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 import {
   Dialog,
   DialogContent,
@@ -42,6 +44,14 @@ export default function OrdersPage() {
 
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+
+  // URL에 ?action=new 가 있으면 신규 발주 다이얼로그 자동 오픈
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'new') {
+      setIsDialogOpen(true)
+    }
+  }, [])
   const [orders, setOrders] = useState<Order[]>([])
   const [storedEquipment, setStoredEquipment] = useState<StoredEquipment[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -212,6 +222,31 @@ export default function OrdersPage() {
 
   const totalOrders = filteredOrders.length
 
+  /** 엑셀 다운로드 — 필터된 전체 발주를 추출 */
+  const handleExcelExport = () => {
+    const columns: ExcelColumn<Order>[] = [
+      { header: '문서번호', key: 'documentNumber', width: 16 },
+      { header: '진행상태', getValue: (o) => {
+        const s = computeKanbanStatus(o)
+        return s === 'received' ? '접수중' : s === 'in-progress' ? '진행중' : s === 'completed' ? '완료' : s
+      }, width: 10 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '주소', key: 'address', width: 30 },
+      { header: '발주일', key: 'orderDate', width: 12 },
+      { header: '설치요청일', key: 'requestedInstallDate', width: 12 },
+      { header: '작업종류', getValue: (o) => o.items.map(i => i.workType).join(', '), width: 18 },
+      { header: '품목', getValue: (o) => o.items.map(i => i.category).join(', '), width: 18 },
+      { header: '담당자', key: 'contactName', width: 10 },
+      { header: '연락처', key: 'contactPhone', width: 14 },
+    ]
+    exportToExcel({
+      data: filteredOrders,
+      columns,
+      fileName: buildExcelFileName('발주관리'),
+    })
+  }
+
   // 스켈레톤 로딩
   if (isLoading) {
     return (
@@ -286,16 +321,9 @@ export default function OrdersPage() {
             </SelectContent>
           </Select>
 
-          <Button variant="outline" disabled className="gap-1.5 rounded-lg">
-            <LayoutGrid className="h-4 w-4" />
-            칸반뷰
-          </Button>
-          <Button variant="ghost" disabled className="gap-1.5 rounded-lg">
-            <List className="h-4 w-4" />
-            리스트뷰 (준비중)
-          </Button>
-
           <div className="flex-1" />
+
+          <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
 
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>

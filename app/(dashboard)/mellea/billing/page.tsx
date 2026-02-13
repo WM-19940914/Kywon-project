@@ -38,7 +38,7 @@ const TAB_CONFIG: { key: BillingTab; label: string; icon: React.ReactNode }[] = 
  * - 에스원설치비(installCost): 멜레아가 에스원에 지불하는 설치비 (견적서 기준)
  * - 마진(margin): 매출 - 삼성매입비 - 에스원설치비
  */
-export function calcBillingAmounts(order: Order) {
+function calcBillingAmounts(order: Order) {
   // ─── 매출 계산 (교원→멜레아, settlements 페이지의 calcOrderAmounts 로직 복사) ───
   const quote = order.customerQuote
   const equipItems = quote?.items?.filter(i => i.category === 'equipment') || []
@@ -255,7 +255,7 @@ export default function MelleaBillingPage() {
             <SamsungPurchaseTab orders={filteredOrders} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
           {activeTab === 'monthly-summary' && (
-            <MonthlySummaryTab orders={filteredOrders} calcAmounts={calcBillingAmounts} />
+            <MonthlySummaryTab orders={filteredOrders} calcAmounts={calcBillingAmounts} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
         </>
       )}

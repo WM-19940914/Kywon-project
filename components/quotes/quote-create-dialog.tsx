@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Check, Plus, X } from 'lucide-react'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
+import { InstallPriceSheet } from '@/components/quotes/install-price-sheet'
 import { priceTable } from '@/lib/price-table'
 
 interface QuoteCreateDialogProps {
@@ -260,6 +261,32 @@ export function QuoteCreateDialog({
     })
   }
 
+  /** 설치비 단가표에서 항목 선택 시 설치비 행에 자동 입력 */
+  const handleInstallPriceSelect = (item: { product: string; model: string; price: number; unit: string }) => {
+    setInstallationItems(prev => {
+      const newItems = [...prev]
+      // 빈 행 찾기
+      const emptyIndex = newItems.findIndex(i => !i.product.trim())
+
+      const rowData = {
+        product: item.product,
+        model: item.model === '-' ? '' : item.model,
+        quantity: 1,
+        unit: item.unit,
+        price: item.price,
+        amount: item.price,
+        notes: '',
+      }
+
+      if (emptyIndex !== -1) {
+        newItems[emptyIndex] = { ...newItems[emptyIndex], ...rowData }
+      } else {
+        newItems.push({ id: `${Date.now()}-${Math.random()}`, ...rowData })
+      }
+      return newItems
+    })
+  }
+
   /**
    * 견적서 저장 핸들러
    *
@@ -487,14 +514,15 @@ export function QuoteCreateDialog({
     </tr>
   )
 
-  /** 테이블 컴포넌트 (showPriceTable: 장비 섹션에서만 단가표 버튼 표시, showRounding: 설치비 단위절사) */
+  /** 테이블 컴포넌트 (showPriceTable: 장비 단가표, showInstallPriceTable: 설치비 단가표, showRounding: 단위절사) */
   const renderTable = (
     title: string,
     color: string,
     items: QuoteLineItem[],
     setItems: React.Dispatch<React.SetStateAction<QuoteLineItem[]>>,
     showPriceTable = false,
-    showRounding = false
+    showRounding = false,
+    showInstallPriceTable = false
   ) => (
     <div>
       {/* 섹션 헤더 */}
@@ -507,9 +535,13 @@ export function QuoteCreateDialog({
           </span>
         </div>
         <div className="flex items-center gap-2">
-          {/* 장비 섹션에서만 단가표 버튼 표시 */}
+          {/* 장비 섹션: 장비 단가표 */}
           {showPriceTable && (
             <PriceTableSheet onSelect={handlePriceTableSelect} />
+          )}
+          {/* 설치비 섹션: 설치비 단가표 */}
+          {showInstallPriceTable && (
+            <InstallPriceSheet onSelect={handleInstallPriceSelect} />
           )}
           <button
             type="button"
@@ -667,8 +699,8 @@ export function QuoteCreateDialog({
           {/* 장비 테이블 (단가표 버튼 포함) */}
           {renderTable('장비', 'bg-blue-500', equipmentItems, setEquipmentItems, true)}
 
-          {/* 설치비 테이블 (단위절사 포함) */}
-          {renderTable('설치비', 'bg-orange-500', installationItems, setInstallationItems, false, true)}
+          {/* 설치비 테이블 (단위절사 + 설치비 단가표 포함) */}
+          {renderTable('설치비', 'bg-orange-500', installationItems, setInstallationItems, false, true, true)}
 
           {/* 총 견적 금액 */}
           <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">

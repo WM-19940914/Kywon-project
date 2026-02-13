@@ -18,6 +18,9 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Package, CheckCircle2, Box, ChevronDown, Ban, ArrowRight } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn } from '@/lib/excel-export'
 
 /** 창고 재고 아이템 (테이블 한 행) */
 interface WarehouseStockItem {
@@ -208,6 +211,34 @@ export function InventoryWarehouseView({
     return wh ? formatWarehouseLabel(wh) : '알 수 없음'
   }
 
+  /** 엑셀 다운로드 — 현재 필터된 재고 목록 */
+  const handleExcelExport = () => {
+    const columns: ExcelColumn<WarehouseStockItem>[] = [
+      { header: '재고상태', getValue: r => WAREHOUSE_STOCK_STATUS_LABELS[r.stockStatus], width: 12 },
+      { header: '입고일', getValue: r => r.confirmedDeliveryDate || '', width: 12 },
+      { header: '창고', getValue: r => getWarehouseLabel(r.warehouseId), width: 18 },
+      { header: '현장명', getValue: r => r.businessName, width: 18 },
+      { header: '구성품명', getValue: r => r.componentName, width: 14 },
+      { header: '모델명', getValue: r => r.componentModel || '', width: 18 },
+      { header: '수량', getValue: r => r.quantity, width: 6 },
+      { header: '설치완료일', getValue: r => r.installCompleteDate || '', width: 12 },
+    ]
+    // 유휴재고 탭일 때 추가 컬럼
+    if (statusFilter === 'idle') {
+      columns.push(
+        { header: '취소사유', getValue: r => cleanCancelReason(r.cancelReason), width: 18 },
+        { header: '사용내역', getValue: r => r.idleEventStatus === 'resolved' && r.usedByBusinessName ? `→ ${r.usedByBusinessName}` : '', width: 18 },
+      )
+    }
+    const filterLabel = statusFilter ? WAREHOUSE_STOCK_STATUS_LABELS[statusFilter] : '전체'
+    exportToExcel({
+      data: filteredItems,
+      columns,
+      fileName: buildExcelFileName('재고관리', filterLabel),
+      sheetName: '재고현황',
+    })
+  }
+
   /** 드롭다운에 사용할 창고별 재고 건수 */
   const warehouseCountMap = useMemo(() => {
     const map: Record<string, number> = {}
@@ -286,8 +317,9 @@ export function InventoryWarehouseView({
         </div>
       </div>
 
-      {/* 현재 필터 안내 */}
-      {(selectedWarehouseId || statusFilter) && (
+      {/* 현재 필터 안내 + 엑셀 버튼 */}
+      <div className="flex items-center justify-between">
+        {(selectedWarehouseId || statusFilter) ? (
         <div className="flex items-center gap-2 text-sm text-gray-500">
           <span>필터:</span>
           {selectedWarehouseId && (
@@ -307,7 +339,9 @@ export function InventoryWarehouseView({
             초기화
           </button>
         </div>
-      )}
+        ) : <div />}
+        <ExcelExportButton onClick={handleExcelExport} disabled={filteredItems.length === 0} />
+      </div>
 
       {/* ===== 유휴재고 전용 테이블 (statusFilter === 'idle') ===== */}
       {statusFilter === 'idle' && (

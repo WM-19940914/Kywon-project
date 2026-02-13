@@ -152,7 +152,7 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {showWarning && (
-                        <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" title="삼성매입비 미입력 — 마진이 실제보다 높게 표시됩니다" />
+                        <span title="삼성매입비 미입력 — 마진이 실제보다 높게 표시됩니다"><AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" /></span>
                       )}
                       <p className={`text-sm font-bold tabular-nums ${amounts.margin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
                         {amounts.margin.toLocaleString('ko-KR')}

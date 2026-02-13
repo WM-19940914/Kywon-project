@@ -28,7 +28,8 @@ export interface ComponentInfo {
 /** 장비 행 데이터 (폼 테이블에 추가될 행) */
 export interface EquipmentRow {
   category: string        // 품목 (스탠드에어컨/벽걸이에어컨)
-  model: string           // 모델명 (SET이면 SET모델명, 부품이면 구성품 모델명)
+  equipmentUnitType?: string // 장비 유형 (indoor/outdoor 등)
+  model: string           // 모델명 (구성품 모델명)
   size: string            // 평형
   manufacturer: string    // 제조사 (기본: 삼성)
   manufacturingDate: string // 제조년월
@@ -86,22 +87,24 @@ export function StoredEquipmentPriceSheet({
 
   const grouped = groupByCategory(filteredTable)
 
-  /** SET 모델 선택 → SET 모델명 1행 + 구성품 정보 포함 */
+  /** SET 모델 선택 → 구성품(실내기/실외기)별 개별 행 추가 */
   const handleSetSelect = (row: PriceTableRow) => {
-    const comps: ComponentInfo[] = row.components
-      .filter(c => c.type === '실내기' || c.type === '실외기')
-      .map(c => ({ type: c.type, model: c.model }))
+    const category = row.category.includes('벽걸이') ? '벽걸이에어컨' : '스탠드에어컨'
 
-    const equipRow: EquipmentRow = {
-      category: row.category.includes('벽걸이') ? '벽걸이에어컨' : '스탠드에어컨',
-      model: row.model,       // SET 모델명
-      size: row.size,
-      manufacturer: '삼성',
-      manufacturingDate: '',
-      quantity: 1,
-      components: comps,      // 구성품 정보 (표시용)
-    }
-    onAddRows([equipRow])
+    // 실내기/실외기 각각 개별 행으로 생성
+    const equipRows: EquipmentRow[] = row.components
+      .filter(c => c.type === '실내기' || c.type === '실외기')
+      .map(c => ({
+        category,
+        equipmentUnitType: c.type === '실내기' ? 'indoor' : 'outdoor',
+        model: c.model,       // 구성품 모델명 (실내기/실외기 각각)
+        size: row.size,
+        manufacturer: '삼성',
+        manufacturingDate: '',
+        quantity: c.quantity,
+      }))
+
+    onAddRows(equipRows)
     onOpenChange(false)
     setSearchTerm('')
   }
@@ -110,6 +113,7 @@ export function StoredEquipmentPriceSheet({
   const handlePartSelect = (comp: ComponentDetail, row: PriceTableRow) => {
     const equipRow: EquipmentRow = {
       category: componentTypeToCategory(comp.type, row.category),
+      equipmentUnitType: comp.type === '실내기' ? 'indoor' : comp.type === '실외기' ? 'outdoor' : 'etc',
       model: comp.model,
       size: row.size,
       manufacturer: '삼성',
@@ -139,7 +143,7 @@ export function StoredEquipmentPriceSheet({
             <p className="text-sm text-gray-500 mt-1">
               {partMode
                 ? '개별 부품(실내기 또는 실외기)을 선택하세요'
-                : 'SET 모델을 클릭하면 실내기 + 실외기가 자동 추가됩니다'}
+                : 'SET 모델을 클릭하면 실내기·실외기가 각각 개별 행으로 추가됩니다'}
             </p>
           </SheetHeader>
 

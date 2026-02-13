@@ -11,7 +11,7 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import type { Order, EquipmentItem } from '@/types/order'
+import type { Order } from '@/types/order'
 import { ITEM_DELIVERY_STATUS_LABELS, ITEM_DELIVERY_STATUS_COLORS } from '@/types/order'
 import { computeItemDeliveryStatus, formatShortDate, getWarehouseDetail, setWarehouseCache } from '@/lib/delivery-utils'
 import {
@@ -26,9 +26,11 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
   ShoppingCart, ChevronDown, ChevronRight, MapPin, CalendarDays,
-  Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X,
+  Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, Download,
   Warehouse as WarehouseIcon,
 } from 'lucide-react'
+import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn } from '@/lib/excel-export'
 
 // ─── SET 모델 그룹 컬러바 ───
 const SET_GROUP_COLORS = [
@@ -257,6 +259,32 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     }
   }
 
+  /** 엑셀 다운로드 — 매입내역 전체 */
+  const handleExportExcel = () => {
+    const columns: ExcelColumn<PurchaseReportItem>[] = [
+      { header: '사업자명', getValue: r => r.businessName, width: 18 },
+      { header: '계열사', getValue: r => r.affiliate, width: 12 },
+      { header: '현장주소', getValue: r => r.siteAddress, width: 25 },
+      { header: '발주일', getValue: r => r.orderDateDisplay, width: 12 },
+      { header: '매입처', getValue: r => r.supplier, width: 12 },
+      { header: '구성품명', getValue: r => r.componentName, width: 14 },
+      { header: '모델명', getValue: r => r.componentModel, width: 18 },
+      { header: '수량', getValue: r => r.quantity, width: 6 },
+      { header: '매입단가', getValue: r => r.unitPrice, width: 12, numberFormat: '#,##0' },
+      { header: '매입금액', getValue: r => r.totalPrice, width: 12, numberFormat: '#,##0' },
+      { header: '주문번호', getValue: r => r.orderNumber, width: 14 },
+      { header: '배송확정일', getValue: r => r.confirmedDeliveryDate, width: 12 },
+      { header: '창고명', getValue: r => r.warehouseName, width: 16 },
+    ]
+    const monthLabel = `${selectedYear}년${selectedMonth}월`
+    exportToExcel({
+      data: displayItems,
+      columns,
+      fileName: buildExcelFileName('멜레아정산_매입내역', monthLabel),
+      sheetName: '매입내역',
+    })
+  }
+
   // ─── 표시 데이터 ───
   const displayItems = isEditing ? editItems : (savedReport?.items || [])
 
@@ -405,6 +433,9 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
               </Button>
               <Button variant="outline" size="sm" onClick={() => setShowRewriteConfirm(true)} className="gap-1.5 text-slate-600">
                 <RefreshCw className="h-3.5 w-3.5" />재작성
+              </Button>
+              <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
+                <Download className="h-3.5 w-3.5" />엑셀
               </Button>
             </>
           )}

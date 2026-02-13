@@ -28,6 +28,8 @@ import {
 } from '@/components/ui/select'
 import { Archive, Search } from 'lucide-react'
 import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS } from '@/types/order'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 
 export default function KyowonStoredEquipmentPage() {
   // ─── 데이터 로드 ───
@@ -90,6 +92,37 @@ export default function KyowonStoredEquipmentPage() {
     return result
   }, [items, activeTab, warehouseFilter, affiliateFilter, categoryFilter, searchTerm])
 
+  /** 엑셀 다운로드 */
+  const handleExcelExport = () => {
+    const tabLabel = activeTab === 'stored' ? '보관중' : '출고완료'
+    const warehouseNameMap = Object.fromEntries(warehouses.map(w => [w.id, w.name]))
+    const baseColumns: ExcelColumn<StoredEquipment>[] = [
+      { header: '현장명', key: 'siteName', width: 18 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '품목', key: 'category', width: 14 },
+      { header: '모델명', key: 'model', width: 22 },
+      { header: '평형', key: 'size', width: 8 },
+      { header: '수량', key: 'quantity', width: 6, numberFormat: '#,##0' },
+      { header: '제조사', key: 'manufacturer', width: 10 },
+      { header: '제조년월', key: 'manufacturingDate', width: 10 },
+      { header: '창고', getValue: (i) => warehouseNameMap[i.warehouseId || ''] || '', width: 12 },
+      { header: '보관시작일', key: 'storageStartDate', width: 12 },
+      { header: '메모', key: 'notes', width: 20 },
+    ]
+    const releaseColumns: ExcelColumn<StoredEquipment>[] = [
+      { header: '출고일', key: 'releaseDate', width: 12 },
+      { header: '출고유형', getValue: (i) => i.releaseType === 'reinstall' ? '재설치' : i.releaseType === 'dispose' ? '폐기' : '', width: 10 },
+      { header: '출고목적지', key: 'releaseDestination', width: 20 },
+    ]
+    const columns = activeTab === 'released' ? [...baseColumns, ...releaseColumns] : baseColumns
+    exportToExcel({
+      data: filteredItems,
+      columns,
+      fileName: buildExcelFileName('철거보관장비조회', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   // 로딩 중
   if (isLoading) {
     return (
@@ -117,10 +150,11 @@ export default function KyowonStoredEquipmentPage() {
         <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
           <Archive className="h-6 w-6" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">철거보관 장비 조회</h1>
           <p className="text-muted-foreground mt-0.5">현재 보관 중인 장비를 조회합니다 (읽기 전용)</p>
         </div>
+        <ExcelExportButton onClick={handleExcelExport} disabled={filteredItems.length === 0} />
       </div>
 
       {/* 탭 (border-b 스타일) */}

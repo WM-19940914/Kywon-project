@@ -23,6 +23,8 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Receipt, ArrowRight, Undo2, CheckCircle2, Clock, CircleDot, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, Pencil, StickyNote, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw } from 'lucide-react'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 import type { LucideIcon } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { formatShortDate } from '@/lib/delivery-utils'
@@ -609,6 +611,41 @@ export default function S1SettlementPage() {
     }
   }
 
+  /** 설치비 소계 계산 헬퍼 */
+  const calcInstallSubtotal = (order: Order): number => {
+    const items = order.customerQuote?.items?.filter(i => i.category === 'installation') || []
+    const notesStr = order.customerQuote?.notes || ''
+    const roundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
+    const rounding = roundMatch ? parseInt(roundMatch[1].replace(/,/g, '')) : 0
+    return items.reduce((sum, i) => sum + i.totalPrice, 0) - rounding
+  }
+
+  /** 엑셀 다운로드 */
+  const handleExcelExport = () => {
+    const tabLabel = TAB_CONFIG.find(t => t.key === activeTab)?.label || activeTab
+    // 정산완료 탭은 모든 월별 그룹 합침
+    const dataToExport = activeTab === 'settled'
+      ? settledByMonth.flatMap(([, orders]) => orders)
+      : filteredOrders
+    const columns: ExcelColumn<Order>[] = [
+      { header: '문서번호', key: 'documentNumber', width: 16 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '주소', key: 'address', width: 30 },
+      { header: '작업종류', getValue: (o) => o.items.map(i => i.workType).join(', '), width: 18 },
+      { header: '설치완료일', key: 'installCompleteDate', width: 12 },
+      { header: '설치비소계', getValue: (o) => calcInstallSubtotal(o) || null, width: 14, numberFormat: '#,##0' },
+      { header: '정산상태', getValue: (o) => S1_SETTLEMENT_STATUS_LABELS[o.s1SettlementStatus || 'unsettled'], width: 12 },
+      { header: '정산월', key: 's1SettlementMonth', width: 10 },
+    ]
+    exportToExcel({
+      data: dataToExport,
+      columns,
+      fileName: buildExcelFileName('에스원정산', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   return (
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
@@ -616,10 +653,11 @@ export default function S1SettlementPage() {
         <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
           <Receipt className="h-6 w-6" />
         </div>
-        <div>
+        <div className="flex-1">
           <h1 className="text-2xl font-bold tracking-tight">에스원 정산관리</h1>
           <p className="text-muted-foreground mt-0.5">멜레아와 에스원(설치팀) 간 월별 설치비 정산을 관리합니다.</p>
         </div>
+        <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0 && activeTab !== 'settled'} />
       </div>
 
       {/* 탭 (border-b 스타일) */}

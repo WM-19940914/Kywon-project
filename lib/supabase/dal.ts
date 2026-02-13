@@ -15,6 +15,7 @@ import { toCamelCase, toSnakeCase } from '@/lib/supabase/transforms'
 import type { Order, OrderItem, EquipmentItem, InstallationCostItem, CustomerQuote, QuoteItem, S1SettlementStatus, ReviewStatus, InventoryEvent, InventoryEventType, StoredEquipment, StoredEquipmentStatus } from '@/types/order'
 import type { Warehouse } from '@/types/warehouse'
 import type { ASRequest, ASRequestStatus } from '@/types/as'
+import type { PrepurchaseEquipment, PrepurchaseUsage } from '@/types/prepurchase'
 
 // ============================================================
 // 🏠 창고 (Warehouses)
@@ -1192,6 +1193,52 @@ export async function deletePriceTableSet(model: string): Promise<boolean> {
   return true
 }
 
+/**
+ * 구성품 일괄 저장 (기존 삭제 후 재삽입)
+ * @param setModel - SET 모델명
+ * @param components - 구성품 배열
+ */
+export async function savePriceTableComponents(
+  setModel: string,
+  components: Array<{ type: string; model: string; unitPrice: number; salePrice: number; quantity: number }>
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 구성품 삭제
+  const { error: deleteError } = await supabase
+    .from('price_table_components')
+    .delete()
+    .eq('set_model', setModel)
+
+  if (deleteError) {
+    console.error('구성품 삭제 실패:', deleteError.message)
+    return false
+  }
+
+  // 새 구성품 삽입
+  if (components.length > 0) {
+    const rows = components.map(c => ({
+      set_model: setModel,
+      model: c.model,
+      type: c.type,
+      unit_price: c.unitPrice,
+      sale_price: c.salePrice,
+      quantity: c.quantity,
+    }))
+
+    const { error: insertError } = await supabase
+      .from('price_table_components')
+      .insert(rows)
+
+    if (insertError) {
+      console.error('구성품 저장 실패:', insertError.message)
+      return false
+    }
+  }
+
+  return true
+}
+
 // ============================================================
 // 📦 철거보관 장비 (Stored Equipment)
 // ============================================================
@@ -2187,6 +2234,273 @@ export async function updatePurchaseReportWithItems(
   if (updateError) {
     console.error('매입내역 합계 업데이트 실패:', updateError.message)
     return false
+  }
+
+  return true
+}
+
+// ============================================================
+// ⚡ 설치비 단가표 항목 (Installation Price Items)
+// ============================================================
+
+/** 설치비 단가표 항목 타입 */
+export interface InstallationPriceItem {
+  id?: string
+  type: 'electric' | 'etc'
+  category: string
+  model: string
+  sortOrder: number
+}
+
+/**
+ * 설치비 단가표 항목 전체 조회 (타입별)
+ */
+export async function fetchInstallationPriceItems(type: 'electric' | 'etc'): Promise<InstallationPriceItem[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('installation_price_items')
+    .select('*')
+    .eq('type', type)
+    .order('sort_order', { ascending: true })
+
+  if (error) {
+    console.error('설치비 단가표 조회 실패:', error.message)
+    return []
+  }
+
+  return (data || []).map(row => ({
+    id: row.id,
+    type: row.type,
+    category: row.category,
+    model: row.model,
+    sortOrder: row.sort_order,
+  }))
+}
+
+/**
+ * 설치비 단가표 항목 일괄 저장 (삭제 후 재삽입)
+ */
+export async function saveInstallationPriceItems(
+  type: 'electric' | 'etc',
+  items: { category: string; model: string }[]
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 기존 항목 삭제
+  const { error: delError } = await supabase
+    .from('installation_price_items')
+    .delete()
+    .eq('type', type)
+
+  if (delError) {
+    console.error('설치비 단가표 삭제 실패:', delError.message)
+    return false
+  }
+
+  // 새 항목 삽입
+  if (items.length === 0) return true
+
+  const rows = items.map((item, i) => ({
+    type,
+    category: item.category,
+    model: item.model,
+    sort_order: i,
+  }))
+
+  const { error: insertError } = await supabase
+    .from('installation_price_items')
+    .insert(rows)
+
+  if (insertError) {
+    console.error('설치비 단가표 저장 실패:', insertError.message)
+    return false
+  }
+
+  return true
+}
+
+// ============================================================
+// 🛒 선구매 장비 (Prepurchase Equipment)
+// ============================================================
+
+/**
+ * 선구매 장비 목록 조회
+ * @returns 선구매 장비 배열 (최신순)
+ */
+export async function fetchPrepurchaseEquipment(): Promise<PrepurchaseEquipment[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('prepurchase_equipment')
+    .select('*')
+    .order('created_at', { ascending: false })
+
+  if (error) {
+    console.error('선구매 장비 조회 실패:', error.message)
+    return []
+  }
+  return toCamelCase<PrepurchaseEquipment[]>(data)
+}
+
+/**
+ * 선구매 장비 등록
+ */
+export async function createPrepurchaseEquipment(
+  item: Omit<PrepurchaseEquipment, 'id' | 'usedQuantity' | 'createdAt' | 'updatedAt'>
+): Promise<PrepurchaseEquipment | null> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('prepurchase_equipment')
+    .insert(toSnakeCase(item))
+    .select()
+    .single()
+
+  if (error) {
+    console.error('선구매 장비 등록 실패:', error.message)
+    return null
+  }
+  return toCamelCase<PrepurchaseEquipment>(data)
+}
+
+/**
+ * 선구매 장비 수정
+ */
+export async function updatePrepurchaseEquipment(
+  id: string,
+  updates: Partial<PrepurchaseEquipment>
+): Promise<PrepurchaseEquipment | null> {
+  const supabase = createClient()
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { id: _id, createdAt: _ca, updatedAt: _ua, ...rest } = updates as any
+  const { data, error } = await supabase
+    .from('prepurchase_equipment')
+    .update(toSnakeCase(rest))
+    .eq('id', id)
+    .select()
+    .single()
+
+  if (error) {
+    console.error('선구매 장비 수정 실패:', error.message)
+    return null
+  }
+  return toCamelCase<PrepurchaseEquipment>(data)
+}
+
+/**
+ * 선구매 장비 삭제
+ */
+export async function deletePrepurchaseEquipment(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('prepurchase_equipment')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('선구매 장비 삭제 실패:', error.message)
+    return false
+  }
+  return true
+}
+
+// ============================================================
+// 📋 선구매 사용 기록 (Prepurchase Usage)
+// ============================================================
+
+/**
+ * 특정 선구매 건의 사용 기록 조회
+ */
+export async function fetchPrepurchaseUsage(prepurchaseId: string): Promise<PrepurchaseUsage[]> {
+  const supabase = createClient()
+  const { data, error } = await supabase
+    .from('prepurchase_usage')
+    .select('*')
+    .eq('prepurchase_id', prepurchaseId)
+    .order('used_date', { ascending: false })
+
+  if (error) {
+    console.error('사용 기록 조회 실패:', error.message)
+    return []
+  }
+  return toCamelCase<PrepurchaseUsage[]>(data)
+}
+
+/**
+ * 사용 기록 추가 + 선구매 장비의 usedQuantity 자동 갱신
+ */
+export async function createPrepurchaseUsage(
+  usage: Omit<PrepurchaseUsage, 'id' | 'createdAt'>
+): Promise<PrepurchaseUsage | null> {
+  const supabase = createClient()
+
+  // 1) 사용 기록 INSERT
+  const { data, error } = await supabase
+    .from('prepurchase_usage')
+    .insert(toSnakeCase(usage))
+    .select()
+    .single()
+
+  if (error) {
+    console.error('사용 기록 등록 실패:', error.message)
+    return null
+  }
+
+  // 2) 선구매 장비의 used_quantity 갱신 (기존값 + 이번 사용량)
+  const { error: updateError } = await supabase.rpc('increment_used_quantity', {
+    row_id: usage.prepurchaseId,
+    amount: usage.usedQuantity,
+  })
+
+  // RPC가 없으면 직접 업데이트 (fallback)
+  if (updateError) {
+    const { data: current } = await supabase
+      .from('prepurchase_equipment')
+      .select('used_quantity')
+      .eq('id', usage.prepurchaseId)
+      .single()
+
+    if (current) {
+      await supabase
+        .from('prepurchase_equipment')
+        .update({ used_quantity: (current.used_quantity || 0) + usage.usedQuantity })
+        .eq('id', usage.prepurchaseId)
+    }
+  }
+
+  return toCamelCase<PrepurchaseUsage>(data)
+}
+
+/**
+ * 사용 기록 삭제 + usedQuantity 차감
+ */
+export async function deletePrepurchaseUsage(
+  usageId: string,
+  prepurchaseId: string,
+  quantity: number
+): Promise<boolean> {
+  const supabase = createClient()
+
+  const { error } = await supabase
+    .from('prepurchase_usage')
+    .delete()
+    .eq('id', usageId)
+
+  if (error) {
+    console.error('사용 기록 삭제 실패:', error.message)
+    return false
+  }
+
+  // usedQuantity 차감
+  const { data: current } = await supabase
+    .from('prepurchase_equipment')
+    .select('used_quantity')
+    .eq('id', prepurchaseId)
+    .single()
+
+  if (current) {
+    await supabase
+      .from('prepurchase_equipment')
+      .update({ used_quantity: Math.max(0, (current.used_quantity || 0) - quantity) })
+      .eq('id', prepurchaseId)
   }
 
   return true

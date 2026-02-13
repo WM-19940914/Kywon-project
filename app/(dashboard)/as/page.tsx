@@ -31,6 +31,8 @@ import {
 } from '@/components/ui/select'
 import { useAlert } from '@/components/ui/custom-alert'
 import { Wrench, Plus, CheckCircle2, Search, ChevronLeft, ChevronRight, FileText, Receipt, Coins } from 'lucide-react'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 
 /** 탭 설정 */
 const TAB_CONFIG: { key: ASRequestStatus; label: string }[] = [
@@ -97,6 +99,14 @@ export default function ASPage() {
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<ASRequest | null>(null)
+
+  // URL에 ?action=new 가 있으면 AS 접수 다이얼로그 자동 오픈
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('action') === 'new') {
+      setFormDialogOpen(true)
+    }
+  }, [])
 
   const handleTabChange = useCallback((tab: ASRequestStatus) => {
     setActiveTab(tab)
@@ -243,6 +253,32 @@ export default function ASPage() {
     }
   }, [])
 
+  /** 엑셀 다운로드 */
+  const handleExcelExport = () => {
+    const tabLabel = TAB_CONFIG.find(t => t.key === activeTab)?.label || activeTab
+    const columns: ExcelColumn<ASRequest>[] = [
+      { header: '접수일', key: 'receptionDate', width: 12 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '주소', getValue: (r) => [r.address, r.detailAddress].filter(Boolean).join(' '), width: 30 },
+      { header: '담당자', key: 'contactName', width: 10 },
+      { header: '모델명', key: 'modelName', width: 20 },
+      { header: 'AS사유', key: 'asReason', width: 20 },
+      { header: '방문예정일', key: 'visitDate', width: 12 },
+      { header: '처리일', key: 'processedDate', width: 12 },
+      { header: 'AS비용', key: 'asCost', width: 12, numberFormat: '#,##0' },
+      { header: '접수비', key: 'receptionFee', width: 12, numberFormat: '#,##0' },
+      { header: '합계', key: 'totalAmount', width: 12, numberFormat: '#,##0' },
+      { header: '정산월', key: 'settlementMonth', width: 10 },
+    ]
+    exportToExcel({
+      data: filteredRequests,
+      columns,
+      fileName: buildExcelFileName('AS관리', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   // 스켈레톤 로딩
   if (isLoading) {
     return (
@@ -378,7 +414,8 @@ export default function ASPage() {
             </Button>
           )}
 
-          <div className="ml-auto">
+          <div className="ml-auto flex items-center gap-2">
+            <ExcelExportButton onClick={handleExcelExport} disabled={filteredRequests.length === 0} />
             <Button onClick={() => setFormDialogOpen(true)} className="rounded-lg">
               <Plus className="h-4 w-4 mr-1" />
               AS 접수

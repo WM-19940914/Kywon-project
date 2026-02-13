@@ -251,7 +251,7 @@ export function StoredEquipmentFormDialog({
     const newRows: EquipmentRowState[] = rows.map(r => ({
       id: crypto.randomUUID(),
       category: r.category,
-      equipmentUnitType: '',
+      equipmentUnitType: r.equipmentUnitType || '',
       model: r.model,
       size: r.size,
       manufacturer: r.manufacturer,

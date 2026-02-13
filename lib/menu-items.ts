@@ -19,6 +19,7 @@ import {
   Archive,        // 철거 보관
   CalendarCheck,  // 설치일정 관리
   Receipt,        // 에스원 정산관리
+  ShoppingCart,   // 선구매 장비
   Settings        // 설정
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
@@ -73,6 +74,11 @@ export const menuItems: MenuGroup[] = [
         url: '/kyowon/stored-equipment',
         icon: Archive,
       },
+      {
+        title: '단가표',
+        url: '/kyowon/price-table',
+        icon: FileText,
+      },
     ],
   },
 
@@ -84,6 +90,11 @@ export const menuItems: MenuGroup[] = [
         title: '정산 관리',
         url: '/settlements',
         icon: CreditCard,
+      },
+      {
+        title: '선구매 장비',
+        url: '/kyowon/prepurchase',
+        icon: ShoppingCart,
       },
     ],
   },
@@ -113,21 +124,9 @@ export const menuItems: MenuGroup[] = [
         icon: Warehouse,
       },
       {
-        title: '철거 보관',
+        title: '철거 보관 관리',
         url: '/mellea/stored-equipment',
         icon: Archive,
-      },
-    ],
-  },
-
-  // ── 공통 정보 ──
-  {
-    title: '공통 정보',
-    items: [
-      {
-        title: '연간 단가표',
-        url: '/price-table',
-        icon: FileText,
       },
       {
         title: '전국 설치팀 창고',
@@ -140,6 +139,11 @@ export const menuItems: MenuGroup[] = [
   {
     title: '멜레아 전용',
     items: [
+      {
+        title: '연간 단가표',
+        url: '/price-table',
+        icon: FileText,
+      },
       {
         title: '멜레아 정산',
         url: '/mellea/billing',

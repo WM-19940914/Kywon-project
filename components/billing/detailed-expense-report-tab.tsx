@@ -20,9 +20,11 @@ import {
   saveExpenseReport,
   updateExpenseReportWithItems,
 } from '@/lib/supabase/dal'
-import type { PriceTableRow, ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
+import type { ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
 import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn } from '@/lib/excel-export'
 
 interface DetailedExpenseReportTabProps {
   orders: Order[]
@@ -196,7 +198,7 @@ export function DetailedExpenseReportTab({
                 sortOrder: sortOrder++,
                 businessName: order.businessName, affiliate: order.affiliate,
                 supplier: '삼성전자', itemType: '신규설치 장비',
-                specification: eqItem.componentName || eqItem.partModel || '',
+                specification: eqItem.componentName || eqItem.componentModel || '',
                 quantity: eqItem.quantity || 1, listPrice: 0, discountRate: 0, optionItem: '',
                 purchaseUnitPrice: eqItem.unitPrice || 0, purchaseTotalPrice: eqItem.totalPrice || 0,
                 mgRate: 0, salesUnitPrice: 0, salesTotalPrice: 0,
@@ -335,8 +337,33 @@ export function DetailedExpenseReportTab({
     }
   }
 
+  /** 엑셀 다운로드 — 지출결의서 전체 항목 */
   const handleExportExcel = () => {
-    alert('엑셀 다운로드 기능은 준비 중입니다.')
+    const columns: ExcelColumn<ExpenseReportItem>[] = [
+      { header: '사업자명', getValue: r => r.businessName, width: 18 },
+      { header: '계열사', getValue: r => r.affiliate || '', width: 12 },
+      { header: '매입처', getValue: r => r.supplier, width: 12 },
+      { header: '품목', getValue: r => r.itemType, width: 12 },
+      { header: '규격', getValue: r => r.specification, width: 18 },
+      { header: '수량', getValue: r => r.quantity, width: 6 },
+      { header: '반출가', getValue: r => r.listPrice, width: 12, numberFormat: '#,##0' },
+      { header: 'DC율', getValue: r => r.discountRate > 0 ? Math.round(r.discountRate * 100) : 0, width: 7 },
+      { header: '매입단가', getValue: r => r.purchaseUnitPrice, width: 12, numberFormat: '#,##0' },
+      { header: '매입금액', getValue: r => r.purchaseTotalPrice, width: 12, numberFormat: '#,##0' },
+      { header: 'MG율', getValue: r => parseFloat((r.mgRate * 100).toFixed(2)), width: 8 },
+      { header: '제안단가', getValue: r => r.salesUnitPrice, width: 12, numberFormat: '#,##0' },
+      { header: '제안금액', getValue: r => r.salesTotalPrice, width: 12, numberFormat: '#,##0' },
+      { header: '프론트이윤', getValue: r => r.frontMarginTotal, width: 12, numberFormat: '#,##0' },
+      { header: '장려금', getValue: r => r.incentiveGradeReb, width: 10, numberFormat: '#,##0' },
+      { header: '전체이윤', getValue: r => r.totalMargin, width: 12, numberFormat: '#,##0' },
+    ]
+    const monthLabel = `${selectedYear}년${selectedMonth}월`
+    exportToExcel({
+      data: displayItems,
+      columns,
+      fileName: buildExcelFileName('멜레아정산_지출결의서', monthLabel),
+      sheetName: '지출결의서',
+    })
   }
 
   // ─── 로딩/생성 중/다이얼로그 ───

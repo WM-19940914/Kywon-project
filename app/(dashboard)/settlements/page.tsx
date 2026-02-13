@@ -24,6 +24,9 @@ import {
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw, FileText, CircleDollarSign, Wrench } from 'lucide-react'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportMultiSheetExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn } from '@/lib/excel-export'
 import type { LucideIcon } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -883,6 +886,68 @@ export default function SettlementsPage() {
     })
   }, [asRequests, selectedYear, selectedMonth])
 
+  /** 엑셀 다운로드 (2시트: 설치정산 + AS정산) */
+  const handleExcelExport = useCallback(() => {
+    // 시트1: 설치정산 컬럼
+    const installColumns: ExcelColumn<Record<string, unknown>>[] = [
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '작업종류', key: 'workTypes', width: 18 },
+      { header: '발주일', key: 'orderDate', width: 12 },
+      { header: '설치완료일', key: 'installCompleteDate', width: 12 },
+      { header: '부가세별도', key: 'subtotalWithProfit', width: 14, numberFormat: '#,##0' },
+      { header: '부가세', key: 'vat', width: 12, numberFormat: '#,##0' },
+      { header: '합계(VAT포함)', key: 'grandTotal', width: 15, numberFormat: '#,##0' },
+    ]
+    const installData = filteredOrders.map(order => {
+      const amounts = calcOrderAmounts(order)
+      const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType)))).join(', ')
+      return {
+        affiliate: order.affiliate || '기타',
+        businessName: order.businessName,
+        workTypes,
+        orderDate: order.orderDate || '',
+        installCompleteDate: order.installCompleteDate || '',
+        subtotalWithProfit: amounts.subtotalWithProfit,
+        vat: amounts.vat,
+        grandTotal: amounts.grandTotal,
+      }
+    })
+
+    // 시트2: AS정산 컬럼
+    const asColumns: ExcelColumn<Record<string, unknown>>[] = [
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '접수일', key: 'receptionDate', width: 12 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '담당자', key: 'contactName', width: 10 },
+      { header: '모델명', key: 'modelName', width: 14 },
+      { header: 'AS사유', key: 'asReason', width: 20 },
+      { header: 'AS비용', key: 'asCost', width: 12, numberFormat: '#,##0' },
+      { header: '접수비', key: 'receptionFee', width: 12, numberFormat: '#,##0' },
+      { header: '합계', key: 'totalAmount', width: 12, numberFormat: '#,##0' },
+    ]
+    const asData = filteredASRequests.map(req => ({
+      affiliate: req.affiliate || '기타',
+      receptionDate: req.receptionDate || '',
+      businessName: req.businessName || '',
+      contactName: req.contactName || '',
+      modelName: req.modelName || '',
+      asReason: req.asReason || '',
+      asCost: req.asCost || 0,
+      receptionFee: req.receptionFee || 0,
+      totalAmount: req.totalAmount || 0,
+    }))
+
+    const monthLabel = `${selectedYear}년${selectedMonth}월`
+    exportMultiSheetExcel({
+      sheets: [
+        { sheetName: '설치정산', data: installData, columns: installColumns },
+        { sheetName: 'AS정산', data: asData, columns: asColumns },
+      ],
+      fileName: buildExcelFileName('정산관리', monthLabel),
+    })
+  }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth])
+
   /** AS 계열사별 그룹화 */
   const asAffiliateGroups = useMemo(() => {
     const groups: Record<string, ASRequest[]> = {}
@@ -1208,8 +1273,14 @@ export default function SettlementsPage() {
       ) : (
         /* 계열사별 그룹 */
         <div className="space-y-4">
-          {/* 결과 건수 표시 */}
-          <p className="text-sm text-slate-500">설치 정산 {totalCount}건 · AS 정산 {filteredASRequests.length}건</p>
+          {/* 결과 건수 표시 + 엑셀 다운로드 */}
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-slate-500">설치 정산 {totalCount}건 · AS 정산 {filteredASRequests.length}건</p>
+            <ExcelExportButton
+              onClick={handleExcelExport}
+              disabled={filteredOrders.length === 0 && filteredASRequests.length === 0}
+            />
+          </div>
 
           {affiliateGroups.map(group => (
             <AffiliateGroup

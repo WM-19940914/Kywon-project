@@ -40,6 +40,8 @@ import {
 import { Archive, Plus, AlertCircle, FileText, Search } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { CATEGORY_OPTIONS, AFFILIATE_OPTIONS } from '@/types/order'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 
 export default function StoredEquipmentPage() {
   const { showAlert } = useAlert()
@@ -250,6 +252,37 @@ export default function StoredEquipmentPage() {
     setFormOpen(true)
   }
 
+  /** 엑셀 다운로드 */
+  const handleExcelExport = () => {
+    const tabLabel = activeTab === 'stored' ? '보관중' : '출고완료'
+    const warehouseNameMap = Object.fromEntries(warehouses.map(w => [w.id, w.name]))
+    const baseColumns: ExcelColumn<StoredEquipment>[] = [
+      { header: '현장명', key: 'siteName', width: 18 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '품목', key: 'category', width: 14 },
+      { header: '모델명', key: 'model', width: 22 },
+      { header: '평형', key: 'size', width: 8 },
+      { header: '수량', key: 'quantity', width: 6, numberFormat: '#,##0' },
+      { header: '제조사', key: 'manufacturer', width: 10 },
+      { header: '제조년월', key: 'manufacturingDate', width: 10 },
+      { header: '창고', getValue: (i) => warehouseNameMap[i.warehouseId || ''] || '', width: 12 },
+      { header: '보관시작일', key: 'storageStartDate', width: 12 },
+      { header: '메모', key: 'notes', width: 20 },
+    ]
+    const releaseColumns: ExcelColumn<StoredEquipment>[] = [
+      { header: '출고일', key: 'releaseDate', width: 12 },
+      { header: '출고유형', getValue: (i) => i.releaseType === 'reinstall' ? '재설치' : i.releaseType === 'dispose' ? '폐기' : '', width: 10 },
+      { header: '출고목적지', key: 'releaseDestination', width: 20 },
+    ]
+    const columns = activeTab === 'released' ? [...baseColumns, ...releaseColumns] : baseColumns
+    exportToExcel({
+      data: filteredItems,
+      columns,
+      fileName: buildExcelFileName('철거보관장비', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   // ─── 로딩 ───
   if (isLoading) {
     return (
@@ -322,6 +355,7 @@ export default function StoredEquipmentPage() {
               </PopoverContent>
             </Popover>
           )}
+          <ExcelExportButton onClick={handleExcelExport} disabled={filteredItems.length === 0} />
           <Button onClick={handleOpenForm} className="gap-1.5 shadow-sm">
             <Plus className="h-4 w-4" />
             장비 등록

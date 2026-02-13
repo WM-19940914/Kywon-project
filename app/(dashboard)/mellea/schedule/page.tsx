@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { CalendarCheck, Search, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ExcelExportButton } from '@/components/ui/excel-export-button'
+import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 import {
   filterOrdersByScheduleStatus,
   sortOrdersByScheduleTab,
@@ -165,6 +167,29 @@ export default function SchedulePage() {
     completed: '설치가 완료된 현장입니다.',
   }
 
+  /** 엑셀 다운로드 */
+  const handleExcelExport = () => {
+    const tabLabel = tabs.find(t => t.value === activeTab)?.label || activeTab
+    const S1_LABELS: Record<string, string> = { unsettled: '미정산', 'in-progress': '정산진행중', settled: '정산완료' }
+    const columns: ExcelColumn<Order>[] = [
+      { header: '문서번호', key: 'documentNumber', width: 16 },
+      { header: '계열사', key: 'affiliate', width: 14 },
+      { header: '사업자명', key: 'businessName', width: 20 },
+      { header: '주소', key: 'address', width: 30 },
+      { header: '설치예정일', key: 'installScheduleDate', width: 12 },
+      { header: '설치완료일', key: 'installCompleteDate', width: 12 },
+      { header: '작업종류', getValue: (o) => o.items.map(i => i.workType).join(', '), width: 18 },
+      { header: '견적금액', getValue: (o) => o.customerQuote?.totalAmount || null, width: 14, numberFormat: '#,##0' },
+      { header: '정산상태', getValue: (o) => S1_LABELS[o.s1SettlementStatus || 'unsettled'] || '', width: 12 },
+    ]
+    exportToExcel({
+      data: filteredOrders,
+      columns,
+      fileName: buildExcelFileName('설치관리', tabLabel),
+      sheetName: tabLabel,
+    })
+  }
+
   // 스켈레톤 로딩
   if (isLoading) {
     return (
@@ -203,14 +228,19 @@ export default function SchedulePage() {
 
       {/* 검색 영역 */}
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6">
-        <div className="relative max-w-md">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="현장명, 주소, 문서번호, 작업종류로 검색..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-lg bg-white border-slate-200"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+            <Input
+              placeholder="현장명, 주소, 문서번호, 작업종류로 검색..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10 rounded-lg bg-white border-slate-200"
+            />
+          </div>
+          <div className="ml-auto">
+            <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
+          </div>
         </div>
       </div>
 
