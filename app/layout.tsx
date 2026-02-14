@@ -1,3 +1,12 @@
+/**
+ * 루트 레이아웃 — 모든 페이지의 최상위 HTML 구조를 정의합니다
+ *
+ * - <html lang="ko"> 한국어 설정
+ * - Inter 폰트 로드 (Google Fonts)
+ * - 카카오맵 SDK 사전 로드 (beforeInteractive)
+ * - 전역 CSS (globals.css) 적용
+ */
+
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import Script from "next/script";

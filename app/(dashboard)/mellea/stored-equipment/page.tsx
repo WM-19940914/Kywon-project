@@ -174,9 +174,7 @@ export default function StoredEquipmentPage() {
 
   /** 장비 삭제 */
   const handleDelete = async (id: string) => {
-    console.log('[페이지] 장비 삭제 요청, id:', id)
     const success = await deleteStoredEquipment(id)
-    console.log('[페이지] 장비 삭제 결과:', success)
     if (success) {
       setItems(prev => prev.filter(i => i.id !== id))
       showAlert('장비가 삭제되었습니다.', 'success')

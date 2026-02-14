@@ -61,28 +61,28 @@ export default function ASPage() {
   const [affiliateFilter, setAffiliateFilter] = useState<string>('all')
   const [searchQuery, setSearchQuery] = useState('')
 
-  // 정산대기 월별 필터
-  const now = new Date()
+  // 정산대기 월별 필터 — 마운트 시 한 번만 계산
+  const [currentMonth] = useState(() => {
+    const d = new Date()
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  })
   const settlementMonthOptions = useMemo(() => {
+    const [y, m] = currentMonth.split('-').map(Number)
     const options: { label: string; value: string }[] = []
     for (let offset = -1; offset <= 1; offset++) {
-      const d = new Date(now.getFullYear(), now.getMonth() + offset, 1)
-      const y = d.getFullYear()
-      const m = d.getMonth() + 1
-      const value = `${y}-${String(m).padStart(2, '0')}`
-      const label = `${y}년 ${m}월`
+      const d = new Date(y, m - 1 + offset, 1)
+      const dy = d.getFullYear()
+      const dm = d.getMonth() + 1
+      const value = `${dy}-${String(dm).padStart(2, '0')}`
+      const label = `${dy}년 ${dm}월`
       options.push({ label, value })
     }
     return options
-  }, [])
-  const [selectedSettlementMonth, setSelectedSettlementMonth] = useState(
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  )
+  }, [currentMonth])
+  const [selectedSettlementMonth, setSelectedSettlementMonth] = useState(currentMonth)
 
   // 정산완료 탭 월별 필터
-  const [settledMonth, setSettledMonth] = useState(
-    `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
-  )
+  const [settledMonth, setSettledMonth] = useState(currentMonth)
 
   const navigateSettledMonth = useCallback((direction: -1 | 1) => {
     setSettledMonth(prev => {

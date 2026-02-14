@@ -155,3 +155,38 @@ button:active:not(:disabled) {
 [data-sidebar="content"]::-webkit-scrollbar-thumb:hover {
   background: hsl(225 15% 28%);
 }
+
+/* ========================================
+   견적서 PDF 출력 모드
+   .quote-print-mode 내부 요소 스타일링
+   ======================================== */
+
+/* input을 텍스트처럼 보이게 (테두리/배경 제거) */
+.quote-print-mode input,
+.quote-print-mode input[type="text"],
+.quote-print-mode input[type="number"] {
+  border: none !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  outline: none !important;
+  -moz-appearance: textfield !important;
+  appearance: textfield !important;
+}
+.quote-print-mode input::placeholder {
+  color: transparent !important;
+}
+.quote-print-mode input[type="number"]::-webkit-inner-spin-button,
+.quote-print-mode input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* 출력에서 숨길 요소 */
+.quote-print-mode .print-hide {
+  display: none !important;
+}
+
+/* 빈 행 숨기기 (품목이 비어있는 행) */
+.quote-print-mode .print-empty-row {
+  display: none !important;
+}

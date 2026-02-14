@@ -8,12 +8,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, cancelOrder as cancelOrderDB, fetchStoredEquipment, updateStoredEquipment } from '@/lib/supabase/dal'
-import { type Order, type OrderStatus, type StoredEquipment } from '@/types/order'
+import { fetchOrders, createOrder as createOrderDB, updateOrder as updateOrderDB, deleteOrder as deleteOrderDB, cancelOrder as cancelOrderDB, fetchStoredEquipment, updateStoredEquipment, saveCustomerQuote } from '@/lib/supabase/dal'
+import { type Order, type OrderStatus, type StoredEquipment, type CustomerQuote } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 import { OrderForm, type OrderFormData } from '@/components/orders/order-form'
 import { OrderCard } from '@/components/orders/order-card'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
+import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
@@ -21,7 +22,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ClipboardList, Search } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
-import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
+import { exportMultiSheetExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
 import {
   Dialog,
   DialogContent,
@@ -71,6 +72,22 @@ export default function OrdersPage() {
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null)
   const [affiliateFilter, setAffiliateFilter] = useState<string>('all')
   const [sortOrder, setSortOrder] = useState<string>('latest')
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
+  const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
+
+  /** 견적서 보기/작성 */
+  const handleQuoteView = (order: Order) => {
+    setOrderForQuote(order)
+    setQuoteDialogOpen(true)
+  }
+
+  /** 견적서 저장 */
+  const handleQuoteSave = async (orderId: string, quote: CustomerQuote) => {
+    await saveCustomerQuote(orderId, quote)
+    setOrders(prev => prev.map(o =>
+      o.id === orderId ? { ...o, customerQuote: quote } : o
+    ))
+  }
 
   /** 신규 발주 등록 */
   const handleSubmit = async (data: OrderFormData) => {
@@ -222,13 +239,14 @@ export default function OrdersPage() {
 
   const totalOrders = filteredOrders.length
 
-  /** 엑셀 다운로드 — 필터된 전체 발주를 추출 */
+  /** 엑셀 다운로드 — 활성 발주 + 과거내역 + 발주취소 3시트 */
   const handleExcelExport = () => {
-    const columns: ExcelColumn<Order>[] = [
+    // 공통 컬럼 (활성/과거내역 공용)
+    const baseColumns: ExcelColumn<Order>[] = [
       { header: '문서번호', key: 'documentNumber', width: 16 },
       { header: '진행상태', getValue: (o) => {
         const s = computeKanbanStatus(o)
-        return s === 'received' ? '접수중' : s === 'in-progress' ? '진행중' : s === 'completed' ? '완료' : s
+        return s === 'received' ? '접수중' : s === 'in-progress' ? '진행중' : s === 'completed' ? '완료' : s === 'settled' ? '정산완료' : s
       }, width: 10 },
       { header: '계열사', key: 'affiliate', width: 14 },
       { header: '사업자명', key: 'businessName', width: 20 },
@@ -240,9 +258,36 @@ export default function OrdersPage() {
       { header: '담당자', key: 'contactName', width: 10 },
       { header: '연락처', key: 'contactPhone', width: 14 },
     ]
-    exportToExcel({
-      data: filteredOrders,
-      columns,
+
+    // 발주취소 전용 컬럼 (취소사유, 취소일 추가)
+    const cancelledColumns: ExcelColumn<Order>[] = [
+      ...baseColumns,
+      { header: '취소사유', getValue: (o) => o.cancelReason ?? '', width: 20 },
+      { header: '취소일', getValue: (o) => o.cancelledAt ? o.cancelledAt.slice(0, 10) : '', width: 12 },
+    ]
+
+    // 상태별 데이터 분류
+    const settledOrders = orders.filter(o => computeKanbanStatus(o) === 'settled')
+    const cancelledOrders = orders.filter(o => computeKanbanStatus(o) === 'cancelled')
+
+    exportMultiSheetExcel({
+      sheets: [
+        {
+          sheetName: '발주현황',
+          data: filteredOrders,
+          columns: baseColumns,
+        },
+        {
+          sheetName: '과거내역(정산완료)',
+          data: settledOrders,
+          columns: baseColumns,
+        },
+        {
+          sheetName: '발주취소',
+          data: cancelledOrders,
+          columns: cancelledColumns,
+        },
+      ],
       fileName: buildExcelFileName('발주관리'),
     })
   }
@@ -375,6 +420,7 @@ export default function OrdersPage() {
         onDelete={handleDelete}
         onEdit={handleEdit}
         onCancelOrder={handleCancelOrder}
+        onQuoteView={handleQuoteView}
       />
 
       {/* 수정 모달 */}
@@ -411,6 +457,14 @@ export default function OrdersPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* 견적서 보기/작성 다이얼로그 */}
+      <QuoteCreateDialog
+        order={orderForQuote}
+        open={quoteDialogOpen}
+        onOpenChange={setQuoteDialogOpen}
+        onSave={handleQuoteSave}
+      />
     </div>
   )
 }

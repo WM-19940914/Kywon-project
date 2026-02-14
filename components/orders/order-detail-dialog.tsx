@@ -33,7 +33,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, XCircle, User, Phone, Calendar } from 'lucide-react'
+import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, XCircle, User, Phone, Calendar, FileText } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { useState, useEffect } from 'react'
 import { countInventoryEvents } from '@/lib/supabase/dal'
@@ -49,6 +49,7 @@ interface OrderDetailDialogProps {
   onDelete?: (orderId: string) => void            // 완전 삭제 함수
   onEdit?: (order: Order) => void                 // 수정 함수
   onCancelOrder?: (orderId: string, reason: string) => void  // 발주 취소 함수
+  onQuoteView?: (order: Order) => void            // 견적서 보기/작성 함수
 }
 
 /**
@@ -60,7 +61,8 @@ export function OrderDetailDialog({
   onOpenChange,
   onDelete,
   onEdit,
-  onCancelOrder
+  onCancelOrder,
+  onQuoteView
 }: OrderDetailDialogProps) {
 
   const { showConfirm } = useAlert()
@@ -340,10 +342,29 @@ export function OrderDetailDialog({
             )}
           </div>
 
-          {/* 오른쪽: 닫기만 (자동 분류이므로 상태 전환 버튼 없음) */}
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            닫기
-          </Button>
+          {/* 오른쪽: 견적서 + 닫기 */}
+          <div className="flex gap-2">
+            {onQuoteView && (
+              order.customerQuote?.items?.length ? (
+                <Button
+                  variant="outline"
+                  className="gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                  onClick={() => { onQuoteView(order); onOpenChange(false) }}
+                >
+                  <FileText className="h-4 w-4" />
+                  견적서 보기
+                </Button>
+              ) : (
+                <Button variant="outline" className="gap-1" disabled>
+                  <FileText className="h-4 w-4" />
+                  견적서 미작성
+                </Button>
+              )
+            )}
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              닫기
+            </Button>
+          </div>
         </div>
       </DialogContent>
 

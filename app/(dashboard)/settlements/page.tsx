@@ -25,11 +25,12 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw, FileText, CircleDollarSign, Wrench } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
-import { exportMultiSheetExcel, buildExcelFileName } from '@/lib/excel-export'
-import type { ExcelColumn } from '@/lib/excel-export'
+import { exportSettlementExcel, buildExcelFileName } from '@/lib/excel-export'
+import type { ExcelColumn, SettlementSheetData } from '@/lib/excel-export'
 import type { LucideIcon } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
+import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SitePhotoViewer } from '@/components/schedule/site-photo-viewer'
 
 /** 계열사별 색상 (가로 스택 바 + 범례용) */
@@ -114,10 +115,12 @@ function AffiliateGroup({
   affiliateName,
   orders,
   onViewOrder,
+  onQuoteView,
 }: {
   affiliateName: string
   orders: Order[]
   onViewOrder: (order: Order) => void
+  onQuoteView: (order: Order) => void
 }) {
   const [isOpen, setIsOpen] = useState(orders.length > 0)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -199,6 +202,7 @@ function AffiliateGroup({
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '70px' }}>발주서</th>
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '90px' }}>계열사</th>
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider">사업자명</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '70px' }}>견적서</th>
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '80px' }}>현장사진</th>
                   <th className="text-right p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '120px' }}>부가세별도</th>
                   <th className="text-right p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '100px' }}>부가세</th>
@@ -264,6 +268,23 @@ function AffiliateGroup({
                           </div>
                         </td>
 
+                        {/* 견적서 보기 */}
+                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                          {order.customerQuote?.items?.length ? (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg"
+                              onClick={() => onQuoteView(order)}
+                            >
+                              <FileText className="h-3.5 w-3.5 mr-1" />
+                              보기
+                            </Button>
+                          ) : (
+                            <span className="text-xs text-slate-400">-</span>
+                          )}
+                        </td>
+
                         {/* 현장사진 */}
                         <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <SitePhotoViewer
@@ -297,7 +318,7 @@ function AffiliateGroup({
                       {/* 견적서 상세 (아코디언) */}
                       {expandedIds.has(order.id) && (
                       <tr>
-                        <td colSpan={10} className="p-0">
+                        <td colSpan={11} className="p-0">
                             <div className="mx-4 my-3">
                               <div className="border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
                                 {/* 견적서 헤더 — gradient + 현장명 */}
@@ -482,8 +503,19 @@ function AffiliateGroup({
                       </span>
                     </div>
 
-                    {/* 발주서보기 */}
-                    <div className="flex justify-end" onClick={e => e.stopPropagation()}>
+                    {/* 발주서보기 + 견적서보기 */}
+                    <div className="flex justify-end gap-2" onClick={e => e.stopPropagation()}>
+                      {order.customerQuote?.items?.length ? (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-blue-600 hover:text-blue-800 rounded-lg"
+                          onClick={() => onQuoteView(order)}
+                        >
+                          <FileText className="h-3.5 w-3.5 mr-1" />
+                          견적서
+                        </Button>
+                      ) : null}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -772,6 +804,10 @@ export default function SettlementsPage() {
   const [detailOrder, setDetailOrder] = useState<Order | null>(null)
   const [detailOpen, setDetailOpen] = useState(false)
 
+  // 견적서 다이얼로그 상태
+  const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
+  const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
+
   // 월별 정산 확인 (Supabase 기반)
   const [confirmation, setConfirmation] = useState<SettlementConfirmation | null>(null)
   const [melleeaInput, setMelleeaInput] = useState('')
@@ -819,6 +855,12 @@ export default function SettlementsPage() {
   const handleViewOrder = useCallback((order: Order) => {
     setDetailOrder(order)
     setDetailOpen(true)
+  }, [])
+
+  /** 견적서 보기 */
+  const handleQuoteView = useCallback((order: Order) => {
+    setOrderForQuote(order)
+    setQuoteDialogOpen(true)
   }, [])
 
   /** 월 이동 */
@@ -886,24 +928,34 @@ export default function SettlementsPage() {
     })
   }, [asRequests, selectedYear, selectedMonth])
 
-  /** 엑셀 다운로드 (2시트: 설치정산 + AS정산) */
+  /** 엑셀 다운로드 — 계열사별 시트 (정산 요약 + 사업자별 견적 상세) */
   const handleExcelExport = useCallback(() => {
-    // 시트1: 설치정산 컬럼
-    const installColumns: ExcelColumn<Record<string, unknown>>[] = [
-      { header: '계열사', key: 'affiliate', width: 14 },
-      { header: '사업자명', key: 'businessName', width: 20 },
-      { header: '작업종류', key: 'workTypes', width: 18 },
-      { header: '발주일', key: 'orderDate', width: 12 },
-      { header: '설치완료일', key: 'installCompleteDate', width: 12 },
-      { header: '부가세별도', key: 'subtotalWithProfit', width: 14, numberFormat: '#,##0' },
-      { header: '부가세', key: 'vat', width: 12, numberFormat: '#,##0' },
-      { header: '합계(VAT포함)', key: 'grandTotal', width: 15, numberFormat: '#,##0' },
-    ]
-    const installData = filteredOrders.map(order => {
+    // 계열사별로 데이터 그룹화 (모든 계열사 순서 보장)
+    const affiliateData: Record<string, SettlementSheetData[]> = {}
+    AFFILIATE_OPTIONS.forEach(name => { affiliateData[name] = [] })
+
+    filteredOrders.forEach(order => {
+      const affiliate = order.affiliate || '기타'
+      if (!affiliateData[affiliate]) affiliateData[affiliate] = []
+
       const amounts = calcOrderAmounts(order)
       const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType)))).join(', ')
-      return {
-        affiliate: order.affiliate || '기타',
+      const quote = order.customerQuote
+
+      // 견적 항목: 품목명/모델명 분리 + 장비비/설치비 구분
+      const quoteItems = (quote?.items || []).map(item => {
+        const { product, model } = splitItemName(item.itemName)
+        return {
+          category: item.category === 'equipment' ? '장비비' : '설치비',
+          productName: product,
+          modelName: model,
+          quantity: item.quantity,
+          unitPrice: item.unitPrice,
+          totalPrice: item.totalPrice,
+        }
+      })
+
+      affiliateData[affiliate].push({
         businessName: order.businessName,
         workTypes,
         orderDate: order.orderDate || '',
@@ -911,90 +963,76 @@ export default function SettlementsPage() {
         subtotalWithProfit: amounts.subtotalWithProfit,
         vat: amounts.vat,
         grandTotal: amounts.grandTotal,
-      }
+        equipRounding: amounts.equipRounding,
+        installRounding: amounts.installRounding,
+        supplyAmount: amounts.supplyAmount,
+        adjustedProfit: amounts.adjustedProfit,
+        quoteItems,
+      })
     })
 
-    // 시트2: AS정산 컬럼
+    // AS정산 (별도 시트)
     const asColumns: ExcelColumn<Record<string, unknown>>[] = [
       { header: '계열사', key: 'affiliate', width: 14 },
       { header: '접수일', key: 'receptionDate', width: 12 },
       { header: '사업자명', key: 'businessName', width: 20 },
       { header: '담당자', key: 'contactName', width: 10 },
+      { header: '담당자번호', key: 'contactPhone', width: 14 },
       { header: '모델명', key: 'modelName', width: 14 },
       { header: 'AS사유', key: 'asReason', width: 20 },
+      { header: '처리일', key: 'processedDate', width: 12 },
+      { header: '처리내역', key: 'processingDetails', width: 28 },
       { header: 'AS비용', key: 'asCost', width: 12, numberFormat: '#,##0' },
       { header: '접수비', key: 'receptionFee', width: 12, numberFormat: '#,##0' },
       { header: '합계', key: 'totalAmount', width: 12, numberFormat: '#,##0' },
     ]
-    const asData = filteredASRequests.map(req => ({
-      affiliate: req.affiliate || '기타',
-      receptionDate: req.receptionDate || '',
-      businessName: req.businessName || '',
-      contactName: req.contactName || '',
-      modelName: req.modelName || '',
-      asReason: req.asReason || '',
-      asCost: req.asCost || 0,
-      receptionFee: req.receptionFee || 0,
-      totalAmount: req.totalAmount || 0,
-    }))
+    // AS 데이터를 계열사별로 그룹화 (모든 계열사 순서 보장)
+    const asAffiliateData: Record<string, Record<string, unknown>[]> = {}
+    AFFILIATE_OPTIONS.forEach(name => { asAffiliateData[name] = [] })
+    filteredASRequests.forEach(req => {
+      const affiliate = req.affiliate || '기타'
+      if (!asAffiliateData[affiliate]) asAffiliateData[affiliate] = []
+      asAffiliateData[affiliate].push({
+        affiliate,
+        receptionDate: req.receptionDate || '',
+        businessName: req.businessName || '',
+        contactName: req.contactName || '',
+        contactPhone: req.contactPhone || '',
+        modelName: req.modelName || '',
+        asReason: req.asReason || '',
+        processedDate: req.processedDate || '',
+        processingDetails: req.processingDetails || '',
+        asCost: req.asCost || 0,
+        receptionFee: req.receptionFee || 0,
+        totalAmount: req.totalAmount || 0,
+      })
+    })
 
-    // 시트3: 견적서 상세 (현장별 장비비+설치비 항목을 행으로 펼침)
-    const quoteColumns: ExcelColumn<Record<string, unknown>>[] = [
-      { header: '계열사', key: 'affiliate', width: 14 },
-      { header: '사업자명', key: 'businessName', width: 20 },
-      { header: '작업종류', key: 'workTypes', width: 18 },
-      { header: '구분', key: 'itemCategory', width: 10 },
-      { header: '항목명', key: 'itemName', width: 30 },
-      { header: '수량', key: 'quantity', width: 8, numberFormat: '#,##0' },
-      { header: '단가', key: 'unitPrice', width: 14, numberFormat: '#,##0' },
-      { header: '금액', key: 'totalPrice', width: 14, numberFormat: '#,##0' },
-    ]
-    const quoteData: Record<string, unknown>[] = []
-    filteredOrders.forEach(order => {
-      const quote = order.customerQuote
-      if (!quote?.items?.length) return
-      const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType)))).join(', ')
-      const base = {
-        affiliate: order.affiliate || '기타',
-        businessName: order.businessName,
-        workTypes,
+    // 요약 통계 생성
+    const summaryData = AFFILIATE_OPTIONS.map(name => {
+      const installOrders = affiliateData[name] || []
+      const installTotal = installOrders.reduce((s, o) => s + o.grandTotal, 0)
+      const asReqs = asAffiliateData[name] || []
+      const asRaw = asReqs.reduce((s, r) => s + ((r.totalAmount as number) || 0), 0)
+      const asTruncated = Math.floor(asRaw / 1000) * 1000
+      const asWithVat = asTruncated + Math.floor(asTruncated * 0.1)
+      return {
+        name,
+        installCount: installOrders.length,
+        installTotal,
+        asCount: asReqs.length,
+        asTotal: asWithVat,
       }
-      // 장비비 항목
-      quote.items
-        .filter(i => i.category === 'equipment')
-        .forEach(item => {
-          quoteData.push({
-            ...base,
-            itemCategory: '장비비',
-            itemName: item.itemName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-          })
-        })
-      // 설치비 항목
-      quote.items
-        .filter(i => i.category === 'installation')
-        .forEach(item => {
-          quoteData.push({
-            ...base,
-            itemCategory: '설치비',
-            itemName: item.itemName,
-            quantity: item.quantity,
-            unitPrice: item.unitPrice,
-            totalPrice: item.totalPrice,
-          })
-        })
     })
 
     const monthLabel = `${selectedYear}년${selectedMonth}월`
-    exportMultiSheetExcel({
-      sheets: [
-        { sheetName: '설치정산', data: installData, columns: installColumns },
-        { sheetName: 'AS정산', data: asData, columns: asColumns },
-        { sheetName: '견적서 상세', data: quoteData, columns: quoteColumns },
-      ],
+    exportSettlementExcel({
+      affiliateData,
+      asAffiliateData,
+      asColumns,
+      summary: summaryData,
       fileName: buildExcelFileName('정산관리', monthLabel),
+      monthLabel,
     })
   }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth])
 
@@ -1086,6 +1124,14 @@ export default function SettlementsPage() {
             <ChevronRightIcon className="h-5 w-5 text-slate-600" />
           </button>
         </div>
+      </div>
+
+      {/* 엑셀 다운로드 */}
+      <div className="flex justify-end mb-3">
+        <ExcelExportButton
+          onClick={handleExcelExport}
+          disabled={filteredOrders.length === 0 && filteredASRequests.length === 0}
+        />
       </div>
 
       {/* 통계 요약 */}
@@ -1323,21 +1369,13 @@ export default function SettlementsPage() {
       ) : (
         /* 계열사별 그룹 */
         <div className="space-y-4">
-          {/* 결과 건수 표시 + 엑셀 다운로드 */}
-          <div className="flex items-center justify-between">
-            <p className="text-sm text-slate-500">설치 정산 {totalCount}건 · AS 정산 {filteredASRequests.length}건</p>
-            <ExcelExportButton
-              onClick={handleExcelExport}
-              disabled={filteredOrders.length === 0 && filteredASRequests.length === 0}
-            />
-          </div>
-
           {affiliateGroups.map(group => (
             <AffiliateGroup
               key={group.name}
               affiliateName={group.name}
               orders={group.orders}
               onViewOrder={handleViewOrder}
+              onQuoteView={handleQuoteView}
             />
           ))}
 
@@ -1364,6 +1402,13 @@ export default function SettlementsPage() {
         order={detailOrder}
         open={detailOpen}
         onOpenChange={setDetailOpen}
+      />
+
+      {/* 견적서 보기 다이얼로그 (조회 전용) */}
+      <QuoteCreateDialog
+        order={orderForQuote}
+        open={quoteDialogOpen}
+        onOpenChange={setQuoteDialogOpen}
       />
     </div>
   )

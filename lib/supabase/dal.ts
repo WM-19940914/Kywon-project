@@ -1322,7 +1322,6 @@ export async function updateStoredEquipment(id: string, updates: Partial<StoredE
  * @param id - 장비 ID
  */
 export async function deleteStoredEquipment(id: string): Promise<boolean> {
-  console.log('[DAL] 철거보관 장비 삭제 시도, id:', id)
   const supabase = createClient()
 
   // 1) 연결된 order_items의 stored_equipment_id 참조 해제
@@ -1347,7 +1346,6 @@ export async function deleteStoredEquipment(id: string): Promise<boolean> {
     return false
   }
 
-  console.log('[DAL] 철거보관 장비 삭제 완료, id:', id)
   return true
 }
 
@@ -1434,7 +1432,6 @@ export async function createStoredEquipmentFromOrder(order: Order, warehouseId?:
     .eq('order_id', order.id)
 
   if (existing && existing.length > 0) {
-    console.log('이미 등록된 철거보관 장비가 있습니다:', order.id)
     return true
   }
 

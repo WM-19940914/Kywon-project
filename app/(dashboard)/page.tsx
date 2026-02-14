@@ -24,33 +24,47 @@ export default function DashboardPage() {
 
       {/* ─── 바로가기 버튼 ─── */}
       <div className="grid grid-cols-2 gap-4">
-        <Link
-          href="/orders?action=new"
-          className="group flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-orange-300 transition-all"
-        >
-          <div className="bg-orange-50 w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-            <ClipboardList className="h-6 w-6 text-orange-500" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">발주 접수</h3>
-            <p className="text-xs text-slate-400">새 발주 등록하기</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-slate-300 ml-auto" />
-        </Link>
 
-        <Link
-          href="/as?action=new"
-          className="group flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-blue-300 transition-all"
-        >
-          <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-            <Wrench className="h-6 w-6 text-blue-500" />
-          </div>
-          <div>
-            <h3 className="text-sm font-bold text-slate-800">AS 접수</h3>
-            <p className="text-xs text-slate-400">AS 요청 등록하기</p>
-          </div>
-          <ChevronRight className="h-4 w-4 text-slate-300 ml-auto" />
-        </Link>
+        {/* 발주 접수 */}
+        <div className="space-y-2">
+          <Link
+            href="/orders?action=new"
+            className="group flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-orange-300 transition-all"
+          >
+            <div className="bg-orange-50 w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+              <ClipboardList className="h-6 w-6 text-orange-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">발주 접수</h3>
+              <p className="text-xs text-slate-400">새 발주 등록하기</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 ml-auto" />
+          </Link>
+          <p className="text-xs text-amber-600 leading-relaxed px-2">
+            * 사전견적은 다량 설치, 천정형, 복잡한 공사환경일 때만 요청해 주세요. 추가비용은 설치기사님이 현장에서 안내드립니다.
+          </p>
+        </div>
+
+        {/* AS 접수 */}
+        <div className="space-y-2">
+          <Link
+            href="/as?action=new"
+            className="group flex items-center gap-3 bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md hover:border-blue-300 transition-all"
+          >
+            <div className="bg-blue-50 w-12 h-12 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+              <Wrench className="h-6 w-6 text-blue-500" />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-slate-800">AS 접수</h3>
+              <p className="text-xs text-slate-400">AS 요청 등록하기</p>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300 ml-auto" />
+          </Link>
+          <p className="text-xs text-blue-500 leading-relaxed px-2">
+            * AS 접수 전 에어컨 차단기 리셋은 꼭 해주세요.
+          </p>
+        </div>
+
       </div>
 
     </div>

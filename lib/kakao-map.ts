@@ -23,7 +23,6 @@ export function loadKakaoMapSdk(): Promise<void> {
   loadPromise = new Promise((resolve, reject) => {
     // 이미 초기화 완료된 경우
     if (typeof window !== 'undefined' && window.kakao?.maps?.Map) {
-      console.log('[카카오맵] 이미 초기화됨')
       resolve()
       return
     }
@@ -36,9 +35,7 @@ export function loadKakaoMapSdk(): Promise<void> {
 
       if (window.kakao?.maps?.load) {
         // SDK 스크립트 로드 완료 → maps.load()로 초기화
-        console.log('[카카오맵] SDK 감지, 초기화 중...')
         window.kakao.maps.load(() => {
-          console.log('[카카오맵] 초기화 완료!')
           resolve()
         })
       } else if (attempts >= maxAttempts) {

@@ -442,6 +442,7 @@ export function StoredEquipmentFormDialog({
                 {equipmentRows.length > 1 && (
                   <span className="text-xs text-gray-400">{equipmentRows.length}대</span>
                 )}
+                <span className="text-xs font-bold text-red-500 ml-2">! 꼭 실내기·실외기 분리해서 적어주세요</span>
               </div>
               <Button
                 type="button"

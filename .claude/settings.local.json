@@ -17,7 +17,9 @@
       "mcp__supabase__get_logs",
       "mcp__supabase__deploy_edge_function",
       "mcp__supabase__get_project_url",
-      "WebFetch(domain:amllpfihdjohjuypcawv.supabase.co)"
+      "WebFetch(domain:amllpfihdjohjuypcawv.supabase.co)",
+      "mcp__context7__resolve-library-id",
+      "mcp__context7__query-docs"
     ]
   },
   "enabledMcpjsonServers": [

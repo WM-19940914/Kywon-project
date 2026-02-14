@@ -16,10 +16,11 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { Check, Plus, X } from 'lucide-react'
+import { Check, FileDown, Loader2, Plus, X } from 'lucide-react'
 import { PriceTableSheet } from '@/components/orders/price-table-dialog'
 import { InstallPriceSheet } from '@/components/quotes/install-price-sheet'
 import { priceTable } from '@/lib/price-table'
+import { generatePdfFromElement } from '@/lib/pdf/quote-pdf'
 
 interface QuoteCreateDialogProps {
   open: boolean
@@ -54,6 +55,9 @@ export function QuoteCreateDialog({
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [profitGuideMessage, setProfitGuideMessage] = useState('') // 기업이윤 자동계산 안내문구
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle') // 자동 저장 상태
+  const [pdfLoading, setPdfLoading] = useState(false) // PDF 생성 로딩 상태
+  const [printMode, setPrintMode] = useState(false) // PDF 캡처용 출력 모드
+  const contentRef = useRef<HTMLDivElement>(null) // PDF 캡처 대상 영역
   const isInitialLoad = useRef(true) // 초기 로드 시 자동 저장 방지
 
   const createEmptyItem = (): QuoteLineItem => ({
@@ -418,74 +422,94 @@ export function QuoteCreateDialog({
     setItems(newItems)
   }
 
-  /** 테이블 행 렌더링 */
+  /** 테이블 행 렌더링 (printMode: input → span 변환) */
   const renderRow = (
     item: QuoteLineItem,
     index: number,
     items: QuoteLineItem[],
     setItems: React.Dispatch<React.SetStateAction<QuoteLineItem[]>>
   ) => (
-    <tr key={item.id} className="group border-b border-gray-100 hover:bg-gray-50/50">
+    <tr key={item.id} className={`group border-b border-gray-100 hover:bg-gray-50/50 ${!item.product.trim() ? 'print-empty-row' : ''}`}>
       {/* 번호 */}
       <td className="py-1.5 px-2 text-center text-xs text-gray-400 w-8">
         {index + 1}
       </td>
       {/* 품목 */}
       <td className="py-1.5 px-1">
-        <input
-          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          placeholder="품목"
-          value={item.product}
-          onChange={(e) => updateItem(items, setItems, index, 'product', e.target.value)}
-          onPaste={(e) => handlePaste(e, index, 0, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-2 py-1.5 text-sm">{item.product}</span>
+        ) : (
+          <input
+            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            placeholder="품목"
+            value={item.product}
+            onChange={(e) => updateItem(items, setItems, index, 'product', e.target.value)}
+            onPaste={(e) => handlePaste(e, index, 0, items, setItems)}
+          />
+        )}
       </td>
       {/* 모델명 */}
       <td className="py-1.5 px-1">
-        <input
-          className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          placeholder="모델명"
-          value={item.model}
-          onChange={(e) => updateItem(items, setItems, index, 'model', e.target.value)}
-          onPaste={(e) => handlePaste(e, index, 1, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-2 py-1.5 text-sm">{item.model}</span>
+        ) : (
+          <input
+            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            placeholder="모델명"
+            value={item.model}
+            onChange={(e) => updateItem(items, setItems, index, 'model', e.target.value)}
+            onPaste={(e) => handlePaste(e, index, 1, items, setItems)}
+          />
+        )}
       </td>
       {/* 수량 */}
       <td className="py-1.5 px-1 w-16">
-        <input
-          type="number"
-          min="0"
-          className="w-full px-2 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          value={item.quantity || ''}
-          onChange={(e) => updateItem(items, setItems, index, 'quantity', e.target.value)}
-          onPaste={(e) => handlePaste(e, index, 2, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-2 py-1.5 text-sm text-center">{item.quantity || ''}</span>
+        ) : (
+          <input
+            type="number"
+            min="0"
+            className="w-full px-2 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            value={item.quantity || ''}
+            onChange={(e) => updateItem(items, setItems, index, 'quantity', e.target.value)}
+            onPaste={(e) => handlePaste(e, index, 2, items, setItems)}
+          />
+        )}
       </td>
       {/* 단위 */}
       <td className="py-1.5 px-1 w-14">
-        <input
-          className="w-full px-1.5 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          placeholder="단위"
-          value={item.unit}
-          onChange={(e) => updateItem(items, setItems, index, 'unit', e.target.value)}
-          onPaste={(e) => handlePaste(e, index, 3, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-1.5 py-1.5 text-sm text-center">{item.unit}</span>
+        ) : (
+          <input
+            className="w-full px-1.5 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            placeholder="단위"
+            value={item.unit}
+            onChange={(e) => updateItem(items, setItems, index, 'unit', e.target.value)}
+            onPaste={(e) => handlePaste(e, index, 3, items, setItems)}
+          />
+        )}
       </td>
       {/* 단가 (쉼표 포맷팅) */}
       <td className="py-1.5 px-1 w-28">
-        <input
-          type="text"
-          className="w-full px-2 py-1.5 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          placeholder="0"
-          value={item.price ? item.price.toLocaleString('ko-KR') : ''}
-          onChange={(e) => {
-            const numericValue = e.target.value.replace(/,/g, '')
-            if (!isNaN(Number(numericValue))) {
-              updateItem(items, setItems, index, 'price', numericValue)
-            }
-          }}
-          onPaste={(e) => handlePaste(e, index, 4, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-2 py-1.5 text-sm text-right">{item.price ? item.price.toLocaleString('ko-KR') : ''}</span>
+        ) : (
+          <input
+            type="text"
+            className="w-full px-2 py-1.5 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            placeholder="0"
+            value={item.price ? item.price.toLocaleString('ko-KR') : ''}
+            onChange={(e) => {
+              const numericValue = e.target.value.replace(/,/g, '')
+              if (!isNaN(Number(numericValue))) {
+                updateItem(items, setItems, index, 'price', numericValue)
+              }
+            }}
+            onPaste={(e) => handlePaste(e, index, 4, items, setItems)}
+          />
+        )}
       </td>
       {/* 금액 (자동계산, 쉼표 포맷팅) */}
       <td className="py-1.5 px-2 text-right text-sm font-medium w-28">
@@ -493,16 +517,20 @@ export function QuoteCreateDialog({
       </td>
       {/* 비고 */}
       <td className="py-1.5 px-1 w-32">
-        <input
-          className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
-          placeholder="비고"
-          value={item.notes}
-          onChange={(e) => updateItem(items, setItems, index, 'notes', e.target.value)}
-          onPaste={(e) => handlePaste(e, index, 5, items, setItems)}
-        />
+        {printMode ? (
+          <span className="block px-2 py-1.5 text-xs">{item.notes}</span>
+        ) : (
+          <input
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            placeholder="비고"
+            value={item.notes}
+            onChange={(e) => updateItem(items, setItems, index, 'notes', e.target.value)}
+            onPaste={(e) => handlePaste(e, index, 5, items, setItems)}
+          />
+        )}
       </td>
-      {/* 삭제 */}
-      <td className="py-1.5 px-1 w-8">
+      {/* 삭제 (PDF 출력 시 숨김) */}
+      <td className="py-1.5 px-1 w-8 print-hide">
         <button
           type="button"
           className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50"
@@ -534,7 +562,7 @@ export function QuoteCreateDialog({
             ({items.filter(i => i.product.trim()).length}건 입력)
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 print-hide">
           {/* 장비 섹션: 장비 단가표 */}
           {showPriceTable && (
             <PriceTableSheet onSelect={handlePriceTableSelect} />
@@ -566,7 +594,7 @@ export function QuoteCreateDialog({
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">단가</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">금액</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-left w-32">비고</th>
-              <th className="w-8"></th>
+              <th className="w-8 print-hide"></th>
             </tr>
           </thead>
           <tbody>
@@ -580,18 +608,22 @@ export function QuoteCreateDialog({
             <span className="text-sm text-gray-600 mr-4">설치비 단위절사</span>
             <div className="flex items-center gap-2">
               <span className="text-sm text-red-600 font-semibold">-</span>
-              <input
-                type="text"
-                className="w-28 px-2 py-1 text-sm text-right border border-orange-200 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 text-red-600 font-semibold"
-                placeholder="0"
-                value={installRounding ? installRounding.toLocaleString('ko-KR') : ''}
-                onChange={(e) => {
-                  const numericValue = e.target.value.replace(/,/g, '')
-                  if (!isNaN(Number(numericValue))) {
-                    setInstallRounding(Number(numericValue))
-                  }
-                }}
-              />
+              {printMode ? (
+                <span className="text-sm text-right text-red-600 font-semibold">{installRounding ? installRounding.toLocaleString('ko-KR') : '0'}</span>
+              ) : (
+                <input
+                  type="text"
+                  className="w-28 px-2 py-1 text-sm text-right border border-orange-200 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 text-red-600 font-semibold"
+                  placeholder="0"
+                  value={installRounding ? installRounding.toLocaleString('ko-KR') : ''}
+                  onChange={(e) => {
+                    const numericValue = e.target.value.replace(/,/g, '')
+                    if (!isNaN(Number(numericValue))) {
+                      setInstallRounding(Number(numericValue))
+                    }
+                  }}
+                />
+              )}
               <span className="text-sm text-gray-400">원</span>
             </div>
           </div>
@@ -622,20 +654,42 @@ export function QuoteCreateDialog({
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="max-w-4xl max-h-[90vh] overflow-y-auto p-0"
+        className={`max-w-4xl p-0 ${printMode ? 'overflow-visible !max-h-none' : 'max-h-[90vh] overflow-y-auto'}`}
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
+        {/* PDF 생성 중 로딩 오버레이 */}
+        {pdfLoading && (
+          <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-lg">
+            <div className="text-center">
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-red-500" />
+              <p className="mt-2 text-sm text-gray-600">PDF 생성 중...</p>
+            </div>
+          </div>
+        )}
+
+        {/* PDF 캡처 영역 (헤더 + 본문) */}
+        <div ref={contentRef} className={printMode ? 'quote-print-mode' : ''}>
+
         {/* 헤더 - 견적서 타이틀 */}
-        <div className="sticky top-0 bg-white border-b px-6 py-4 z-10">
-          {/* 우측 상단 X 닫기 버튼 */}
+        <div className={`${printMode ? '' : 'sticky top-0 z-10'} bg-white border-b px-6 py-4`}>
+          {/* 우측 상단 X 닫기 버튼 (PDF 출력 시 숨김) */}
           <button
             type="button"
-            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity"
+            className="absolute right-4 top-4 rounded-sm opacity-70 hover:opacity-100 transition-opacity print-hide"
             onClick={() => onOpenChange(false)}
           >
             <X className="h-5 w-5 text-gray-500" />
           </button>
+          {/* MeLEA 브랜드 로고 (좌측 상단) */}
+          <div className="mb-2">
+            <div className="inline-flex flex-col">
+              <span className="font-black text-2xl" style={{ lineHeight: 1, letterSpacing: '-0.5px', color: '#D48A18' }}>
+                MeLEA
+              </span>
+              <span className="block h-[2px] rounded-full mt-0.5" style={{ background: 'linear-gradient(to right, #D48A18, #E9A733, transparent)' }} />
+            </div>
+          </div>
           <DialogHeader>
             <DialogTitle className="text-2xl font-bold text-center text-gray-900">
               {order.affiliate} / {order.businessName} 견적서
@@ -742,7 +796,10 @@ export function QuoteCreateDialog({
           </div>
         </div>
 
-        {/* 하단 버튼 */}
+        </div>{/* contentRef 닫기 */}
+
+        {/* 하단 버튼 (PDF 캡처 영역 밖) */}
+        {!printMode && (
         <div className="sticky bottom-0 bg-white border-t px-6 py-3 flex justify-between items-center">
           {/* 자동 저장 상태 표시 */}
           <div className="text-xs text-gray-400">
@@ -762,15 +819,53 @@ export function QuoteCreateDialog({
               <span>입력 시 자동 저장</span>
             )}
           </div>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => onOpenChange(false)}
-          >
-            닫기
-          </Button>
+          <div className="flex items-center gap-2">
+            {/* PDF 다운로드 버튼 — 견적 항목이 있을 때만 활성화 */}
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+              disabled={pdfLoading || !order.customerQuote?.items?.length}
+              onClick={async () => {
+                if (!order || !contentRef.current) return
+                setPdfLoading(true)
+                try {
+                  // 1. 출력 모드 전환 (빈 행 숨기기, 버튼 숨기기, input 테두리 제거)
+                  setPrintMode(true)
+                  await new Promise(r => setTimeout(r, 150)) // 렌더링 대기
+
+                  // 2. DOM 캡처 → PDF 생성
+                  const fileName = `견적서_${order.businessName}_${order.documentNumber || ''}.pdf`
+                  await generatePdfFromElement(contentRef.current, fileName)
+                } catch (err) {
+                  console.error('PDF 생성 실패:', err)
+                  alert('PDF 생성에 실패했습니다.')
+                } finally {
+                  // 3. 편집 모드 복원
+                  setPrintMode(false)
+                  setPdfLoading(false)
+                }
+              }}
+            >
+              {pdfLoading ? (
+                <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+              ) : (
+                <FileDown className="h-4 w-4 mr-1" />
+              )}
+              {pdfLoading ? 'PDF 생성 중...' : 'PDF 다운로드'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => onOpenChange(false)}
+            >
+              닫기
+            </Button>
+          </div>
         </div>
+        )}
       </DialogContent>
       </Dialog>
 

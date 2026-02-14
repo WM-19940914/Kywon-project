@@ -29,13 +29,6 @@ export async function uploadSitePhoto(file: File, orderId: string): Promise<stri
   const fileName = `${timestamp}-${file.name}`
   const filePath = `${orderId}/${fileName}`
 
-  console.log('📸 업로드 시작:', {
-    버킷: SITE_PHOTOS_BUCKET,
-    파일경로: filePath,
-    파일크기: `${(file.size / 1024).toFixed(2)}KB`,
-    파일타입: file.type,
-  })
-
   try {
     // Storage에 업로드
     const { data, error } = await supabase.storage
@@ -53,14 +46,10 @@ export async function uploadSitePhoto(file: File, orderId: string): Promise<stri
       return null
     }
 
-    console.log('✅ 업로드 성공:', data)
-
     // Public URL 생성
     const { data: urlData } = supabase.storage
       .from(SITE_PHOTOS_BUCKET)
       .getPublicUrl(data.path)
-
-    console.log('🔗 Public URL:', urlData.publicUrl)
 
     return urlData.publicUrl
   } catch (error) {

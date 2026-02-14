@@ -259,6 +259,12 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     }
   }
 
+  // ─── 표시 데이터 ───
+  const displayItems = useMemo(
+    () => isEditing ? editItems : (savedReport?.items || []),
+    [isEditing, editItems, savedReport?.items]
+  )
+
   /** 엑셀 다운로드 — 매입내역 전체 */
   const handleExportExcel = () => {
     const columns: ExcelColumn<PurchaseReportItem>[] = [
@@ -284,9 +290,6 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
       sheetName: '매입내역',
     })
   }
-
-  // ─── 표시 데이터 ───
-  const displayItems = isEditing ? editItems : (savedReport?.items || [])
 
   // orderId로 그룹핑 (아코디언용)
   const orderGroups = useMemo(() => {

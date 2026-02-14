@@ -144,10 +144,11 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
   const isInitializing = useRef(true)
 
-  // 정산월 상태
-  const now = new Date()
-  const [settlementYear, setSettlementYear] = useState(now.getFullYear())
-  const [settlementMonthNum, setSettlementMonthNum] = useState(now.getMonth() + 1)
+  // 정산월 상태 — 마운트 시점 연/월 고정
+  const currentYearRef = useRef(new Date().getFullYear())
+  const currentMonthRef = useRef(new Date().getMonth() + 1)
+  const [settlementYear, setSettlementYear] = useState(currentYearRef.current)
+  const [settlementMonthNum, setSettlementMonthNum] = useState(currentMonthRef.current)
 
   /** 다음 주소검색 스크립트 로드 */
   useEffect(() => {
@@ -205,8 +206,8 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
           setSettlementMonthNum(parseInt(parts[1]))
         }
       } else {
-        setSettlementYear(now.getFullYear())
-        setSettlementMonthNum(now.getMonth() + 1)
+        setSettlementYear(currentYearRef.current)
+        setSettlementMonthNum(currentMonthRef.current)
       }
       setTimeout(() => { isInitializing.current = false }, 100)
     }
@@ -269,7 +270,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
     return () => {
       if (debounceTimer.current) clearTimeout(debounceTimer.current)
     }
-  }, [receptionDate, affiliate, businessName, address, detailAddress,
+  }, [request, open, doAutoSave, receptionDate, affiliate, businessName, address, detailAddress,
       contactName, contactPhone, asReason, modelName, outdoorUnitLocation,
       visitDate, samsungAsCenter, technicianName, technicianPhone,
       processingDetails, processedDate, asCost, receptionFee, notes,
@@ -894,7 +895,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
+                            {[currentYearRef.current - 1, currentYearRef.current, currentYearRef.current + 1].map(y => (
                               <SelectItem key={y} value={String(y)}>{y}년</SelectItem>
                             ))}
                           </SelectContent>
