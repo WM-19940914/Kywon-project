@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, UserPlus, Key, Trash2, Edit2, X, Check, RefreshCw, Users, Database, Table2, BarChart3 } from 'lucide-react'
+import { Shield, UserPlus, Key, Trash2, Edit2, X, Check, RefreshCw, Users, Database, Table2, BarChart3, Globe, ExternalLink, Server, MapPin, Zap } from 'lucide-react'
 import { fetchUsers, createUser, updateUserRole, resetPassword, deleteUser, fetchDbStats } from './actions'
 
 /** 역할 옵션 */
@@ -68,7 +68,7 @@ interface UserRow {
   plain_password: string | null
 }
 
-type TabType = 'accounts' | 'database'
+type TabType = 'accounts' | 'database' | 'server'
 
 export default function AdminPage() {
   const [activeTab, setActiveTab] = useState<TabType>('accounts')
@@ -110,11 +110,23 @@ export default function AdminPage() {
           <Database className="h-4 w-4" />
           DB관리
         </button>
+        <button
+          onClick={() => setActiveTab('server')}
+          className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'server'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-muted-foreground hover:text-foreground'
+          }`}
+        >
+          <Globe className="h-4 w-4" />
+          서버관리
+        </button>
       </div>
 
       {/* 탭 내용 */}
       {activeTab === 'accounts' && <AccountsTab />}
       {activeTab === 'database' && <DatabaseTab />}
+      {activeTab === 'server' && <ServerTab />}
     </div>
   )
 }
@@ -372,6 +384,182 @@ function DatabaseTab() {
         </div>
       </div>
 
+    </div>
+  )
+}
+
+// ============================================================
+// 서버관리 탭
+// ============================================================
+
+/** 관리 사이트 바로가기 목록 */
+const ADMIN_LINKS = [
+  {
+    name: 'Vercel 대시보드',
+    description: '배포 상태, 빌드 로그, 도메인 설정',
+    url: 'https://vercel.com/dashboard',
+    icon: '▲',
+    color: 'bg-black text-white',
+  },
+  {
+    name: 'Supabase 대시보드',
+    description: 'DB 관리, 인증, 스토리지, API',
+    url: 'https://app.supabase.com/project/amllpfihdjohjuypcawv',
+    icon: '⚡',
+    color: 'bg-emerald-500/15 text-emerald-400',
+  },
+  {
+    name: '카카오 디벨로퍼',
+    description: '카카오맵 API 키, 도메인 설정',
+    url: 'https://developers.kakao.com/console/app',
+    icon: '🗺️',
+    color: 'bg-yellow-500/15 text-yellow-600',
+  },
+  {
+    name: 'GitHub 저장소',
+    description: '소스 코드, 커밋 내역, 이슈 관리',
+    url: 'https://github.com/WM-19940914/Kywon-project',
+    icon: '🐙',
+    color: 'bg-violet-500/15 text-violet-400',
+  },
+]
+
+function ServerTab() {
+  return (
+    <div className="space-y-5">
+      {/* Vercel 로고 + 제목 */}
+      <div className="flex items-center gap-2">
+        <span className="text-lg font-bold">▲</span>
+        <span className="text-lg font-semibold">Vercel</span>
+      </div>
+
+      {/* 서버 상태 요약 카드 */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+            <Globe className="h-4 w-4" />
+            <span className="text-xs font-medium">사이트 URL</span>
+          </div>
+          <a
+            href="https://melea.vercel.app"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-sm font-bold text-blue-400 hover:underline break-all"
+          >
+            melea.vercel.app
+          </a>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+            <Server className="h-4 w-4" />
+            <span className="text-xs font-medium">프레임워크</span>
+          </div>
+          <p className="text-sm font-bold">Next.js 14</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+            <MapPin className="h-4 w-4" />
+            <span className="text-xs font-medium">서버 위치</span>
+          </div>
+          <p className="text-sm font-bold">서울 (icn1)</p>
+        </div>
+        <div className="rounded-xl border bg-card p-4">
+          <div className="flex items-center gap-2 text-muted-foreground mb-2">
+            <Zap className="h-4 w-4" />
+            <span className="text-xs font-medium">요금제</span>
+          </div>
+          <p className="text-sm font-bold">Hobby (무료)</p>
+        </div>
+      </div>
+
+      {/* 배포 방법 안내 */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Zap className="h-4 w-4 text-blue-400" />
+            배포 방법
+          </h3>
+        </div>
+        <div className="p-4 space-y-3">
+          <div className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-400 text-xs font-bold">1</span>
+            <div>
+              <p className="text-sm font-medium">코드 수정</p>
+              <p className="text-xs text-muted-foreground">내 컴퓨터에서 코드 수정 후 localhost:3002에서 확인</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-400 text-xs font-bold">2</span>
+            <div>
+              <p className="text-sm font-medium">git push</p>
+              <p className="text-xs text-muted-foreground">GitHub에 코드 올리기</p>
+            </div>
+          </div>
+          <div className="flex items-start gap-3">
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold">3</span>
+            <div>
+              <p className="text-sm font-medium">자동 배포</p>
+              <p className="text-xs text-muted-foreground">Vercel이 자동 감지하여 1~2분 내 배포 완료</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* 환경변수 목록 */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Key className="h-4 w-4 text-orange-400" />
+            환경변수 (Vercel에 등록됨)
+          </h3>
+        </div>
+        <div className="p-4">
+          <div className="space-y-2">
+            {[
+              { name: 'NEXT_PUBLIC_SUPABASE_URL', desc: 'Supabase 프로젝트 URL' },
+              { name: 'NEXT_PUBLIC_SUPABASE_ANON_KEY', desc: 'Supabase 공개 API 키' },
+              { name: 'NEXT_PUBLIC_KAKAO_MAP_KEY', desc: '카카오맵 JavaScript 키' },
+            ].map((env) => (
+              <div key={env.name} className="flex items-center justify-between px-3 py-2 rounded-lg border bg-muted/10">
+                <code className="text-xs font-mono text-foreground">{env.name}</code>
+                <span className="text-xs text-muted-foreground hidden sm:inline">{env.desc}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* 관리 사이트 바로가기 */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <ExternalLink className="h-4 w-4 text-violet-400" />
+            관리 사이트 바로가기
+          </h3>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {ADMIN_LINKS.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-3 px-4 py-3 rounded-xl border hover:bg-accent/50 transition-colors group"
+              >
+                <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg text-lg ${link.color}`}>
+                  {link.icon}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium group-hover:text-primary transition-colors">{link.name}</p>
+                  <p className="text-xs text-muted-foreground truncate">{link.description}</p>
+                </div>
+                <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
