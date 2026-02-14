@@ -8,8 +8,9 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { Shield, UserPlus, Key, Trash2, Edit2, X, Check, RefreshCw, Users, Database, Table2, BarChart3, Globe, ExternalLink, Server, MapPin, Zap } from 'lucide-react'
-import { fetchUsers, createUser, updateUserRole, resetPassword, deleteUser, fetchDbStats } from './actions'
+import { Shield, UserPlus, Key, Trash2, Edit2, X, Check, RefreshCw, Users, Database, Table2, BarChart3, Globe, ExternalLink, Server, MapPin, Zap, Activity, Clock, HardDrive, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
+import { fetchUsers, createUser, updateUserRole, resetPassword, deleteUser, fetchDbStats, fetchServerHealth, fetchRecentLogins, fetchSupabaseUsage } from './actions'
+import type { HealthCheckResult, RecentLogin, SupabaseUsage } from './actions'
 
 /** 역할 옵션 */
 const ROLE_OPTIONS = [
@@ -425,8 +426,261 @@ const ADMIN_LINKS = [
 ]
 
 function ServerTab() {
+  const [health, setHealth] = useState<HealthCheckResult | null>(null)
+  const [healthLoading, setHealthLoading] = useState(true)
+  const [logins, setLogins] = useState<RecentLogin[]>([])
+  const [loginsLoading, setLoginsLoading] = useState(true)
+  const [sbUsage, setSbUsage] = useState<SupabaseUsage | null>(null)
+  const [sbUsageLoading, setSbUsageLoading] = useState(true)
+
+  /** 시스템 상태 + 접속기록 + Supabase 사용량 동시 로드 */
+  const loadMonitoring = useCallback(async () => {
+    setHealthLoading(true)
+    setLoginsLoading(true)
+    setSbUsageLoading(true)
+
+    const [healthResult, loginsResult, usageResult] = await Promise.all([
+      fetchServerHealth(),
+      fetchRecentLogins(),
+      fetchSupabaseUsage(),
+    ])
+
+    if (!healthResult.error) setHealth(healthResult.health)
+    setHealthLoading(false)
+
+    if (!loginsResult.error) setLogins(loginsResult.logins)
+    setLoginsLoading(false)
+
+    if (!usageResult.error) setSbUsage(usageResult.usage)
+    setSbUsageLoading(false)
+  }, [])
+
+  useEffect(() => { loadMonitoring() }, [loadMonitoring])
+
+  /** 날짜 포맷 (상대시간) */
+  const formatRelativeTime = (dateStr: string | null) => {
+    if (!dateStr) return '기록 없음'
+    const now = new Date()
+    const d = new Date(dateStr)
+    const diffMs = now.getTime() - d.getTime()
+    const diffMin = Math.floor(diffMs / 60000)
+    const diffHour = Math.floor(diffMs / 3600000)
+    const diffDay = Math.floor(diffMs / 86400000)
+
+    if (diffMin < 1) return '방금 전'
+    if (diffMin < 60) return `${diffMin}분 전`
+    if (diffHour < 24) return `${diffHour}시간 전`
+    if (diffDay < 30) return `${diffDay}일 전`
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  }
+
   return (
     <div className="space-y-5">
+
+      {/* ===== 섹션 1: 시스템 상태 체크 ===== */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Activity className="h-4 w-4 text-emerald-400" />
+            시스템 상태
+          </h3>
+          <button onClick={loadMonitoring} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs hover:bg-accent transition-colors">
+            <RefreshCw className={`h-3 w-3 ${healthLoading ? 'animate-spin' : ''}`} />
+            새로고침
+          </button>
+        </div>
+        <div className="p-4">
+          {healthLoading ? (
+            <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> 연결 상태 확인 중...
+            </div>
+          ) : health ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* DB 연결 */}
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.db.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.db.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {health.db.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Database</p>
+                  <p className={`text-xs ${health.db.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {health.db.ok ? `정상 (${health.db.latencyMs}ms)` : health.db.message}
+                  </p>
+                </div>
+              </div>
+              {/* Auth 연결 */}
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.auth.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.auth.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {health.auth.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Authentication</p>
+                  <p className={`text-xs ${health.auth.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {health.auth.message}
+                  </p>
+                </div>
+              </div>
+              {/* Storage 연결 */}
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.storage.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.storage.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+                  {health.storage.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Storage</p>
+                  <p className={`text-xs ${health.storage.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {health.storage.message}
+                  </p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-red-400 text-center py-4">상태 조회 실패</p>
+          )}
+        </div>
+      </div>
+
+      {/* ===== 섹션 2: 최근 접속 기록 ===== */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <Clock className="h-4 w-4 text-blue-400" />
+            최근 접속 기록
+          </h3>
+        </div>
+        <div className="p-4">
+          {loginsLoading ? (
+            <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
+              <Loader2 className="h-4 w-4 animate-spin" /> 불러오는 중...
+            </div>
+          ) : logins.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">접속 기록이 없습니다.</p>
+          ) : (
+            <div className="space-y-2">
+              {logins.map((login) => (
+                <div key={login.id} className="flex items-center justify-between px-3 py-2.5 rounded-lg border bg-muted/10 hover:bg-muted/20 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-bold">
+                      {login.displayName.charAt(0)}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{login.displayName}</p>
+                      <p className="text-xs text-muted-foreground">{login.username}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[login.role] || 'bg-gray-500/15 text-gray-400'}`}>
+                      {ROLE_LABELS[login.role] || login.role}
+                    </span>
+                    <span className="text-xs text-muted-foreground min-w-[70px] text-right">
+                      {formatRelativeTime(login.lastSignInAt)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ===== 섹션 3: 무료 플랜 사용량 안내 ===== */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="px-4 py-3 border-b bg-muted/30">
+          <h3 className="text-sm font-semibold flex items-center gap-2">
+            <HardDrive className="h-4 w-4 text-orange-400" />
+            무료 플랜 한도 · 영한 번역 가이드
+          </h3>
+        </div>
+        <div className="p-4 space-y-5">
+          {/* Vercel 한도 — 영한 번역 테이블 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold bg-black text-white px-1.5 py-0.5 rounded">▲</span>
+                <span className="text-sm font-medium">Vercel Hobby</span>
+              </div>
+              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-400 hover:underline">
+                사용량 보기 <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            <div className="rounded-lg border overflow-hidden">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="bg-muted/30 border-b">
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">대시보드 표기 (영어)</th>
+                    <th className="text-left px-3 py-2 font-medium text-muted-foreground">뜻</th>
+                    <th className="text-right px-3 py-2 font-medium text-muted-foreground">무료 한도</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[
+                    { en: 'Fluid Active CPU', ko: '서버 CPU 사용시간', limit: '4시간/월' },
+                    { en: 'Function Invocations', ko: '함수 호출 횟수', limit: '100만회/월' },
+                    { en: 'Edge Requests', ko: '엣지 요청 횟수', limit: '100만회/월' },
+                    { en: 'Fast Origin Transfer', ko: '데이터 전송량 (대역폭)', limit: '10 GB/월' },
+                  ].map((row) => (
+                    <tr key={row.en} className="border-b last:border-0 hover:bg-muted/10">
+                      <td className="px-3 py-2 font-mono text-muted-foreground">{row.en}</td>
+                      <td className="px-3 py-2 font-medium">{row.ko}</td>
+                      <td className="px-3 py-2 text-right font-bold">{row.limit}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <p className="text-[11px] text-muted-foreground/60 mt-2">
+              * Vercel은 사용량 API를 제공하지 않아 자동 연동 불가. 위 대시보드에서 직접 확인하세요.
+            </p>
+          </div>
+
+          {/* Supabase 실시간 사용량 */}
+          <div>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#3ECF8E', color: '#fff' }}>⚡</span>
+                <span className="text-sm font-medium">Supabase Free — 실시간 사용량</span>
+              </div>
+              <a href="https://app.supabase.com/project/amllpfihdjohjuypcawv" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-emerald-400 hover:underline">
+                대시보드 <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+            {sbUsageLoading ? (
+              <div className="flex items-center justify-center py-6 text-muted-foreground text-sm gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" /> 사용량 조회 중...
+              </div>
+            ) : sbUsage ? (
+              <div className="space-y-3">
+                {/* DB 용량 */}
+                <UsageBar
+                  label="DB 용량"
+                  used={sbUsage.db.usedLabel}
+                  limit={sbUsage.db.limitLabel}
+                  percent={Math.min((sbUsage.db.usedBytes / sbUsage.db.limitBytes) * 100, 100)}
+                  color="emerald"
+                />
+                {/* Storage */}
+                <UsageBar
+                  label={`파일 저장소 (${sbUsage.storage.fileCount}개 파일)`}
+                  used={sbUsage.storage.usedLabel}
+                  limit={sbUsage.storage.limitLabel}
+                  percent={Math.min((sbUsage.storage.usedBytes / sbUsage.storage.limitBytes) * 100, 100)}
+                  color="blue"
+                />
+                {/* Auth 사용자 */}
+                <UsageBar
+                  label="등록 사용자"
+                  used={`${sbUsage.auth.userCount}명`}
+                  limit={`${sbUsage.auth.limitCount.toLocaleString()}명`}
+                  percent={Math.min((sbUsage.auth.userCount / sbUsage.auth.limitCount) * 100, 100)}
+                  color="violet"
+                />
+              </div>
+            ) : (
+              <p className="text-sm text-red-400 text-center py-4">사용량 조회 실패</p>
+            )}
+          </div>
+        </div>
+      </div>
+
       {/* Vercel 로고 + 제목 */}
       <div className="flex items-center gap-2">
         <span className="text-lg font-bold">▲</span>
@@ -567,6 +821,45 @@ function ServerTab() {
 // ============================================================
 // 모달 컴포넌트들
 // ============================================================
+
+/** 사용량 진행바 — Supabase 사용량 시각화용 */
+function UsageBar({ label, used, limit, percent, color }: {
+  label: string; used: string; limit: string; percent: number
+  color: 'emerald' | 'blue' | 'violet' | 'orange'
+}) {
+  const barColors = {
+    emerald: 'bg-emerald-500',
+    blue: 'bg-blue-500',
+    violet: 'bg-violet-500',
+    orange: 'bg-orange-500',
+  }
+  const textColors = {
+    emerald: 'text-emerald-400',
+    blue: 'text-blue-400',
+    violet: 'text-violet-400',
+    orange: 'text-orange-400',
+  }
+
+  return (
+    <div className="px-3 py-2.5 rounded-lg border bg-muted/10">
+      <div className="flex items-center justify-between mb-1.5">
+        <span className="text-xs font-medium">{label}</span>
+        <span className="text-xs text-muted-foreground">
+          <span className={`font-bold ${textColors[color]}`}>{used}</span>
+          {' / '}
+          {limit}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all duration-500 ${barColors[color]}`}
+          style={{ width: `${Math.max(percent, 0.5)}%` }}
+        />
+      </div>
+      <p className="text-[10px] text-muted-foreground/60 mt-1 text-right">{percent.toFixed(1)}% 사용</p>
+    </div>
+  )
+}
 
 function ModalOverlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (
