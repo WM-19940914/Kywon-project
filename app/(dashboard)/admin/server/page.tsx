@@ -7,10 +7,24 @@
 
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import { Shield, UserPlus, Key, Trash2, Edit2, X, Check, RefreshCw, Users, Database, Table2, BarChart3, Globe, ExternalLink, Server, MapPin, Zap, Activity, Clock, HardDrive, CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { fetchUsers, createUser, updateUserRole, resetPassword, deleteUser, fetchDbStats, fetchServerHealth, fetchRecentLogins, fetchSupabaseUsage } from './actions'
 import type { HealthCheckResult, RecentLogin, SupabaseUsage } from './actions'
+import { ROLE_MENU_ACCESS, type UserRole } from '@/lib/auth/roles'
+import { menuItems, archiveMenuItem, serverAdminMenuItem } from '@/lib/menu-items'
+
+/** 역할별 메뉴 권한 매트릭스에서 사용할 역할 순서 */
+const ROLE_ORDER: UserRole[] = ['admin', 'melea', 's1eng', 'kyowon', 'affiliate']
+
+/** 메뉴 그룹별 색상 도트 */
+const GROUP_DOT_COLORS: Record<string, string> = {
+  '': 'bg-gray-400',
+  '교원그룹': 'bg-blue-400',
+  '교원 · 멜레아': 'bg-violet-400',
+  '멜레아 · 에스원': 'bg-emerald-400',
+  '멜레아 전용': 'bg-orange-400',
+}
 
 /** 역할 옵션 */
 const ROLE_OPTIONS = [
@@ -243,12 +257,211 @@ function AccountsTab() {
         </div>
       </div>
 
+      {/* 역할별 메뉴 권한 매트릭스 */}
+      <RoleMenuMatrix />
+
       {/* 모달들 */}
       {showCreateModal && <CreateUserModal onClose={() => setShowCreateModal(false)} onSuccess={(msg) => { setMessage({ type: 'success', text: msg }); setShowCreateModal(false); loadUsers() }} onError={(msg) => setMessage({ type: 'error', text: msg })} />}
       {editingUser && <EditRoleModal user={editingUser} onClose={() => setEditingUser(null)} onSuccess={(msg) => { setMessage({ type: 'success', text: msg }); setEditingUser(null); loadUsers() }} onError={(msg) => setMessage({ type: 'error', text: msg })} />}
       {resetTarget && <ResetPasswordModal user={resetTarget} onClose={() => setResetTarget(null)} onSuccess={(msg) => { setMessage({ type: 'success', text: msg }); setResetTarget(null) }} onError={(msg) => setMessage({ type: 'error', text: msg })} />}
       {deleteTarget && <DeleteUserModal user={deleteTarget} onClose={() => setDeleteTarget(null)} onSuccess={(msg) => { setMessage({ type: 'success', text: msg }); setDeleteTarget(null); loadUsers() }} onError={(msg) => setMessage({ type: 'error', text: msg })} />}
     </>
+  )
+}
+
+// ============================================================
+// 역할별 메뉴 권한 매트릭스 — 어떤 역할이 어떤 메뉴를 볼 수 있는지 시각화
+// ============================================================
+
+function RoleMenuMatrix() {
+  /** 역할이 특정 메뉴 그룹에 접근 가능한지 확인 */
+  const hasAccess = (role: UserRole, groupTitle: string) => {
+    return ROLE_MENU_ACCESS[role]?.[groupTitle] ?? false
+  }
+
+  return (
+    <div className="mt-6">
+      <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+        <Shield className="h-4 w-4 text-violet-400" />
+        역할별 메뉴 권한
+      </h3>
+
+      {/* ── 데스크톱: 매트릭스 테이블 (md 이상) ── */}
+      <div className="hidden md:block rounded-xl border bg-card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b bg-muted/30">
+                <th className="text-left px-4 py-3 font-medium text-muted-foreground min-w-[200px]">메뉴</th>
+                {ROLE_ORDER.map(role => (
+                  <th key={role} className="text-center px-3 py-3 min-w-[90px]">
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[role]}`}>
+                      {ROLE_LABELS[role]}
+                    </span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {/* 메뉴 그룹별 행 */}
+              {menuItems.map((group) => (
+                <Fragment key={`group-${group.title || 'dashboard'}`}>
+                  {/* 그룹 헤더 행 */}
+                  <tr className="bg-muted/15">
+                    <td className="px-4 py-2" colSpan={1 + ROLE_ORDER.length}>
+                      <div className="flex items-center gap-2">
+                        <span className={`h-2.5 w-2.5 rounded-full ${GROUP_DOT_COLORS[group.title] || 'bg-gray-400'}`} />
+                        <span className="text-xs font-semibold text-muted-foreground">
+                          {group.title || '대시보드'}
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                  {/* 개별 메뉴 아이템 행 */}
+                  {group.items.map((item) => {
+                    const Icon = item.icon
+                    return (
+                      <tr key={item.url} className="border-b last:border-0 hover:bg-muted/10 transition-colors">
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2.5 pl-4">
+                            <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            <span className="text-xs">{item.title}</span>
+                            {item.disabled && (
+                              <span className="text-[10px] text-muted-foreground/50 bg-muted px-1.5 py-0.5 rounded">준비중</span>
+                            )}
+                          </div>
+                        </td>
+                        {ROLE_ORDER.map(role => (
+                          <td key={role} className="text-center px-3 py-2.5">
+                            {hasAccess(role, group.title) ? (
+                              <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-muted-foreground/25 mx-auto" />
+                            )}
+                          </td>
+                        ))}
+                      </tr>
+                    )
+                  })}
+                </Fragment>
+              ))}
+
+              {/* 구분선 */}
+              <tr className="bg-muted/15">
+                <td className="px-4 py-2" colSpan={1 + ROLE_ORDER.length}>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full bg-gray-500" />
+                    <span className="text-xs font-semibold text-muted-foreground">기타</span>
+                  </div>
+                </td>
+              </tr>
+
+              {/* 과거자료 — 모든 역할 접근 가능 */}
+              <tr className="border-b hover:bg-muted/10 transition-colors">
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-2.5 pl-4">
+                    <archiveMenuItem.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs">{archiveMenuItem.title}</span>
+                  </div>
+                </td>
+                {ROLE_ORDER.map(role => (
+                  <td key={role} className="text-center px-3 py-2.5">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                  </td>
+                ))}
+              </tr>
+
+              {/* 관리자페이지 — admin만 접근 */}
+              <tr className="hover:bg-muted/10 transition-colors">
+                <td className="px-4 py-2.5">
+                  <div className="flex items-center gap-2.5 pl-4">
+                    <serverAdminMenuItem.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                    <span className="text-xs">{serverAdminMenuItem.title}</span>
+                    <span className="text-[10px] text-red-400/70 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/15">
+                      opendnals123 전용
+                    </span>
+                  </div>
+                </td>
+                {ROLE_ORDER.map(role => (
+                  <td key={role} className="text-center px-3 py-2.5">
+                    {role === 'admin' ? (
+                      <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                    ) : (
+                      <XCircle className="h-4 w-4 text-muted-foreground/25 mx-auto" />
+                    )}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* ── 모바일: 역할별 카드 (md 미만) ── */}
+      <div className="md:hidden space-y-3">
+        {ROLE_ORDER.map(role => (
+          <div key={role} className="rounded-xl border bg-card overflow-hidden">
+            {/* 카드 헤더: 역할 뱃지 */}
+            <div className="px-4 py-3 border-b bg-muted/30 flex items-center gap-2">
+              <span className={`inline-flex px-2.5 py-1 rounded-md text-xs font-medium border ${ROLE_COLORS[role]}`}>
+                {ROLE_LABELS[role]}
+              </span>
+            </div>
+            <div className="p-3 space-y-3">
+              {menuItems.map(group => {
+                const accessible = hasAccess(role, group.title)
+                return (
+                  <div key={group.title || 'dashboard'}>
+                    {/* 그룹명 */}
+                    <div className="flex items-center gap-2 mb-1.5">
+                      <span className={`h-2 w-2 rounded-full ${GROUP_DOT_COLORS[group.title] || 'bg-gray-400'}`} />
+                      <span className={`text-[11px] font-semibold ${accessible ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
+                        {group.title || '대시보드'}
+                      </span>
+                      {!accessible && (
+                        <XCircle className="h-3 w-3 text-muted-foreground/30" />
+                      )}
+                    </div>
+                    {/* 메뉴 아이템 목록 */}
+                    <div className="pl-4 space-y-1">
+                      {group.items.map(item => {
+                        const Icon = item.icon
+                        return (
+                          <div key={item.url} className={`flex items-center gap-2 py-0.5 ${!accessible ? 'opacity-30 line-through' : ''}`}>
+                            <Icon className="h-3 w-3 text-muted-foreground shrink-0" />
+                            <span className="text-xs">{item.title}</span>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+              {/* 기타: 과거자료 + 관리자페이지 */}
+              <div>
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className="h-2 w-2 rounded-full bg-gray-500" />
+                  <span className="text-[11px] font-semibold text-muted-foreground">기타</span>
+                </div>
+                <div className="pl-4 space-y-1">
+                  <div className="flex items-center gap-2 py-0.5">
+                    <archiveMenuItem.icon className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-xs">{archiveMenuItem.title}</span>
+                  </div>
+                  <div className={`flex items-center gap-2 py-0.5 ${role !== 'admin' ? 'opacity-30 line-through' : ''}`}>
+                    <serverAdminMenuItem.icon className="h-3 w-3 text-muted-foreground shrink-0" />
+                    <span className="text-xs">{serverAdminMenuItem.title}</span>
+                    {role === 'admin' && (
+                      <span className="text-[9px] text-red-400/70 bg-red-500/10 px-1 py-0.5 rounded">전용</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
 

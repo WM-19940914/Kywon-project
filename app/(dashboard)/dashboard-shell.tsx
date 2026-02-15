@@ -29,7 +29,7 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@/components/ui/sidebar'
-import { menuItems, serverAdminMenuItem } from '@/lib/menu-items'
+import { menuItems, serverAdminMenuItem, archiveMenuItem } from '@/lib/menu-items'
 import { AlertProvider } from '@/components/ui/custom-alert'
 import { ROLE_MENU_ACCESS, ROLE_LABELS, type UserProfile } from '@/lib/auth/roles'
 import { UserProvider } from '@/lib/auth/user-context'
@@ -187,6 +187,22 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
             )
           })}
         </SidebarContent>
+
+        {/* ── 과거 자료 아카이브 메뉴 (맨 하단) ── */}
+        <div className="px-3 pb-1">
+          <div className="mx-1 mb-2 border-t border-sidebar-border/60" />
+          <Link
+            href={archiveMenuItem.url}
+            className={`flex items-center gap-2 px-3 py-2 rounded-lg text-[12px] transition-all duration-150 ${
+              pathname === archiveMenuItem.url
+                ? 'bg-white/[0.08] text-sidebar-foreground'
+                : 'text-sidebar-foreground/40 hover:text-sidebar-foreground/70 hover:bg-white/[0.04]'
+            }`}
+          >
+            <archiveMenuItem.icon className="h-3.5 w-3.5" />
+            <span>{archiveMenuItem.title}</span>
+          </Link>
+        </div>
 
         {/* ── opendnals123 전용 서버관리 메뉴 ── */}
         {user.username === 'opendnals123' && (

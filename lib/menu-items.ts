@@ -22,6 +22,7 @@ import {
   ShoppingCart,   // 선구매 장비
   Settings,       // 설정
   Server,         // 서버관리
+  FolderArchive,  // 과거 자료
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
 
@@ -153,6 +154,13 @@ export const menuItems: MenuGroup[] = [
     ],
   },
 ]
+
+/** 과거 자료 아카이브 메뉴 — 기존 사이트 이전 데이터 (사이드바 맨 하단) */
+export const archiveMenuItem: MenuItem = {
+  title: '과거 자료 (2020~2025)',
+  url: '/archive',
+  icon: FolderArchive,
+}
 
 /** 하단 설정 메뉴 */
 export const settingsMenuItem: MenuItem = {
