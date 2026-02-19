@@ -33,7 +33,7 @@ function camelToSnake(str: string): string {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toCamelCase<T>(obj: any): T {
-  // null이나 undefined는 그대로 반환
+  // null이나 undefined는 그대로 반환 (재귀 호출 시 필드 값 보존 필요)
   if (obj === null || obj === undefined) return obj
 
   // 배열이면 각 항목을 재귀 변환
@@ -65,6 +65,7 @@ export function toCamelCase<T>(obj: any): T {
  */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function toSnakeCase(obj: any): Record<string, unknown> {
+  // null이나 undefined는 그대로 반환 (재귀 호출 시 필드 값 보존 필요)
   if (obj === null || obj === undefined) return obj
 
   if (Array.isArray(obj)) {

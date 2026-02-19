@@ -702,7 +702,9 @@ export function parseAddress(address: string): ParsedAddress {
   const hasRelocation = address.includes('이전목적지:')
 
   if (hasRelocation) {
-    const [baseText, relocationText] = address.split(' / ')
+    const parts = address.split(' / ')
+    const baseText = parts[0] ?? ''
+    const relocationText = parts[1] ?? ''
     const baseClean = baseText.replace('작업장소:', '').trim()
     const relocationClean = relocationText.replace('이전목적지:', '').trim()
 

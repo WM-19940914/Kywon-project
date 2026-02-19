@@ -43,35 +43,49 @@ export default function SchedulePage() {
   const [orderToView, setOrderToView] = useState<Order | null>(null)
   const [quoteDialogOpen, setQuoteDialogOpen] = useState(false)
   const [orderForQuote, setOrderForQuote] = useState<Order | null>(null)
+  // 비동기 액션 중복 실행 방지
+  const [actionLoading, setActionLoading] = useState(false)
 
   /** 설치일정 업데이트 + 철거보관 자동 등록 */
   const handleUpdateOrder = async (orderId: string, updates: Partial<Order>) => {
-    await updateOrderDB(orderId, updates)
-    if (updates.installCompleteDate) {
-      const order = orders.find(o => o.id === orderId)
-      if (order) {
-        const hasRemoval = order.items.some(item => item.workType === '철거보관')
-        if (hasRemoval) {
-          const updatedOrder = { ...order, ...updates }
-          await createStoredEquipmentFromOrder(updatedOrder)
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      await updateOrderDB(orderId, updates)
+      if (updates.installCompleteDate) {
+        const order = orders.find(o => o.id === orderId)
+        if (order) {
+          const hasRemoval = order.items.some(item => item.workType === '철거보관')
+          if (hasRemoval) {
+            const updatedOrder = { ...order, ...updates }
+            await createStoredEquipmentFromOrder(updatedOrder)
+          }
         }
       }
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order
+        return { ...order, ...updates }
+      }))
+    } finally {
+      setActionLoading(false)
     }
-    setOrders(prev => prev.map(order => {
-      if (order.id !== orderId) return order
-      return { ...order, ...updates }
-    }))
   }
 
   /** 발주 취소 */
   const handleCancelOrder = async (orderId: string, reason: string) => {
-    const success = await cancelOrderDB(orderId, reason)
-    if (success) {
-      setOrders(prev => prev.map(order =>
-        order.id === orderId
-          ? { ...order, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
-          : order
-      ))
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const success = await cancelOrderDB(orderId, reason)
+      if (success) {
+        setOrders(prev => prev.map(order =>
+          order.id === orderId
+            ? { ...order, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
+            : order
+        ))
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -81,10 +95,16 @@ export default function SchedulePage() {
   }
 
   const handleQuoteSave = async (orderId: string, quote: CustomerQuote) => {
-    await saveCustomerQuote(orderId, quote)
-    setOrders(prev => prev.map(order =>
-      order.id === orderId ? { ...order, customerQuote: quote } : order
-    ))
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      await saveCustomerQuote(orderId, quote)
+      setOrders(prev => prev.map(order =>
+        order.id === orderId ? { ...order, customerQuote: quote } : order
+      ))
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   /** 탭별 건수 */

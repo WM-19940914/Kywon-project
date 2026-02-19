@@ -10,10 +10,21 @@ const { createClient } = require('@supabase/supabase-js')
 const path = require('path')
 const crypto = require('crypto')
 
-// ===== Supabase 연결 =====
-const SUPABASE_URL = 'https://amllpfihdjohjuypcawv.supabase.co'
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFtbGxwZmloZGpvaGp1eXBjYXd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk5NTQ3ODMsImV4cCI6MjA4NTUzMDc4M30._xbUnCGv5F25IXUPMZuIm-qYl-lQUGWCxFCicrmbz_8'
-const supabase = createClient(SUPABASE_URL, SUPABASE_KEY)
+// ===== Supabase 연결 (환경변수 사용) =====
+require('dotenv').config({ path: '.env.local' })
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+
+if (!supabaseUrl || !supabaseKey) {
+  console.error('❌ 환경변수가 설정되지 않았습니다!')
+  console.error('   .env.local에 다음 값들이 있는지 확인하세요:')
+  console.error('   - NEXT_PUBLIC_SUPABASE_URL')
+  console.error('   - NEXT_PUBLIC_SUPABASE_ANON_KEY')
+  process.exit(1)
+}
+
+const supabase = createClient(supabaseUrl, supabaseKey)
 
 // ===== 엑셀 날짜 변환 (엑셀 시리얼 넘버 → YYYY-MM-DD) =====
 function excelDateToString(value) {

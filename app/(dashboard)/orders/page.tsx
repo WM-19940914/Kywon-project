@@ -57,6 +57,8 @@ export default function OrdersPage() {
   const [storedEquipment, setStoredEquipment] = useState<StoredEquipment[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
+  // 삭제/취소 등 비동기 액션 중복 실행 방지
+  const [actionLoading, setActionLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([fetchOrders(), fetchStoredEquipment()]).then(([ordersData, equipmentData]) => {
@@ -125,54 +127,66 @@ export default function OrdersPage() {
 
   /** 발주 삭제 */
   const handleDelete = async (orderId: string) => {
-    const orderToDelete = orders.find(o => o.id === orderId)
-    const equipmentIds = (orderToDelete?.items || [])
-      .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
-      .map(item => item.storedEquipmentId!)
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const orderToDelete = orders.find(o => o.id === orderId)
+      const equipmentIds = (orderToDelete?.items || [])
+        .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+        .map(item => item.storedEquipmentId!)
 
-    const success = await deleteOrderDB(orderId)
-    if (success) {
-      if (equipmentIds.length > 0) {
-        await Promise.all(
-          equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
-        )
-        setStoredEquipment(prev =>
-          prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
-        )
+      const success = await deleteOrderDB(orderId)
+      if (success) {
+        if (equipmentIds.length > 0) {
+          await Promise.all(
+            equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
+          )
+          setStoredEquipment(prev =>
+            prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
+          )
+        }
+        setOrders(orders.filter(o => o.id !== orderId))
+        showAlert('발주가 삭제되었습니다.', 'success')
+      } else {
+        showAlert('발주 삭제에 실패했습니다.', 'error')
       }
-      setOrders(orders.filter(o => o.id !== orderId))
-      showAlert('발주가 삭제되었습니다.', 'success')
-    } else {
-      showAlert('발주 삭제에 실패했습니다.', 'error')
+    } finally {
+      setActionLoading(false)
     }
   }
 
   /** 발주 취소 */
   const handleCancelOrder = async (orderId: string, reason: string) => {
-    const success = await cancelOrderDB(orderId, reason)
-    if (success) {
-      const cancelledOrder = orders.find(o => o.id === orderId)
-      const equipmentIds = (cancelledOrder?.items || [])
-        .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
-        .map(item => item.storedEquipmentId!)
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const success = await cancelOrderDB(orderId, reason)
+      if (success) {
+        const cancelledOrder = orders.find(o => o.id === orderId)
+        const equipmentIds = (cancelledOrder?.items || [])
+          .filter(item => item.workType === '재고설치' && item.storedEquipmentId)
+          .map(item => item.storedEquipmentId!)
 
-      if (equipmentIds.length > 0) {
-        await Promise.all(
-          equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
-        )
-        setStoredEquipment(prev =>
-          prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
-        )
+        if (equipmentIds.length > 0) {
+          await Promise.all(
+            equipmentIds.map(eqId => updateStoredEquipment(eqId, { status: 'stored' }))
+          )
+          setStoredEquipment(prev =>
+            prev.map(eq => equipmentIds.includes(eq.id) ? { ...eq, status: 'stored' as const } : eq)
+          )
+        }
+
+        setOrders(orders.map(o =>
+          o.id === orderId
+            ? { ...o, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
+            : o
+        ))
+        showAlert('발주가 취소되었습니다.', 'success')
+      } else {
+        showAlert('발주 취소에 실패했습니다.', 'error')
       }
-
-      setOrders(orders.map(o =>
-        o.id === orderId
-          ? { ...o, status: 'cancelled' as const, cancelReason: reason, cancelledAt: new Date().toISOString() }
-          : o
-      ))
-      showAlert('발주가 취소되었습니다.', 'success')
-    } else {
-      showAlert('발주 취소에 실패했습니다.', 'error')
+    } finally {
+      setActionLoading(false)
     }
   }
 

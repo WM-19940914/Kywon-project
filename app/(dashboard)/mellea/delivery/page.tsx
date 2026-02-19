@@ -57,6 +57,9 @@ export default function DeliveryPage() {
   const [inputDialogOpen, setInputDialogOpen] = useState(false)
   const [orderToEdit, setOrderToEdit] = useState<Order | null>(null)
 
+  // 비동기 액션 중복 실행 방지
+  const [actionLoading, setActionLoading] = useState(false)
+
   // 상세보기 모달
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [orderToView, setOrderToView] = useState<Order | null>(null)
@@ -139,11 +142,17 @@ export default function DeliveryPage() {
    * 발주대기 ↔ 진행중 ↔ 배송완료 양방향 이동
    */
   const handleChangeDeliveryStatus = async (orderId: string, newStatus: DeliveryStatus) => {
-    await updateDeliveryStatus(orderId, newStatus)
-    setOrders(prev => prev.map(order => {
-      if (order.id !== orderId) return order
-      return { ...order, deliveryStatus: newStatus }
-    }))
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      await updateDeliveryStatus(orderId, newStatus)
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order
+        return { ...order, deliveryStatus: newStatus }
+      }))
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   /**
@@ -161,19 +170,25 @@ export default function DeliveryPage() {
     samsungOrderNumber: string
     equipmentItems: EquipmentItem[]
   }) => {
-    await updateOrder(orderId, { samsungOrderNumber: data.samsungOrderNumber })
-    await saveEquipmentItems(orderId, data.equipmentItems)
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      await updateOrder(orderId, { samsungOrderNumber: data.samsungOrderNumber })
+      await saveEquipmentItems(orderId, data.equipmentItems)
 
-    setOrders(prev => prev.map(order => {
-      if (order.id !== orderId) return order
-      return {
-        ...order,
-        samsungOrderNumber: data.samsungOrderNumber,
-        equipmentItems: data.equipmentItems,
-      }
-    }))
+      setOrders(prev => prev.map(order => {
+        if (order.id !== orderId) return order
+        return {
+          ...order,
+          samsungOrderNumber: data.samsungOrderNumber,
+          equipmentItems: data.equipmentItems,
+        }
+      }))
 
-    showAlert('배송 정보가 저장되었습니다!', 'success')
+      showAlert('배송 정보가 저장되었습니다!', 'success')
+    } finally {
+      setActionLoading(false)
+    }
   }
 
   /**
@@ -182,15 +197,21 @@ export default function DeliveryPage() {
    * - 입고된 구성품이 있으면 유휴재고 이벤트 자동 생성 (DAL에서 처리)
    */
   const handleCancelOrder = async (orderId: string, reason: string) => {
-    const success = await cancelOrder(orderId, reason)
-    if (success) {
-      setOrders(prev => prev.map(order => {
-        if (order.id !== orderId) return order
-        return { ...order, status: 'cancelled' }
-      }))
-      showAlert('발주가 취소되었습니다.', 'success')
-    } else {
-      showAlert('발주 취소에 실패했습니다.', 'error')
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const success = await cancelOrder(orderId, reason)
+      if (success) {
+        setOrders(prev => prev.map(order => {
+          if (order.id !== orderId) return order
+          return { ...order, status: 'cancelled' }
+        }))
+        showAlert('발주가 취소되었습니다.', 'success')
+      } else {
+        showAlert('발주 취소에 실패했습니다.', 'error')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -419,18 +440,30 @@ export default function DeliveryPage() {
             onChangeStatus={handleChangeDeliveryStatus}
             onCancelOrder={handleCancelOrder}
             onSaveItems={async (orderId, items) => {
-              await saveEquipmentItems(orderId, items)
-              setOrders(prev => prev.map(order => {
-                if (order.id !== orderId) return order
-                return { ...order, equipmentItems: items }
-              }))
+              if (actionLoading) return
+              setActionLoading(true)
+              try {
+                await saveEquipmentItems(orderId, items)
+                setOrders(prev => prev.map(order => {
+                  if (order.id !== orderId) return order
+                  return { ...order, equipmentItems: items }
+                }))
+              } finally {
+                setActionLoading(false)
+              }
             }}
             onSaveOrderField={async (orderId, updates) => {
-              await updateOrder(orderId, updates)
-              setOrders(prev => prev.map(order => {
-                if (order.id !== orderId) return order
-                return { ...order, ...updates }
-              }))
+              if (actionLoading) return
+              setActionLoading(true)
+              try {
+                await updateOrder(orderId, updates)
+                setOrders(prev => prev.map(order => {
+                  if (order.id !== orderId) return order
+                  return { ...order, ...updates }
+                }))
+              } finally {
+                setActionLoading(false)
+              }
             }}
             readOnly={false}
             currentTab={statusFilter}

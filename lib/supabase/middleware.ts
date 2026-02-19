@@ -9,6 +9,8 @@
 
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { isRouteAllowed } from '@/lib/auth/route-access'
+import type { UserRole } from '@/lib/auth/roles'
 
 export async function updateSession(request: NextRequest) {
   // 응답 객체 생성 (쿠키를 수정할 수 있도록)
@@ -61,6 +63,26 @@ export async function updateSession(request: NextRequest) {
     const url = request.nextUrl.clone()
     url.pathname = '/'
     return NextResponse.redirect(url)
+  }
+
+  // ── 역할별 접근 제어 ──
+  // 로그인한 사용자의 역할을 조회하여 해당 페이지 접근 가능 여부 확인
+  if (user && pathname !== '/') {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', user.id)
+      .single()
+
+    if (profile?.role) {
+      const allowed = isRouteAllowed(pathname, profile.role as UserRole)
+      if (!allowed) {
+        // 접근 권한 없음 → 대시보드로 리다이렉트
+        const url = request.nextUrl.clone()
+        url.pathname = '/'
+        return NextResponse.redirect(url)
+      }
+    }
   }
 
   return supabaseResponse

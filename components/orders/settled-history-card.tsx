@@ -45,11 +45,13 @@ function generateOrderSummary(order: Order): string {
  * 정산완료 과거내역 카드 컴포넌트
  */
 export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) {
-  // 날짜 포맷팅 (2024-01-25 → 24년 1월)
+  // 날짜 포맷팅 (2024-01-25 → 24년 1월, 파싱 실패 시 원본 반환)
   const formatDate = (dateString: string) => {
-    const [year, month] = dateString.split('-')
-    const shortYear = year.slice(2) // 2024 → 24
-    return `${shortYear}년 ${parseInt(month)}월`
+    const parts = dateString.split('-')
+    const year = parts[0]
+    const month = parts[1] ? parseInt(parts[1]) : NaN
+    if (!year || year.length < 2 || isNaN(month)) return dateString
+    return `${year.slice(2)}년 ${month}월`
   }
 
   return (

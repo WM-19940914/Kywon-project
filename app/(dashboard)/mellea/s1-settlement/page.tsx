@@ -32,6 +32,15 @@ import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import type { CustomerQuote } from '@/types/order'
 import { saveCustomerQuote } from '@/lib/supabase/dal'
 
+/** 'YYYY-MM' 형식 문자열을 'YYYY년 M월'로 변환 (파싱 실패 시 원본 반환) */
+function formatYearMonth(ym: string): string {
+  const parts = ym.split('-')
+  const year = parts[0]
+  const month = parts[1] ? parseInt(parts[1]) : NaN
+  if (!year || isNaN(month)) return ym
+  return `${year}년 ${month}월`
+}
+
 /** 작업종류 아이콘 매핑 */
 const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
   '신규설치': PlusCircle,
@@ -90,7 +99,7 @@ function SettledMonthGroup({
 
   // 월 라벨 (예: "2026년 2월")
   const monthLabel = monthKey !== '미지정'
-    ? `${monthKey.split('-')[0]}년 ${parseInt(monthKey.split('-')[1])}월`
+    ? formatYearMonth(monthKey)
     : '미지정'
 
   // 해당 월 설치비 합계
@@ -226,7 +235,7 @@ function SettledMonthGroup({
                         <td className="p-3 text-center">
                           <span className="text-xs font-medium text-green-700">
                             {order.s1SettlementMonth
-                              ? `${order.s1SettlementMonth.split('-')[0]}년 ${parseInt(order.s1SettlementMonth.split('-')[1])}월`
+                              ? formatYearMonth(order.s1SettlementMonth)
                               : '-'
                             }
                           </span>
@@ -422,6 +431,9 @@ export default function S1SettlementPage() {
   const [settlementMonth, setSettlementMonth] = useState(now.getMonth() + 1)
   const [isEditingMonth, setIsEditingMonth] = useState(false)
 
+  // 비동기 액션 중복 실행 방지
+  const [actionLoading, setActionLoading] = useState(false)
+
   // 체크박스 선택 상태
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
@@ -539,6 +551,7 @@ export default function S1SettlementPage() {
    * @param targetStatus - 변경할 상태
    */
   const handleBatchStatusChange = async (targetStatus: S1SettlementStatus) => {
+    if (actionLoading) return
     const ids = Array.from(selectedIds)
     if (ids.length === 0) {
       showAlert('선택된 항목이 없습니다.', 'warning')
@@ -568,25 +581,30 @@ export default function S1SettlementPage() {
     const confirmed = await showConfirm(confirmMessage)
     if (!confirmed) return
 
-    // DB 업데이트 (정산완료 시 화면에서 선택한 정산월 전달)
-    const settMonth = `${settlementYear}-${String(settlementMonth).padStart(2, '0')}`
-    const success = await batchUpdateS1SettlementStatus(ids, targetStatus, targetStatus === 'settled' ? settMonth : undefined)
-    if (success) {
-      // UI 반영 (위에서 계산한 settMonth 사용)
-      setOrders(prev => prev.map(order => {
-        if (ids.includes(order.id)) {
-          return {
-            ...order,
-            s1SettlementStatus: targetStatus,
-            s1SettlementMonth: targetStatus === 'settled' ? settMonth : order.s1SettlementMonth,
+    setActionLoading(true)
+    try {
+      // DB 업데이트 (정산완료 시 화면에서 선택한 정산월 전달)
+      const settMonth = `${settlementYear}-${String(settlementMonth).padStart(2, '0')}`
+      const success = await batchUpdateS1SettlementStatus(ids, targetStatus, targetStatus === 'settled' ? settMonth : undefined)
+      if (success) {
+        // UI 반영 (위에서 계산한 settMonth 사용)
+        setOrders(prev => prev.map(order => {
+          if (ids.includes(order.id)) {
+            return {
+              ...order,
+              s1SettlementStatus: targetStatus,
+              s1SettlementMonth: targetStatus === 'settled' ? settMonth : order.s1SettlementMonth,
+            }
           }
-        }
-        return order
-      }))
-      setSelectedIds(new Set())
-      showAlert(`${ids.length}건이 "${statusLabel}" 상태로 변경되었습니다.`, 'success')
-    } else {
-      showAlert('상태 변경에 실패했습니다.', 'error')
+          return order
+        }))
+        setSelectedIds(new Set())
+        showAlert(`${ids.length}건이 "${statusLabel}" 상태로 변경되었습니다.`, 'success')
+      } else {
+        showAlert('상태 변경에 실패했습니다.', 'error')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -594,20 +612,26 @@ export default function S1SettlementPage() {
    * 개별 미정산으로 제외 (미정산으로)
    */
   const handleRevertToUnsettled = async (orderId: string, businessName: string) => {
+    if (actionLoading) return
     const confirmed = await showConfirm(
       `"${businessName}" 건을 이번 달 정산에서 제외하고 미정산 목록으로 보내시겠습니까?`
     )
     if (!confirmed) return
 
-    const success = await updateS1SettlementStatus(orderId, 'unsettled')
-    if (success) {
-      setOrders(prev => prev.map(order => {
-        if (order.id === orderId) {
-          return { ...order, s1SettlementStatus: 'unsettled' as const }
-        }
-        return order
-      }))
-      showAlert('미정산 목록으로 제외되었습니다.', 'success')
+    setActionLoading(true)
+    try {
+      const success = await updateS1SettlementStatus(orderId, 'unsettled')
+      if (success) {
+        setOrders(prev => prev.map(order => {
+          if (order.id === orderId) {
+            return { ...order, s1SettlementStatus: 'unsettled' as const }
+          }
+          return order
+        }))
+        showAlert('미정산 목록으로 제외되었습니다.', 'success')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -757,7 +781,7 @@ export default function S1SettlementPage() {
         <div className="flex items-center gap-3 mb-4">
           <Button
             onClick={() => handleBatchStatusChange('in-progress')}
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.size === 0 || actionLoading}
             className="bg-orange-600 hover:bg-orange-700 rounded-lg"
           >
             <ArrowRight className="h-4 w-4 mr-1" />
@@ -769,7 +793,7 @@ export default function S1SettlementPage() {
         <div className="flex items-center gap-3 mb-4">
           <Button
             onClick={() => handleBatchStatusChange('settled')}
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.size === 0 || actionLoading}
             className="bg-green-600 hover:bg-green-700 rounded-lg"
           >
             <CheckCircle2 className="h-4 w-4 mr-1" />
@@ -781,7 +805,7 @@ export default function S1SettlementPage() {
         <div className="flex items-center gap-3 mb-4">
           <Button
             onClick={() => handleBatchStatusChange('in-progress')}
-            disabled={selectedIds.size === 0}
+            disabled={selectedIds.size === 0 || actionLoading}
             variant="outline"
             className="rounded-lg"
           >
@@ -973,7 +997,7 @@ export default function S1SettlementPage() {
                           <td className="p-3 text-center">
                             <span className="text-xs font-medium text-orange-700">
                               {order.s1SettlementMonth
-                                ? `${order.s1SettlementMonth.split('-')[0]}년 ${parseInt(order.s1SettlementMonth.split('-')[1])}월`
+                                ? formatYearMonth(order.s1SettlementMonth)
                                 : `${settlementYear}년 ${settlementMonth}월`
                               }
                             </span>

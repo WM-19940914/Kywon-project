@@ -13,6 +13,7 @@
 
 require('dotenv').config({ path: '.env.local' })
 const { createClient } = require('@supabase/supabase-js')
+const path = require('path')
 
 // 환경변수 확인
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -34,18 +35,8 @@ const supabase = createClient(supabaseUrl, serviceRoleKey, {
   },
 })
 
-// 생성할 계정 목록
-const users = [
-  { username: 'opendnals123', password: '!dnals947001', role: 'admin',     displayName: '관리자',       affiliateName: null },
-  { username: 'melea',        password: 'm12345',       role: 'melea',     displayName: '멜레아',       affiliateName: null },
-  { username: 's1eng',        password: 's12345',       role: 's1eng',     displayName: '에스원ENG',    affiliateName: null },
-  { username: 'kywon',        password: 'k12345',       role: 'kyowon',    displayName: '교원그룹',     affiliateName: null },
-  { username: 'kumon',        password: 'k12345',       role: 'affiliate', displayName: '교원구몬',     affiliateName: '교원구몬' },
-  { username: 'wells',        password: 'w12345',       role: 'affiliate', displayName: '교원웰스',     affiliateName: '교원웰스' },
-  { username: 'wellsservice', password: 'w12345',       role: 'affiliate', displayName: '웰스서비스',   affiliateName: '웰스서비스' },
-  { username: 'platform',     password: 'p12345',       role: 'affiliate', displayName: '교원플랫폼',   affiliateName: '교원플랫폼' },
-  { username: 'etc',          password: 'e12345',       role: 'affiliate', displayName: '기타계열사',   affiliateName: '기타계열사' },
-]
+// 생성할 계정 목록 (비밀번호는 별도 JSON 파일에서 로드)
+const users = require(path.join(__dirname, 'data', 'seed-users.json'))
 
 async function seedUsers() {
   console.log('🚀 사용자 계정 생성을 시작합니다...\n')
@@ -90,9 +81,7 @@ async function seedUsers() {
   }
 
   console.log('\n🎉 사용자 계정 생성 완료!')
-  console.log('\n📋 로그인 테스트:')
-  console.log('   사용자이름: opendnals123')
-  console.log('   비밀번호: !dnals947001')
+  console.log('\n📋 로그인 정보는 scripts/data/seed-users.json 파일을 참고하세요.')
 }
 
 seedUsers().catch(console.error)

@@ -97,6 +97,9 @@ export default function ASPage() {
     return `${y}년 ${m}월`
   }, [settledMonth])
 
+  // 비동기 액션 중복 실행 방지
+  const [actionLoading, setActionLoading] = useState(false)
+
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
@@ -180,54 +183,78 @@ export default function ASPage() {
   }
 
   const handleCreate = async (data: Omit<ASRequest, 'id' | 'createdAt' | 'updatedAt'>) => {
-    const created = await createASRequest(data)
-    if (created) {
-      setRequests(prev => [created, ...prev])
-      showAlert('AS 접수가 완료되었습니다.', 'success')
-    } else {
-      showAlert('AS 접수에 실패했습니다.', 'error')
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const created = await createASRequest(data)
+      if (created) {
+        setRequests(prev => [created, ...prev])
+        showAlert('AS 접수가 완료되었습니다.', 'success')
+      } else {
+        showAlert('AS 접수에 실패했습니다.', 'error')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleUpdate = async (id: string, updates: Partial<ASRequest>) => {
-    const updated = await updateASRequest(id, updates)
-    if (updated) {
-      setRequests(prev => prev.map(r => r.id === id ? updated : r))
-      setSelectedRequest(updated)
-      if (updates.status) {
-        showAlert(`${AS_STATUS_LABELS[updates.status]}(으)로 변경되었습니다.`, 'success')
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const updated = await updateASRequest(id, updates)
+      if (updated) {
+        setRequests(prev => prev.map(r => r.id === id ? updated : r))
+        setSelectedRequest(updated)
+        if (updates.status) {
+          showAlert(`${AS_STATUS_LABELS[updates.status]}(으)로 변경되었습니다.`, 'success')
+        }
+      } else {
+        showAlert('저장에 실패했습니다.', 'error')
       }
-    } else {
-      showAlert('저장에 실패했습니다.', 'error')
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleDelete = async (id: string) => {
-    const success = await deleteASRequest(id)
-    if (success) {
-      setRequests(prev => prev.filter(r => r.id !== id))
-      showAlert('삭제되었습니다.', 'success')
-    } else {
-      showAlert('삭제에 실패했습니다.', 'error')
+    if (actionLoading) return
+    setActionLoading(true)
+    try {
+      const success = await deleteASRequest(id)
+      if (success) {
+        setRequests(prev => prev.filter(r => r.id !== id))
+        showAlert('삭제되었습니다.', 'success')
+      } else {
+        showAlert('삭제에 실패했습니다.', 'error')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
   const handleBatchSettle = async () => {
+    if (actionLoading) return
     if (selectedIds.size === 0) return
     const ok = window.confirm(`선택한 ${selectedIds.size}건을 정산완료로 처리하시겠습니까?`)
     if (!ok) return
-    const ids = Array.from(selectedIds)
-    const success = await batchUpdateASStatus(ids, 'settled', selectedSettlementMonth)
-    if (success) {
-      setRequests(prev => prev.map(r =>
-        ids.includes(r.id)
-          ? { ...r, status: 'settled' as ASRequestStatus, settlementMonth: selectedSettlementMonth }
-          : r
-      ))
-      setSelectedIds(new Set())
-      showAlert(`${ids.length}건이 정산완료 처리되었습니다.`, 'success')
-    } else {
-      showAlert('일괄 변경에 실패했습니다.', 'error')
+    setActionLoading(true)
+    try {
+      const ids = Array.from(selectedIds)
+      const success = await batchUpdateASStatus(ids, 'settled', selectedSettlementMonth)
+      if (success) {
+        setRequests(prev => prev.map(r =>
+          ids.includes(r.id)
+            ? { ...r, status: 'settled' as ASRequestStatus, settlementMonth: selectedSettlementMonth }
+            : r
+        ))
+        setSelectedIds(new Set())
+        showAlert(`${ids.length}건이 정산완료 처리되었습니다.`, 'success')
+      } else {
+        showAlert('일괄 변경에 실패했습니다.', 'error')
+      }
+    } finally {
+      setActionLoading(false)
     }
   }
 
@@ -413,7 +440,7 @@ export default function ASPage() {
 
           {/* 정산완료 일괄 처리 */}
           {activeTab === 'completed' && selectedIds.size > 0 && (
-            <Button onClick={handleBatchSettle} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+            <Button onClick={handleBatchSettle} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
               <CheckCircle2 className="h-4 w-4 mr-1" />
               정산완료 처리 ({selectedIds.size}건)
             </Button>
