@@ -81,7 +81,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
                 <th className="text-left p-2.5 text-sm font-medium" style={{ width: '130px' }}>사업자명</th>
                 <th className="text-left p-2.5 text-sm font-medium" style={{ width: '110px' }}>삼성AS센터</th>
                 <th className="text-left p-2.5 text-sm font-medium" style={{ width: '70px' }}>AS기사</th>
-                <th className="text-center p-2.5 text-sm font-medium text-red-600" style={{ width: '90px' }}>방문예정일</th>
+                <th className="text-center p-2.5 text-sm font-medium text-brick-600" style={{ width: '90px' }}>방문예정일</th>
                 <th className="text-left p-2.5 text-sm font-medium" style={{ width: '140px' }}>처리내역</th>
                 <th className="text-right p-2.5 text-sm font-medium" style={{ width: '80px' }}>AS비용</th>
                 <th className="text-right p-2.5 text-sm font-medium" style={{ width: '70px' }}>접수비</th>
@@ -158,7 +158,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
                     <td className="p-2.5 text-sm text-gray-600 truncate">{req.technicianName || '-'}</td>
                     <td className="p-2.5 text-center whitespace-nowrap">
                       {req.visitDate ? (
-                        <span className="text-sm font-bold text-red-600">{formatDate(req.visitDate)}</span>
+                        <span className="text-sm font-bold text-brick-600">{formatDate(req.visitDate)}</span>
                       ) : (
                         <span className="text-sm text-gray-400">미정</span>
                       )}
@@ -175,7 +175,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
                     <td className="p-2.5 text-right text-sm text-gray-600 whitespace-nowrap">
                       {req.receptionFee ? formatAmount(req.receptionFee) : <span className="text-gray-400">-</span>}
                     </td>
-                    <td className="p-2.5 text-right text-sm font-bold text-blue-700 whitespace-nowrap">
+                    <td className="p-2.5 text-right text-sm font-bold text-teal-700 whitespace-nowrap">
                       {req.totalAmount ? formatAmount(req.totalAmount) : <span className="text-sm text-gray-400 font-normal">-</span>}
                     </td>
                   </>
@@ -200,7 +200,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
                     <td className="p-2.5 text-right text-xs text-gray-600 whitespace-nowrap">{formatAmount(req.asCost)}</td>
                     <td className="p-2.5 text-right text-xs text-gray-600 whitespace-nowrap">{formatAmount(req.receptionFee)}</td>
                     <td className="p-2.5"><p className="text-xs text-gray-500 truncate" title={req.processingDetails || ''}>{req.processingDetails || '-'}</p></td>
-                    <td className="p-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">{formatAmount(req.totalAmount)}</td>
+                    <td className="p-2.5 text-right text-xs font-bold text-teal-700 whitespace-nowrap">{formatAmount(req.totalAmount)}</td>
                     <td className="p-2.5 text-center">
                       <span className="text-xs font-medium text-gray-700">{formatSettlementMonth(req.settlementMonth)}</span>
                     </td>
@@ -220,9 +220,9 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
                     <td className="p-2.5 text-right text-xs text-gray-600 whitespace-nowrap">{formatAmount(req.asCost)}</td>
                     <td className="p-2.5 text-right text-xs text-gray-600 whitespace-nowrap">{formatAmount(req.receptionFee)}</td>
                     <td className="p-2.5"><p className="text-xs text-gray-500 truncate" title={req.processingDetails || ''}>{req.processingDetails || '-'}</p></td>
-                    <td className="p-2.5 text-right text-xs font-bold text-blue-700 whitespace-nowrap">{formatAmount(req.totalAmount)}</td>
+                    <td className="p-2.5 text-right text-xs font-bold text-teal-700 whitespace-nowrap">{formatAmount(req.totalAmount)}</td>
                     <td className="p-2.5 text-center">
-                      <span className="text-xs font-medium text-green-700">{formatSettlementMonth(req.settlementMonth)}</span>
+                      <span className="text-xs font-medium text-olive-700">{formatSettlementMonth(req.settlementMonth)}</span>
                     </td>
                   </>
                 )}
@@ -283,7 +283,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
             {(activeTab === 'completed' || activeTab === 'settled') && (
               <>
                 {req.totalAmount ? (
-                  <p className="text-sm font-bold text-blue-700">{formatAmount(req.totalAmount)}</p>
+                  <p className="text-sm font-bold text-teal-700">{formatAmount(req.totalAmount)}</p>
                 ) : null}
                 {req.settlementMonth && (
                   <p className="text-xs text-gray-500">정산: {formatSettlementMonth(req.settlementMonth)}</p>
@@ -300,7 +300,7 @@ export function ASTable({ requests, activeTab, onRowClick, selectedIds, onSelect
               </div>
               {/* 방문예정일 (접수/처리중) */}
               {(activeTab === 'received' || activeTab === 'in-progress') && req.visitDate && (
-                <span className="font-bold text-red-600">방문 {formatDate(req.visitDate)}</span>
+                <span className="font-bold text-brick-600">방문 {formatDate(req.visitDate)}</span>
               )}
               {/* 총금액 (처리중) */}
               {activeTab === 'in-progress' && (

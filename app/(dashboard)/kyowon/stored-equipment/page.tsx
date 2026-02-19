@@ -147,7 +147,7 @@ export default function KyowonStoredEquipmentPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <Archive className="h-6 w-6" />
         </div>
         <div className="flex-1">
@@ -166,14 +166,14 @@ export default function KyowonStoredEquipmentPage() {
               onClick={() => setActiveTab(tab.value)}
               className={`pb-3 px-4 text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.value
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                  ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
                   : 'text-slate-500 hover:text-slate-700'
                 }`}
             >
               {tab.label}
               <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${
                 activeTab === tab.value
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-teal-100 text-teal-600'
                   : 'bg-slate-100 text-slate-500'
               }`}>
                 {tab.count}
@@ -182,7 +182,7 @@ export default function KyowonStoredEquipmentPage() {
           ))}
           <span className="text-sm text-slate-500 ml-auto pb-3 tabular-nums">
             {filteredItems.length}대
-            {searchTerm && <span className="text-blue-600 font-medium ml-1.5">(검색결과)</span>}
+            {searchTerm && <span className="text-teal-600 font-medium ml-1.5">(검색결과)</span>}
           </span>
         </div>
       </div>

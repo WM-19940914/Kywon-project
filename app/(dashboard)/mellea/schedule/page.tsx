@@ -237,7 +237,7 @@ export default function SchedulePage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <CalendarCheck className="h-6 w-6" />
         </div>
         <div>
@@ -273,14 +273,14 @@ export default function SchedulePage() {
               onClick={() => setActiveTab(tab.value)}
               className={`pb-3 px-4 text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.value
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                  ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
                   : 'text-slate-500 hover:text-slate-700'
                 }`}
             >
               {tab.label}
               <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${
                 activeTab === tab.value
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-teal-100 text-teal-600'
                   : 'bg-slate-100 text-slate-500'
               }`}>
                 {tab.count}
@@ -289,7 +289,7 @@ export default function SchedulePage() {
           ))}
           <span className="text-sm text-slate-500 ml-auto pb-3">
             {filteredOrders.length}건 표시
-            {searchTerm && <span className="text-blue-600 font-medium ml-1">(검색중)</span>}
+            {searchTerm && <span className="text-teal-600 font-medium ml-1">(검색중)</span>}
           </span>
         </div>
       </div>
@@ -335,7 +335,7 @@ export default function SchedulePage() {
           {/* 정산완료 (페이지네이션) */}
           <div>
             <h3 className="text-sm font-semibold text-slate-700 mb-2 flex items-center gap-2">
-              <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs border">정산완료</Badge>
+              <Badge variant="secondary" className="bg-olive-50 text-olive-700 border-olive-200 text-xs border">정산완료</Badge>
               <span className="text-xs text-slate-400">{completedSettled.length}건</span>
             </h3>
             <ScheduleTable

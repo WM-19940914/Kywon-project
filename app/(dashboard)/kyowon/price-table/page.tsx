@@ -154,7 +154,7 @@ export default function KyowonPriceTablePage() {
       {/* 페이지 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+          <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
             <BookOpen className="h-6 w-6" />
           </div>
           <div>
@@ -183,7 +183,7 @@ export default function KyowonPriceTablePage() {
           onClick={() => setActiveTab('equipment')}
           className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'equipment'
-              ? 'bg-white text-blue-700 shadow-sm'
+              ? 'bg-white text-teal-700 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -195,7 +195,7 @@ export default function KyowonPriceTablePage() {
           onClick={() => setActiveTab('installation')}
           className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'installation'
-              ? 'bg-white text-emerald-700 shadow-sm'
+              ? 'bg-white text-olive-700 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -240,7 +240,7 @@ export default function KyowonPriceTablePage() {
                       {/* SET 모델 행 */}
                       <tr
                         key={row.model}
-                        className="border-b border-slate-200 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                        className="border-b border-slate-200 hover:bg-teal-50/40 transition-colors cursor-pointer"
                         onClick={() => toggleRow(row.model)}
                       >
                         <td className="px-4 py-3">
@@ -256,7 +256,7 @@ export default function KyowonPriceTablePage() {
                           <span className="font-mono text-sm text-gray-800">{row.model}</span>
                         </td>
                         <td className="px-4 py-3 text-right">
-                          <span className="font-semibold text-blue-600">{formatPrice(row.price)}</span>
+                          <span className="font-semibold text-teal-600">{formatPrice(row.price)}</span>
                         </td>
                       </tr>
 
@@ -279,19 +279,19 @@ export default function KyowonPriceTablePage() {
                                   </thead>
                                   <tbody>
                                     {sortedComponents.map((comp: any, idx: number) => (
-                                      <tr key={idx} className="border-b border-slate-100 last:border-b-0 hover:bg-blue-50/40 transition-colors">
+                                      <tr key={idx} className="border-b border-slate-100 last:border-b-0 hover:bg-teal-50/40 transition-colors">
                                         <td className="px-4 py-2 text-sm text-gray-700">{comp.type}</td>
                                         <td className="px-4 py-2 text-sm font-mono text-gray-800">{comp.model}</td>
                                         <td className="px-4 py-2 text-sm text-center text-gray-700">{comp.quantity}개</td>
-                                        <td className="px-4 py-2 text-sm text-right font-semibold text-blue-600">
+                                        <td className="px-4 py-2 text-sm text-right font-semibold text-teal-600">
                                           {comp.salePrice.toLocaleString()}원
                                         </td>
                                       </tr>
                                     ))}
                                     {/* 합계 */}
-                                    <tr className="bg-blue-50 border-t-2 border-blue-200">
+                                    <tr className="bg-teal-50 border-t-2 border-teal-200">
                                       <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-gray-800">합계</td>
-                                      <td className="px-4 py-2 text-sm text-right font-bold text-blue-600">
+                                      <td className="px-4 py-2 text-sm text-right font-bold text-teal-600">
                                         {row.components.reduce((sum: number, c: any) => sum + c.salePrice, 0).toLocaleString()}원
                                       </td>
                                     </tr>
@@ -311,8 +311,8 @@ export default function KyowonPriceTablePage() {
         </div>
 
         {/* 안내 */}
-        <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 mt-6">
-          <p className="text-sm text-blue-800 leading-relaxed">
+        <div className="bg-teal-50 rounded-xl p-4 border border-teal-200 mt-6">
+          <p className="text-sm text-teal-800 leading-relaxed">
             <strong>사용 방법</strong><br />
             SET 모델 행을 클릭하면 구성품별 판매가를 확인할 수 있습니다.
             표시되는 판매가는 모두 VAT 별도 금액이며, 구성품 판매가 합계 = SET 판매가 입니다.
@@ -327,16 +327,16 @@ export default function KyowonPriceTablePage() {
           {/* ── 좌측: 단가계약 설치비 ── */}
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-emerald-500" />
+              <div className="w-2 h-2 rounded-full bg-olive-500" />
               <span className="text-[13px] font-bold text-slate-700">단가계약 항목</span>
-              <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">고정 단가</span>
+              <span className="text-[10px] text-olive-600 bg-olive-50 px-2 py-0.5 rounded-full font-medium">고정 단가</span>
             </div>
             <div className="max-w-[400px] space-y-5">
 
               {/* 신규 설치비 */}
               <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-blue-500" />
+                  <div className="w-1 h-4 rounded-full bg-teal-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">신규 설치비</h3>
                 </div>
                 <table className="w-full text-[12px]">
@@ -358,7 +358,7 @@ export default function KyowonPriceTablePage() {
                       { category: '신규 설치비_벽걸이형', model: '7평형', price: '60,000' },
                       { category: '신규 설치비_벽걸이형', model: '6평형', price: '60,000' },
                     ].map((row, i) => (
-                      <tr key={`ns-${i}`} className="hover:bg-blue-50/30 transition-colors">
+                      <tr key={`ns-${i}`} className="hover:bg-teal-50/30 transition-colors">
                         <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                         <td className="px-4 py-2 text-slate-600">{row.model}</td>
                         <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
@@ -371,7 +371,7 @@ export default function KyowonPriceTablePage() {
               {/* 이전 설치비 */}
               <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-violet-500" />
+                  <div className="w-1 h-4 rounded-full bg-teal-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">이전 설치비</h3>
                 </div>
                 <table className="w-full text-[12px]">
@@ -393,7 +393,7 @@ export default function KyowonPriceTablePage() {
                       { category: '이전 설치비_벽걸이형', model: '7평형', price: '60,000' },
                       { category: '이전 설치비_벽걸이형', model: '6평형', price: '60,000' },
                     ].map((row, i) => (
-                      <tr key={`os-${i}`} className="hover:bg-violet-50/30 transition-colors">
+                      <tr key={`os-${i}`} className="hover:bg-teal-50/30 transition-colors">
                         <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                         <td className="px-4 py-2 text-slate-600">{row.model}</td>
                         <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
@@ -406,7 +406,7 @@ export default function KyowonPriceTablePage() {
               {/* 추가 설치비 */}
               <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-emerald-500" />
+                  <div className="w-1 h-4 rounded-full bg-olive-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">추가 설치비</h3>
                 </div>
                 <table className="w-full text-[12px]">
@@ -430,7 +430,7 @@ export default function KyowonPriceTablePage() {
                       { category: '실외기거치대', model: '앵글', price: '100,000' },
                       { category: '실외기거치대', model: '일자받침대', price: '28,000' },
                     ].map((row, i) => (
-                      <tr key={`ex-${i}`} className="hover:bg-emerald-50/30 transition-colors">
+                      <tr key={`ex-${i}`} className="hover:bg-olive-50/30 transition-colors">
                         <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                         <td className={`px-4 py-2 ${row.model === '-' ? 'text-slate-400' : 'text-slate-600'} ${i < 6 ? 'font-mono text-[11px]' : ''}`}>{row.model}</td>
                         <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price}원</td>
@@ -443,7 +443,7 @@ export default function KyowonPriceTablePage() {
               {/* 반납 비용 */}
               <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
                 <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-amber-500" />
+                  <div className="w-1 h-4 rounded-full bg-gold-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">반납 비용</h3>
                   <span className="ml-auto text-[10px] text-slate-400 font-medium">신규기기 설치 동반 시 무료</span>
                 </div>
@@ -456,12 +456,12 @@ export default function KyowonPriceTablePage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <tr className="hover:bg-amber-50/30 transition-colors">
+                    <tr className="hover:bg-gold-50/30 transition-colors">
                       <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">반납 보관비</td>
                       <td className="px-4 py-2 text-slate-400">-</td>
                       <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">100,000원</td>
                     </tr>
-                    <tr className="hover:bg-amber-50/30 transition-colors">
+                    <tr className="hover:bg-gold-50/30 transition-colors">
                       <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">반납 폐기비</td>
                       <td className="px-4 py-2 text-slate-400">-</td>
                       <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">100,000원</td>
@@ -483,19 +483,19 @@ export default function KyowonPriceTablePage() {
           {/* ── 우측: 현장별 변동 비용 (읽기 전용) ── */}
           <div className="space-y-5">
             <div className="flex items-center gap-2 mb-1">
-              <div className="w-2 h-2 rounded-full bg-amber-500" />
+              <div className="w-2 h-2 rounded-full bg-gold-500" />
               <span className="text-[13px] font-bold text-slate-700">현장별 변동 항목</span>
-              <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">현장별 상이</span>
+              <span className="text-[10px] text-gold-600 bg-gold-50 px-2 py-0.5 rounded-full font-medium">현장별 상이</span>
             </div>
-            <p className="text-[11px] text-amber-600/80 bg-amber-50/50 border border-amber-200/50 rounded-lg px-3 py-2 leading-relaxed">
+            <p className="text-[11px] text-gold-600/80 bg-gold-50/50 border border-gold-200/50 rounded-lg px-3 py-2 leading-relaxed">
               아래 항목은 현장 조건에 따라 금액이 달라집니다. 견적서 작성 시 현장 확인 후 별도 산출합니다.
             </p>
             <div className="flex gap-5 items-start">
 
               {/* 전기공사 (읽기 전용) */}
-              <div className="bg-white rounded-xl border border-dashed border-amber-300/80 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-amber-200/50 bg-amber-50/30 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-sky-500" />
+              <div className="bg-white rounded-xl border border-dashed border-gold-300/80 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gold-200/50 bg-gold-50/30 flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-teal-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">전기공사</h3>
                 </div>
                 <table className="w-full text-[12px]">
@@ -508,7 +508,7 @@ export default function KyowonPriceTablePage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {elecRows.map((row, i) => (
-                      <tr key={`elec-${i}`} className="hover:bg-sky-50/30 transition-colors">
+                      <tr key={`elec-${i}`} className="hover:bg-teal-50/30 transition-colors">
                         <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                         <td className="px-4 py-2 text-slate-600">{row.model}</td>
                         <td className="px-5 py-2 text-right text-slate-300">-</td>
@@ -519,9 +519,9 @@ export default function KyowonPriceTablePage() {
               </div>
 
               {/* 기타공사 (읽기 전용) */}
-              <div className="bg-white rounded-xl border border-dashed border-amber-300/80 shadow-sm overflow-hidden">
-                <div className="px-5 py-3 border-b border-amber-200/50 bg-amber-50/30 flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-orange-500" />
+              <div className="bg-white rounded-xl border border-dashed border-gold-300/80 shadow-sm overflow-hidden">
+                <div className="px-5 py-3 border-b border-gold-200/50 bg-gold-50/30 flex items-center gap-2">
+                  <div className="w-1 h-4 rounded-full bg-carrot-500" />
                   <h3 className="text-[13px] font-bold text-slate-800">기타공사</h3>
                 </div>
                 <table className="w-full text-[12px]">
@@ -534,7 +534,7 @@ export default function KyowonPriceTablePage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {etcRows.map((row, i) => (
-                      <tr key={`etc-${i}`} className="hover:bg-orange-50/30 transition-colors">
+                      <tr key={`etc-${i}`} className="hover:bg-carrot-50/30 transition-colors">
                         <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                         <td className="px-4 py-2 text-slate-600">{row.model}</td>
                         <td className="px-5 py-2 text-right text-slate-300">-</td>

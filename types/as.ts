@@ -25,12 +25,12 @@ export const AS_STATUS_LABELS: Record<ASRequestStatus, string> = {
   'settled': '정산완료',
 }
 
-/** AS 상태별 색상 (뱃지용) — 회색 → 주황 → 파랑 → 초록 */
+/** AS 상태별 색상 (뱃지용) — 회색 → 당근 → 틸 → 올리브 */
 export const AS_STATUS_COLORS: Record<ASRequestStatus, string> = {
   'received': 'bg-gray-100 text-gray-600 border-gray-200',
-  'in-progress': 'bg-orange-50 text-orange-700 border-orange-200',
-  'completed': 'bg-blue-50 text-blue-700 border-blue-200',
-  'settled': 'bg-green-50 text-green-700 border-green-200',
+  'in-progress': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'completed': 'bg-teal-50 text-teal-700 border-teal-200',
+  'settled': 'bg-olive-50 text-olive-700 border-olive-200',
 }
 
 /**

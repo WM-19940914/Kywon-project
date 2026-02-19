@@ -91,10 +91,10 @@ export function getScheduleUrgency(order: Order): ScheduleUrgency {
  * 긴급도별 행 스타일 (왼쪽 보더 + 배경색)
  */
 export const URGENCY_ROW_STYLES: Record<ScheduleUrgency, string> = {
-  'overdue': 'border-l-4 border-l-red-500 bg-red-50/50',
-  'today': 'border-l-4 border-l-orange-400 bg-orange-50/50',
-  'tomorrow': 'border-l-4 border-l-blue-400 bg-blue-50/30',
-  'no-equipment': 'border-l-4 border-l-yellow-400 bg-yellow-50/30',
+  'overdue': 'border-l-4 border-l-brick-500 bg-brick-50/50',
+  'today': 'border-l-4 border-l-carrot-400 bg-carrot-50/50',
+  'tomorrow': 'border-l-4 border-l-teal-400 bg-teal-50/30',
+  'no-equipment': 'border-l-4 border-l-gold-400 bg-gold-50/30',
   'none': '',
 }
 
@@ -147,7 +147,7 @@ export function getEquipmentStatusInfo(order: Order): EquipmentStatusInfo {
     return {
       type: 'no-items',
       label: '미등록',
-      colorClass: 'bg-red-50 text-red-700 border-red-200',
+      colorClass: 'bg-brick-50 text-brick-700 border-brick-200',
     }
   }
 
@@ -165,14 +165,14 @@ export function getEquipmentStatusInfo(order: Order): EquipmentStatusInfo {
     return {
       type: 'all-delivered',
       label: '입고완료',
-      colorClass: 'bg-green-50 text-green-700 border-green-200',
+      colorClass: 'bg-olive-50 text-olive-700 border-olive-200',
     }
   }
 
   return {
     type: 'partial',
     label: `${confirmedCount}/${total} 입고`,
-    colorClass: 'bg-orange-50 text-orange-700 border-orange-200',
+    colorClass: 'bg-carrot-50 text-carrot-700 border-carrot-200',
   }
 }
 

@@ -84,7 +84,7 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-400"
               placeholder="품목, 모델명, 평형으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -98,7 +98,7 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
             <div key={group.category}>
               {/* 카테고리 헤더 */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
                   {group.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -113,25 +113,25 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
                     key={index}
                     type="button"
                     onClick={() => handleRowClick(row)}
-                    className="w-full text-left group rounded-lg border border-gray-150 bg-white px-4 py-3 hover:border-blue-300 hover:bg-blue-50/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150 cursor-pointer"
+                    className="w-full text-left group rounded-lg border border-gray-150 bg-white px-4 py-3 hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150 cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       {/* 왼쪽: 모델 정보 */}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
                           {/* 평형 뱃지 */}
-                          <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                          <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-teal-100 group-hover:text-teal-700 transition-colors">
                             {row.size}
                           </span>
                           {/* 모델명 - 크고 눈에 띄게 */}
-                          <span className="text-lg font-mono font-semibold text-gray-800 group-hover:text-blue-700 truncate">
+                          <span className="text-lg font-mono font-semibold text-gray-800 group-hover:text-teal-700 truncate">
                             {row.model}
                           </span>
                         </div>
                         {/* 구성품 표시 */}
                         <div className="mt-1.5 flex items-center gap-1.5 ml-0.5">
                           {row.components.map((comp, ci) => (
-                            <span key={ci} className="text-[11px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded group-hover:bg-blue-50 group-hover:text-blue-500 transition-colors">
+                            <span key={ci} className="text-[11px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded group-hover:bg-teal-50 group-hover:text-teal-500 transition-colors">
                               {comp.type}
                             </span>
                           ))}
@@ -141,13 +141,13 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
                       {/* 오른쪽: 가격 + 화살표 */}
                       <div className="flex items-center gap-3 ml-4 shrink-0">
                         <div className="text-right">
-                          <div className="text-sm font-semibold text-gray-700 group-hover:text-blue-600 transition-colors">
+                          <div className="text-sm font-semibold text-gray-700 group-hover:text-teal-600 transition-colors">
                             {formatPrice(row.price)}
                           </div>
                           <div className="text-[10px] text-gray-400">VAT 별도</div>
                         </div>
                         {/* 클릭 유도 화살표 (hover 시 나타남) */}
-                        <div className="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-teal-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                           <ArrowRight className="h-3.5 w-3.5 text-white" />
                         </div>
                       </div>
@@ -171,7 +171,7 @@ export function PriceTableSheet({ onSelect }: PriceTableSheetProps) {
         {/* 하단 안내 */}
         <div className="border-t bg-slate-50 px-6 py-3">
           <div className="flex items-start gap-2">
-            <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+            <Zap className="h-3.5 w-3.5 text-gold-500 mt-0.5 shrink-0" />
             <p className="text-xs text-gray-500 leading-relaxed">
               제품을 클릭하면 품목·모델명·단가가 자동 입력됩니다.
               단가는 참고용이며, 실제 견적은 현장 확인 후 결정됩니다.

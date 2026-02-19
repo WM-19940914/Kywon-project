@@ -28,7 +28,7 @@ export function ExcelExportButton({
       size="sm"
       onClick={onClick}
       disabled={disabled}
-      className="border-green-500 text-green-700 hover:bg-green-50 hover:text-green-800 gap-1.5"
+      className="border-olive-500 text-olive-700 hover:bg-olive-50 hover:text-olive-800 gap-1.5"
     >
       <Download className="h-4 w-4" />
       {label}

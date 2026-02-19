@@ -186,10 +186,10 @@ function EquipmentStatusBadge({ order }: { order: Order }) {
     return (
       <div className="flex items-center gap-1.5">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brick-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-brick-500" />
         </span>
-        <span className="text-xs font-medium text-red-600">미등록</span>
+        <span className="text-xs font-medium text-brick-600">미등록</span>
       </div>
     )
   }
@@ -198,10 +198,10 @@ function EquipmentStatusBadge({ order }: { order: Order }) {
   if (info.type === 'all-delivered') {
     return (
       <div className="flex items-center gap-1.5">
-        <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+        <svg className="h-3.5 w-3.5 text-olive-600" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
         </svg>
-        <span className="text-xs font-medium text-green-700">입고완료</span>
+        <span className="text-xs font-medium text-olive-700">입고완료</span>
       </div>
     )
   }
@@ -218,12 +218,12 @@ function EquipmentStatusBadge({ order }: { order: Order }) {
 
   return (
     <div className="flex flex-col gap-1 min-w-[60px]">
-      <span className="text-[11px] font-semibold text-orange-700">
+      <span className="text-[11px] font-semibold text-carrot-700">
         {confirmed}/{total} 입고
       </span>
-      <div className="w-full h-1.5 bg-orange-100 rounded-full overflow-hidden">
+      <div className="w-full h-1.5 bg-carrot-100 rounded-full overflow-hidden">
         <div
-          className="h-full bg-orange-500 rounded-full transition-all"
+          className="h-full bg-carrot-500 rounded-full transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -483,9 +483,9 @@ function MemoPopover({
           onClick={(e) => e.stopPropagation()}
           title={hasMemo ? '메모 보기/수정' : '메모 추가'}
         >
-          <StickyNote className={`h-4 w-4 ${hasMemo ? 'text-amber-500' : 'text-gray-300'}`} />
+          <StickyNote className={`h-4 w-4 ${hasMemo ? 'text-gold-500' : 'text-gray-300'}`} />
           {hasMemo && (
-            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-blue-500" />
+            <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-teal-500" />
           )}
         </button>
       </PopoverTrigger>
@@ -498,7 +498,7 @@ function MemoPopover({
         <div className="space-y-2">
           <p className="text-xs font-medium text-gray-600">메모</p>
           <textarea
-            className="w-full border border-gray-200 rounded-md p-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 placeholder:text-gray-300"
+            className="w-full border border-gray-200 rounded-md p-2 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-teal-300 placeholder:text-gray-300"
             placeholder="설치 팀장이 누구인지 등 기억해야 할 메모를 자유롭게 적어주세요"
             rows={4}
             value={localValue}
@@ -531,7 +531,7 @@ function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?:
     <button
       className={`inline-flex flex-col items-center justify-center rounded-md px-1.5 py-1 transition-colors border ${
         hasAny
-          ? 'bg-blue-50 border-blue-200 hover:bg-blue-100'
+          ? 'bg-teal-50 border-teal-200 hover:bg-teal-100'
           : 'bg-gray-50 border-dashed border-gray-300 hover:bg-gray-100'
       }`}
       onClick={(e) => {
@@ -544,16 +544,16 @@ function QuoteStatusCell({ order, onQuoteInput }: { order: Order; onQuoteInput?:
         <>
           {/* 작성된 견적서가 있을 때: 세로 2줄 pill */}
           <div className="flex items-center gap-1">
-            <Pencil className="h-2.5 w-2.5 text-blue-500" />
+            <Pencil className="h-2.5 w-2.5 text-teal-500" />
             <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0 rounded-full border ${
-              hasEquipment ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
+              hasEquipment ? 'bg-olive-50 text-olive-700 border-olive-200' : 'bg-gray-50 text-gray-400 border-gray-200'
             }`}>
               {hasEquipment && <CircleCheck className="h-2 w-2" />}
               장비
             </span>
           </div>
           <span className={`inline-flex items-center gap-0.5 text-[9px] font-medium px-1 py-0 rounded-full border ${
-            hasInstallation ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-50 text-gray-400 border-gray-200'
+            hasInstallation ? 'bg-olive-50 text-olive-700 border-olive-200' : 'bg-gray-50 text-gray-400 border-gray-200'
           }`}>
             {hasInstallation && <CircleCheck className="h-2 w-2" />}
             설치비
@@ -830,7 +830,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       <div className="flex items-center gap-1.5">
                         <p className="font-semibold text-xs truncate" title={order.businessName}>{order.businessName}</p>
                         {order.isPreliminaryQuote && (
-                          <Badge className="bg-red-50 text-red-600 border-red-200 text-[9px] px-1 py-0 leading-tight shrink-0">
+                          <Badge className="bg-brick-50 text-brick-600 border-brick-200 text-[9px] px-1 py-0 leading-tight shrink-0">
                             사전견적
                           </Badge>
                         )}
@@ -919,16 +919,16 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       {(() => {
                         if (order.installCompleteDate) {
                           return (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-                              <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-olive-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-olive-500" />
                               설치완료
                             </span>
                           )
                         }
                         if (order.status === 'in-progress' && order.installScheduleDate) {
                           return (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-                              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-teal-500" />
                               설치예정
                             </span>
                           )
@@ -948,7 +948,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                         const status = order.s1SettlementStatus || 'unsettled'
                         if (status === 'settled') {
                           return (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-olive-700">
                               <CircleCheck className="h-3.5 w-3.5 shrink-0" />
                               정산완료
                             </span>
@@ -956,7 +956,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                         }
                         if (status === 'in-progress') {
                           return (
-                            <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600">
+                            <span className="inline-flex items-center gap-1 text-xs font-medium text-carrot-600">
                               <Clock className="h-3.5 w-3.5 shrink-0" />
                               진행중
                             </span>
@@ -973,11 +973,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 일정미정: 설치예정 이동 버튼 + 취소 X — sticky로 항상 보이게 */}
                     {activeTab === 'unscheduled' && (
-                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-brick-50' : urgency === 'today' ? 'bg-carrot-50' : urgency === 'tomorrow' ? 'bg-teal-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            className="bg-blue-600 hover:bg-blue-700 text-white text-[11px] px-2 h-6"
+                            className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] px-2 h-6"
                             onClick={() => handleMoveToScheduled(order)}
                           >
                             설치예정 →
@@ -986,7 +986,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
                               onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
                             >
                               <XCircle className="h-3.5 w-3.5" />
@@ -998,11 +998,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 설치예정: 설치완료 버튼 + 취소 X — sticky로 항상 보이게 */}
                     {activeTab === 'scheduled' && (
-                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-brick-50' : urgency === 'today' ? 'bg-carrot-50' : urgency === 'tomorrow' ? 'bg-teal-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
+                            className="bg-olive-600 hover:bg-olive-700 text-white text-[11px] px-2 h-6"
                             onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                           >
                             설치완료
@@ -1011,7 +1011,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                             <Button
                               size="sm"
                               variant="ghost"
-                              className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                              className="h-6 w-6 p-0 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
                               onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
                             >
                               <XCircle className="h-3.5 w-3.5" />
@@ -1023,11 +1023,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 설치완료: 되돌리기 버튼 — sticky로 항상 보이게 */}
                     {activeTab === 'completed' && (
-                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-brick-50' : urgency === 'today' ? 'bg-carrot-50' : urgency === 'tomorrow' ? 'bg-teal-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-orange-700 hover:border-orange-300 hover:bg-orange-50"
+                          className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
                           onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
                         >
                           <Undo2 className="h-2.5 w-2.5 mr-0.5" />
@@ -1095,14 +1095,14 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     <h3 className="font-semibold text-sm flex-1">
                       {order.businessName}
                       {order.isPreliminaryQuote && (
-                        <Badge className="bg-red-50 text-red-600 border-red-200 text-[9px] px-1 py-0 leading-tight ml-1.5 align-middle">
+                        <Badge className="bg-brick-50 text-brick-600 border-brick-200 text-[9px] px-1 py-0 leading-tight ml-1.5 align-middle">
                           사전견적
                         </Badge>
                       )}
                     </h3>
                     {onViewDetail && (
                       <button
-                        className="shrink-0 flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
+                        className="shrink-0 flex items-center gap-1 text-xs text-teal-600 hover:text-teal-800"
                         onClick={(e) => {
                           e.stopPropagation()
                           onViewDetail(order)
@@ -1171,16 +1171,16 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   {(() => {
                     if (order.installCompleteDate) {
                       return (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-                          <span className="h-2 w-2 rounded-full bg-green-500" />
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-olive-700">
+                          <span className="h-2 w-2 rounded-full bg-olive-500" />
                           설치완료
                         </span>
                       )
                     }
                     if (order.status === 'in-progress' && order.installScheduleDate) {
                       return (
-                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-                          <span className="h-2 w-2 rounded-full bg-blue-500" />
+                        <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700">
+                          <span className="h-2 w-2 rounded-full bg-teal-500" />
                           설치예정
                         </span>
                       )
@@ -1196,7 +1196,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     const status = order.s1SettlementStatus || 'unsettled'
                     if (status === 'settled') {
                       return (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-green-700">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-olive-700">
                           <CircleCheck className="h-3.5 w-3.5" />
                           정산완료
                         </span>
@@ -1204,7 +1204,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     }
                     if (status === 'in-progress') {
                       return (
-                        <span className="inline-flex items-center gap-1 text-xs font-medium text-orange-600">
+                        <span className="inline-flex items-center gap-1 text-xs font-medium text-carrot-600">
                           <Clock className="h-3.5 w-3.5" />
                           진행중
                         </span>
@@ -1249,7 +1249,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="text-[11px] px-2 h-6 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                      className="text-[11px] px-2 h-6 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
                       onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
                     >
                       <XCircle className="h-3 w-3 mr-1" />
@@ -1263,7 +1263,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
-                      className="bg-green-600 hover:bg-green-700 text-white text-[11px] px-2 h-6"
+                      className="bg-olive-600 hover:bg-olive-700 text-white text-[11px] px-2 h-6"
                       onClick={() => { setCompleteDate(''); setCompleteTarget({ orderId: order.id, businessName: order.businessName }) }}
                     >
                       설치완료
@@ -1272,7 +1272,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       <Button
                         size="sm"
                         variant="ghost"
-                        className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 hover:bg-red-50"
+                        className="h-6 w-6 p-0 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
                         onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
                       >
                         <XCircle className="h-3.5 w-3.5" />
@@ -1287,7 +1287,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     <Button
                       size="sm"
                       variant="outline"
-                      className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-orange-700 hover:border-orange-300 hover:bg-orange-50"
+                      className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
                       onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
                     >
                       <Undo2 className="h-2.5 w-2.5 mr-0.5" />
@@ -1321,7 +1321,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               <div className="space-y-2">
                 <p>
                   &ldquo;{scheduleTarget?.businessName}&rdquo; 현장의 설치예정일을
-                  <span className="font-semibold text-blue-600 mx-1">
+                  <span className="font-semibold text-teal-600 mx-1">
                     {scheduleTarget?.date.replace(/-/g, '.')}
                   </span>
                   (으)로 등록하시겠습니까?
@@ -1335,7 +1335,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-blue-600 hover:bg-blue-700 text-white"
+              className="bg-teal-600 hover:bg-teal-700 text-white"
               onClick={() => {
                 if (scheduleTarget) {
                   // 설치예정일 저장 + status를 in-progress로 변경 → 설치예정 탭으로 이동
@@ -1362,7 +1362,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               <div className="space-y-2">
                 <p>
                   &ldquo;{revertTarget?.businessName}&rdquo; 현장을
-                  <span className={`font-semibold mx-1 ${revertTarget?.destination === 'unscheduled' ? 'text-orange-600' : 'text-blue-600'}`}>
+                  <span className={`font-semibold mx-1 ${revertTarget?.destination === 'unscheduled' ? 'text-carrot-600' : 'text-teal-600'}`}>
                     {revertTarget?.destination === 'unscheduled' ? '일정미정' : '설치예정'}
                   </span>
                   탭으로 되돌리시겠습니까?
@@ -1379,8 +1379,8 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
               className={revertTarget?.destination === 'unscheduled'
-                ? 'bg-orange-600 hover:bg-orange-700 text-white'
-                : 'bg-blue-600 hover:bg-blue-700 text-white'}
+                ? 'bg-carrot-600 hover:bg-carrot-700 text-white'
+                : 'bg-teal-600 hover:bg-teal-700 text-white'}
               onClick={handleRevert}
             >
               되돌리기
@@ -1423,7 +1423,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-green-600 hover:bg-green-700 text-white"
+              className="bg-olive-600 hover:bg-olive-700 text-white"
               disabled={!completeDate}
               onClick={() => {
                 if (completeTarget && completeDate) {
@@ -1455,7 +1455,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     value={cancelReason}
                     onChange={(e) => setCancelReason(e.target.value)}
                     placeholder="취소 사유를 입력해주세요"
-                    className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
+                    className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-brick-300 focus:border-brick-400"
                   />
                 </div>
                 <p className="text-xs text-gray-500">
@@ -1467,7 +1467,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
           <AlertDialogFooter>
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-brick-600 hover:bg-brick-700 text-white"
               disabled={!cancelReason.trim()}
               onClick={() => {
                 if (cancelTarget && cancelReason.trim() && onCancelOrder) {

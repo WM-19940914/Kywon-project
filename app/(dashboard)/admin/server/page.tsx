@@ -20,10 +20,10 @@ const ROLE_ORDER: UserRole[] = ['admin', 'melea', 's1eng', 'kyowon', 'affiliate'
 /** 메뉴 그룹별 색상 도트 */
 const GROUP_DOT_COLORS: Record<string, string> = {
   '': 'bg-gray-400',
-  '교원그룹': 'bg-blue-400',
-  '교원 · 멜레아': 'bg-violet-400',
-  '멜레아 · 에스원': 'bg-emerald-400',
-  '멜레아 전용': 'bg-orange-400',
+  '교원그룹': 'bg-teal-400',
+  '교원 · 멜레아': 'bg-teal-400',
+  '멜레아 · 에스원': 'bg-olive-400',
+  '멜레아 전용': 'bg-carrot-400',
 }
 
 /** 역할 옵션 */
@@ -37,11 +37,11 @@ const ROLE_OPTIONS = [
 
 /** 역할 뱃지 색상 */
 const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-red-500/15 text-red-400 border-red-500/20',
-  melea: 'bg-orange-500/15 text-orange-400 border-orange-500/20',
-  s1eng: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/20',
-  kyowon: 'bg-blue-500/15 text-blue-400 border-blue-500/20',
-  affiliate: 'bg-violet-500/15 text-violet-400 border-violet-500/20',
+  admin: 'bg-brick-500/15 text-brick-400 border-brick-500/20',
+  melea: 'bg-carrot-500/15 text-carrot-400 border-carrot-500/20',
+  s1eng: 'bg-olive-500/15 text-olive-400 border-olive-500/20',
+  kyowon: 'bg-teal-500/15 text-teal-400 border-teal-500/20',
+  affiliate: 'bg-teal-500/15 text-teal-400 border-teal-500/20',
 }
 
 /** 역할 한글 라벨 */
@@ -63,11 +63,11 @@ const TABLE_LABELS: Record<string, string> = {
 
 /** 발주 상태 한글명 */
 const ORDER_STATUS_LABELS: Record<string, { label: string; color: string }> = {
-  received: { label: '접수중', color: 'bg-amber-500/15 text-amber-400' },
-  in_progress: { label: '진행중', color: 'bg-blue-500/15 text-blue-400' },
-  completed: { label: '완료', color: 'bg-violet-500/15 text-violet-400' },
-  settled: { label: '정산완료', color: 'bg-emerald-500/15 text-emerald-400' },
-  cancelled: { label: '발주취소', color: 'bg-red-500/15 text-red-400' },
+  received: { label: '접수중', color: 'bg-gold-500/15 text-gold-400' },
+  in_progress: { label: '진행중', color: 'bg-teal-500/15 text-teal-400' },
+  completed: { label: '완료', color: 'bg-teal-500/15 text-teal-400' },
+  settled: { label: '정산완료', color: 'bg-olive-500/15 text-olive-400' },
+  cancelled: { label: '발주취소', color: 'bg-brick-500/15 text-brick-400' },
 }
 
 /** 사용자 타입 */
@@ -92,7 +92,7 @@ export default function AdminPage() {
     <div className="p-4 sm:p-6 max-w-[1200px] mx-auto">
       {/* 헤더 */}
       <div className="flex items-center gap-3 mb-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-400">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brick-500/10 text-brick-400">
           <Shield className="h-5 w-5" />
         </div>
         <div>
@@ -196,7 +196,7 @@ function AccountsTab() {
 
       {/* 알림 */}
       {message && (
-        <div className={`mb-4 px-4 py-3 rounded-lg text-sm border ${message.type === 'success' ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+        <div className={`mb-4 px-4 py-3 rounded-lg text-sm border ${message.type === 'success' ? 'bg-olive-500/10 text-olive-400 border-olive-500/20' : 'bg-brick-500/10 text-brick-400 border-brick-500/20'}`}>
           {message.text}
         </div>
       )}
@@ -237,14 +237,14 @@ function AccountsTab() {
                   <td className="px-4 py-3 text-muted-foreground text-xs hidden lg:table-cell">{formatDate(user.created_at)}</td>
                   <td className="px-4 py-3">
                     <div className="flex items-center justify-center gap-1">
-                      <button onClick={() => setEditingUser(user)} className="p-1.5 rounded-md hover:bg-blue-500/10 text-muted-foreground hover:text-blue-400 transition-colors" title="수정">
+                      <button onClick={() => setEditingUser(user)} className="p-1.5 rounded-md hover:bg-teal-500/10 text-muted-foreground hover:text-teal-400 transition-colors" title="수정">
                         <Edit2 className="h-3.5 w-3.5" />
                       </button>
-                      <button onClick={() => setResetTarget(user)} className="p-1.5 rounded-md hover:bg-orange-500/10 text-muted-foreground hover:text-orange-400 transition-colors" title="비밀번호 초기화">
+                      <button onClick={() => setResetTarget(user)} className="p-1.5 rounded-md hover:bg-carrot-500/10 text-muted-foreground hover:text-carrot-400 transition-colors" title="비밀번호 초기화">
                         <Key className="h-3.5 w-3.5" />
                       </button>
                       {user.username !== 'opendnals123' && (
-                        <button onClick={() => setDeleteTarget(user)} className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400 transition-colors" title="삭제">
+                        <button onClick={() => setDeleteTarget(user)} className="p-1.5 rounded-md hover:bg-brick-500/10 text-muted-foreground hover:text-brick-400 transition-colors" title="삭제">
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
                       )}
@@ -282,7 +282,7 @@ function RoleMenuMatrix() {
   return (
     <div className="mt-6">
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-        <Shield className="h-4 w-4 text-violet-400" />
+        <Shield className="h-4 w-4 text-teal-400" />
         역할별 메뉴 권한
       </h3>
 
@@ -334,7 +334,7 @@ function RoleMenuMatrix() {
                         {ROLE_ORDER.map(role => (
                           <td key={role} className="text-center px-3 py-2.5">
                             {hasAccess(role, group.title) ? (
-                              <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                              <CheckCircle2 className="h-4 w-4 text-olive-400 mx-auto" />
                             ) : (
                               <XCircle className="h-4 w-4 text-muted-foreground/25 mx-auto" />
                             )}
@@ -366,7 +366,7 @@ function RoleMenuMatrix() {
                 </td>
                 {ROLE_ORDER.map(role => (
                   <td key={role} className="text-center px-3 py-2.5">
-                    <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                    <CheckCircle2 className="h-4 w-4 text-olive-400 mx-auto" />
                   </td>
                 ))}
               </tr>
@@ -377,7 +377,7 @@ function RoleMenuMatrix() {
                   <div className="flex items-center gap-2.5 pl-4">
                     <serverAdminMenuItem.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-xs">{serverAdminMenuItem.title}</span>
-                    <span className="text-[10px] text-red-400/70 bg-red-500/10 px-1.5 py-0.5 rounded border border-red-500/15">
+                    <span className="text-[10px] text-brick-400/70 bg-brick-500/10 px-1.5 py-0.5 rounded border border-brick-500/15">
                       opendnals123 전용
                     </span>
                   </div>
@@ -385,7 +385,7 @@ function RoleMenuMatrix() {
                 {ROLE_ORDER.map(role => (
                   <td key={role} className="text-center px-3 py-2.5">
                     {role === 'admin' ? (
-                      <CheckCircle2 className="h-4 w-4 text-emerald-400 mx-auto" />
+                      <CheckCircle2 className="h-4 w-4 text-olive-400 mx-auto" />
                     ) : (
                       <XCircle className="h-4 w-4 text-muted-foreground/25 mx-auto" />
                     )}
@@ -452,7 +452,7 @@ function RoleMenuMatrix() {
                     <serverAdminMenuItem.icon className="h-3 w-3 text-muted-foreground shrink-0" />
                     <span className="text-xs">{serverAdminMenuItem.title}</span>
                     {role === 'admin' && (
-                      <span className="text-[9px] text-red-400/70 bg-red-500/10 px-1 py-0.5 rounded">전용</span>
+                      <span className="text-[9px] text-brick-400/70 bg-brick-500/10 px-1 py-0.5 rounded">전용</span>
                     )}
                   </div>
                 </div>
@@ -486,7 +486,7 @@ function DatabaseTab() {
   useEffect(() => { loadStats() }, [loadStats])
 
   if (loading) return <div className="text-center py-12 text-muted-foreground">불러오는 중...</div>
-  if (error) return <div className="text-center py-12 text-red-400">{error}</div>
+  if (error) return <div className="text-center py-12 text-brick-400">{error}</div>
   if (!stats) return null
 
   const tables = stats.tables || []
@@ -558,7 +558,7 @@ function DatabaseTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <BarChart3 className="h-4 w-4 text-blue-400" />
+            <BarChart3 className="h-4 w-4 text-teal-400" />
             발주 상태별 현황
           </h3>
         </div>
@@ -578,7 +578,7 @@ function DatabaseTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Table2 className="h-4 w-4 text-emerald-400" />
+            <Table2 className="h-4 w-4 text-olive-400" />
             테이블별 데이터 건수
           </h3>
         </div>
@@ -620,7 +620,7 @@ const ADMIN_LINKS = [
     description: 'DB 관리, 인증, 스토리지, API',
     url: 'https://app.supabase.com/project/amllpfihdjohjuypcawv',
     icon: '⚡',
-    color: 'bg-emerald-500/15 text-emerald-400',
+    color: 'bg-olive-500/15 text-olive-400',
   },
   {
     name: '카카오 디벨로퍼',
@@ -634,7 +634,7 @@ const ADMIN_LINKS = [
     description: '소스 코드, 커밋 내역, 이슈 관리',
     url: 'https://github.com/WM-19940914/Kywon-project',
     icon: '🐙',
-    color: 'bg-violet-500/15 text-violet-400',
+    color: 'bg-teal-500/15 text-teal-400',
   },
 ]
 
@@ -694,7 +694,7 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30 flex items-center justify-between">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Activity className="h-4 w-4 text-emerald-400" />
+            <Activity className="h-4 w-4 text-olive-400" />
             시스템 상태
           </h3>
           <button onClick={loadMonitoring} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs hover:bg-accent transition-colors">
@@ -710,44 +710,44 @@ function ServerTab() {
           ) : health ? (
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* DB 연결 */}
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.db.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.db.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.db.ok ? 'bg-olive-500/5 border-olive-500/20' : 'bg-brick-500/5 border-brick-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.db.ok ? 'bg-olive-500/15 text-olive-400' : 'bg-brick-500/15 text-brick-400'}`}>
                   {health.db.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
                 </div>
                 <div>
                   <p className="text-sm font-medium">Database</p>
-                  <p className={`text-xs ${health.db.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-xs ${health.db.ok ? 'text-olive-400' : 'text-brick-400'}`}>
                     {health.db.ok ? `정상 (${health.db.latencyMs}ms)` : health.db.message}
                   </p>
                 </div>
               </div>
               {/* Auth 연결 */}
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.auth.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.auth.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.auth.ok ? 'bg-olive-500/5 border-olive-500/20' : 'bg-brick-500/5 border-brick-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.auth.ok ? 'bg-olive-500/15 text-olive-400' : 'bg-brick-500/15 text-brick-400'}`}>
                   {health.auth.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
                 </div>
                 <div>
                   <p className="text-sm font-medium">Authentication</p>
-                  <p className={`text-xs ${health.auth.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-xs ${health.auth.ok ? 'text-olive-400' : 'text-brick-400'}`}>
                     {health.auth.message}
                   </p>
                 </div>
               </div>
               {/* Storage 연결 */}
-              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.storage.ok ? 'bg-emerald-500/5 border-emerald-500/20' : 'bg-red-500/5 border-red-500/20'}`}>
-                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.storage.ok ? 'bg-emerald-500/15 text-emerald-400' : 'bg-red-500/15 text-red-400'}`}>
+              <div className={`flex items-center gap-3 px-4 py-3 rounded-lg border ${health.storage.ok ? 'bg-olive-500/5 border-olive-500/20' : 'bg-brick-500/5 border-brick-500/20'}`}>
+                <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${health.storage.ok ? 'bg-olive-500/15 text-olive-400' : 'bg-brick-500/15 text-brick-400'}`}>
                   {health.storage.ok ? <CheckCircle2 className="h-4.5 w-4.5" /> : <XCircle className="h-4.5 w-4.5" />}
                 </div>
                 <div>
                   <p className="text-sm font-medium">Storage</p>
-                  <p className={`text-xs ${health.storage.ok ? 'text-emerald-400' : 'text-red-400'}`}>
+                  <p className={`text-xs ${health.storage.ok ? 'text-olive-400' : 'text-brick-400'}`}>
                     {health.storage.message}
                   </p>
                 </div>
               </div>
             </div>
           ) : (
-            <p className="text-sm text-red-400 text-center py-4">상태 조회 실패</p>
+            <p className="text-sm text-brick-400 text-center py-4">상태 조회 실패</p>
           )}
         </div>
       </div>
@@ -756,7 +756,7 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Clock className="h-4 w-4 text-blue-400" />
+            <Clock className="h-4 w-4 text-teal-400" />
             최근 접속 기록
           </h3>
         </div>
@@ -799,7 +799,7 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <HardDrive className="h-4 w-4 text-orange-400" />
+            <HardDrive className="h-4 w-4 text-carrot-400" />
             무료 플랜 한도 · 영한 번역 가이드
           </h3>
         </div>
@@ -811,7 +811,7 @@ function ServerTab() {
                 <span className="text-xs font-bold bg-black text-white px-1.5 py-0.5 rounded">▲</span>
                 <span className="text-sm font-medium">Vercel Hobby</span>
               </div>
-              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-blue-400 hover:underline">
+              <a href="https://vercel.com/dashboard" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-teal-400 hover:underline">
                 사용량 보기 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
@@ -852,7 +852,7 @@ function ServerTab() {
                 <span className="text-xs font-bold px-1.5 py-0.5 rounded" style={{ backgroundColor: '#3ECF8E', color: '#fff' }}>⚡</span>
                 <span className="text-sm font-medium">Supabase Free — 실시간 사용량</span>
               </div>
-              <a href="https://app.supabase.com/project/amllpfihdjohjuypcawv" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-emerald-400 hover:underline">
+              <a href="https://app.supabase.com/project/amllpfihdjohjuypcawv" target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-olive-400 hover:underline">
                 대시보드 <ExternalLink className="h-3 w-3" />
               </a>
             </div>
@@ -876,7 +876,7 @@ function ServerTab() {
                   used={sbUsage.storage.usedLabel}
                   limit={sbUsage.storage.limitLabel}
                   percent={Math.min((sbUsage.storage.usedBytes / sbUsage.storage.limitBytes) * 100, 100)}
-                  color="blue"
+                  color="teal"
                 />
                 {/* Auth 사용자 */}
                 <UsageBar
@@ -888,7 +888,7 @@ function ServerTab() {
                 />
               </div>
             ) : (
-              <p className="text-sm text-red-400 text-center py-4">사용량 조회 실패</p>
+              <p className="text-sm text-brick-400 text-center py-4">사용량 조회 실패</p>
             )}
           </div>
         </div>
@@ -911,7 +911,7 @@ function ServerTab() {
             href="https://melea.vercel.app"
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-bold text-blue-400 hover:underline break-all"
+            className="text-sm font-bold text-teal-400 hover:underline break-all"
           >
             melea.vercel.app
           </a>
@@ -943,27 +943,27 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Zap className="h-4 w-4 text-blue-400" />
+            <Zap className="h-4 w-4 text-teal-400" />
             배포 방법
           </h3>
         </div>
         <div className="p-4 space-y-3">
           <div className="flex items-start gap-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-400 text-xs font-bold">1</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-teal-400 text-xs font-bold">1</span>
             <div>
               <p className="text-sm font-medium">코드 수정</p>
               <p className="text-xs text-muted-foreground">내 컴퓨터에서 코드 수정 후 localhost:3002에서 확인</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-500/15 text-blue-400 text-xs font-bold">2</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-teal-500/15 text-teal-400 text-xs font-bold">2</span>
             <div>
               <p className="text-sm font-medium">git push</p>
               <p className="text-xs text-muted-foreground">GitHub에 코드 올리기</p>
             </div>
           </div>
           <div className="flex items-start gap-3">
-            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-emerald-500/15 text-emerald-400 text-xs font-bold">3</span>
+            <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-olive-500/15 text-olive-400 text-xs font-bold">3</span>
             <div>
               <p className="text-sm font-medium">자동 배포</p>
               <p className="text-xs text-muted-foreground">Vercel이 자동 감지하여 1~2분 내 배포 완료</p>
@@ -976,7 +976,7 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <Key className="h-4 w-4 text-orange-400" />
+            <Key className="h-4 w-4 text-carrot-400" />
             환경변수 (Vercel에 등록됨)
           </h3>
         </div>
@@ -1000,7 +1000,7 @@ function ServerTab() {
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="px-4 py-3 border-b bg-muted/30">
           <h3 className="text-sm font-semibold flex items-center gap-2">
-            <ExternalLink className="h-4 w-4 text-violet-400" />
+            <ExternalLink className="h-4 w-4 text-teal-400" />
             관리 사이트 바로가기
           </h3>
         </div>
@@ -1038,19 +1038,19 @@ function ServerTab() {
 /** 사용량 진행바 — Supabase 사용량 시각화용 */
 function UsageBar({ label, used, limit, percent, color }: {
   label: string; used: string; limit: string; percent: number
-  color: 'emerald' | 'blue' | 'violet' | 'orange'
+  color: 'emerald' | 'teal' | 'violet' | 'orange'
 }) {
   const barColors = {
-    emerald: 'bg-emerald-500',
-    blue: 'bg-blue-500',
-    violet: 'bg-violet-500',
-    orange: 'bg-orange-500',
+    emerald: 'bg-olive-500',
+    teal: 'bg-teal-500',
+    violet: 'bg-teal-500',
+    orange: 'bg-carrot-500',
   }
   const textColors = {
-    emerald: 'text-emerald-400',
-    blue: 'text-blue-400',
-    violet: 'text-violet-400',
-    orange: 'text-orange-400',
+    emerald: 'text-olive-400',
+    teal: 'text-teal-400',
+    violet: 'text-teal-400',
+    orange: 'text-carrot-400',
   }
 
   return (
@@ -1160,7 +1160,7 @@ function EditRoleModal({ user, onClose, onSuccess, onError }: { user: UserRow; o
   return (
     <ModalOverlay onClose={onClose}>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-bold flex items-center gap-2"><Edit2 className="h-5 w-5 text-blue-400" /> 계정 수정</h2>
+        <h2 className="text-lg font-bold flex items-center gap-2"><Edit2 className="h-5 w-5 text-teal-400" /> 계정 수정</h2>
         <button onClick={onClose} className="p-1 rounded-md hover:bg-accent"><X className="h-4 w-4" /></button>
       </div>
       <div className="space-y-4">
@@ -1189,7 +1189,7 @@ function EditRoleModal({ user, onClose, onSuccess, onError }: { user: UserRow; o
             <input value={affiliateName} onChange={e => setAffiliateName(e.target.value)} placeholder="예: 교원구몬" className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
         )}
-        <button onClick={handleSave} disabled={saving} className="w-full py-2.5 rounded-lg bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+        <button onClick={handleSave} disabled={saving} className="w-full py-2.5 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
           {saving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> 저장 중...</> : <><Check className="h-3.5 w-3.5" /> 저장</>}
         </button>
       </div>
@@ -1213,7 +1213,7 @@ function ResetPasswordModal({ user, onClose, onSuccess, onError }: { user: UserR
   return (
     <ModalOverlay onClose={onClose}>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-bold flex items-center gap-2"><Key className="h-5 w-5 text-orange-400" /> 비밀번호 초기화</h2>
+        <h2 className="text-lg font-bold flex items-center gap-2"><Key className="h-5 w-5 text-carrot-400" /> 비밀번호 초기화</h2>
         <button onClick={onClose} className="p-1 rounded-md hover:bg-accent"><X className="h-4 w-4" /></button>
       </div>
       <div className="space-y-4">
@@ -1222,7 +1222,7 @@ function ResetPasswordModal({ user, onClose, onSuccess, onError }: { user: UserR
           <label className="block text-xs font-medium text-muted-foreground mb-1.5">새 비밀번호</label>
           <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="6자 이상" minLength={6} className="w-full px-3 py-2.5 rounded-lg border bg-background text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
         </div>
-        <button onClick={handleReset} disabled={saving || password.length < 6} className="w-full py-2.5 rounded-lg bg-orange-600 text-white text-sm font-medium hover:bg-orange-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+        <button onClick={handleReset} disabled={saving || password.length < 6} className="w-full py-2.5 rounded-lg bg-carrot-600 text-white text-sm font-medium hover:bg-carrot-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
           {saving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> 변경 중...</> : <><Key className="h-3.5 w-3.5" /> 비밀번호 변경</>}
         </button>
       </div>
@@ -1244,16 +1244,16 @@ function DeleteUserModal({ user, onClose, onSuccess, onError }: { user: UserRow;
   return (
     <ModalOverlay onClose={onClose}>
       <div className="flex items-center justify-between mb-5">
-        <h2 className="text-lg font-bold flex items-center gap-2 text-red-400"><Trash2 className="h-5 w-5" /> 계정 삭제</h2>
+        <h2 className="text-lg font-bold flex items-center gap-2 text-brick-400"><Trash2 className="h-5 w-5" /> 계정 삭제</h2>
         <button onClick={onClose} className="p-1 rounded-md hover:bg-accent"><X className="h-4 w-4" /></button>
       </div>
       <div className="space-y-4">
-        <div className="bg-red-500/10 border border-red-500/20 rounded-lg p-4">
-          <p className="text-sm text-red-400"><strong>{user.display_name}</strong> ({user.username}) 계정을 삭제하면 복구할 수 없습니다.</p>
+        <div className="bg-brick-500/10 border border-brick-500/20 rounded-lg p-4">
+          <p className="text-sm text-brick-400"><strong>{user.display_name}</strong> ({user.username}) 계정을 삭제하면 복구할 수 없습니다.</p>
         </div>
         <div className="flex gap-3">
           <button onClick={onClose} className="flex-1 py-2.5 rounded-lg border text-sm font-medium hover:bg-accent transition-colors">취소</button>
-          <button onClick={handleDelete} disabled={saving} className="flex-1 py-2.5 rounded-lg bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
+          <button onClick={handleDelete} disabled={saving} className="flex-1 py-2.5 rounded-lg bg-brick-600 text-white text-sm font-medium hover:bg-brick-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2">
             {saving ? <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> 삭제 중...</> : <><Trash2 className="h-3.5 w-3.5" /> 삭제</>}
           </button>
         </div>

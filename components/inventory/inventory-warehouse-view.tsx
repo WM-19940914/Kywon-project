@@ -284,29 +284,29 @@ export function InventoryWarehouseView({
 
         {/* 통계 카드 (유휴재고 → 입고내역 → 설치완료 순서) */}
         <div className="flex-1 grid grid-cols-3 gap-3">
-          <Card className={`border-red-200 cursor-pointer transition-colors ${
-            statusFilter === 'idle' ? 'bg-red-100 ring-2 ring-red-300' : 'bg-red-50/30 hover:bg-red-50'
+          <Card className={`border-brick-200 cursor-pointer transition-colors ${
+            statusFilter === 'idle' ? 'bg-brick-100 ring-2 ring-brick-300' : 'bg-brick-50/30 hover:bg-brick-50'
           }`} onClick={() => setStatusFilter(statusFilter === 'idle' ? null : 'idle')}>
             <CardContent className="p-3 flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-red-100 flex items-center justify-center">
-                <Ban className="h-4 w-4 text-red-500" />
+              <div className="h-9 w-9 rounded-lg bg-brick-100 flex items-center justify-center">
+                <Ban className="h-4 w-4 text-brick-500" />
               </div>
               <div>
-                <p className="text-xs text-red-600">유휴재고</p>
-                <p className="text-xl font-bold text-red-700">{stats.idle}</p>
+                <p className="text-xs text-brick-600">유휴재고</p>
+                <p className="text-xl font-bold text-brick-700">{stats.idle}</p>
               </div>
             </CardContent>
           </Card>
-          <Card className={`border-green-200 cursor-pointer transition-colors ${
-            statusFilter === 'in_stock' ? 'bg-green-100 ring-2 ring-green-300' : 'bg-green-50/50 hover:bg-green-50'
+          <Card className={`border-olive-200 cursor-pointer transition-colors ${
+            statusFilter === 'in_stock' ? 'bg-olive-100 ring-2 ring-olive-300' : 'bg-olive-50/50 hover:bg-olive-50'
           }`} onClick={() => setStatusFilter(statusFilter === 'in_stock' ? null : 'in_stock')}>
             <CardContent className="p-3 flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-green-100 flex items-center justify-center">
-                <Package className="h-4 w-4 text-green-600" />
+              <div className="h-9 w-9 rounded-lg bg-olive-100 flex items-center justify-center">
+                <Package className="h-4 w-4 text-olive-600" />
               </div>
               <div>
-                <p className="text-xs text-green-700">입고내역</p>
-                <p className="text-xl font-bold text-green-800">{stats.in_stock}</p>
+                <p className="text-xs text-olive-700">입고내역</p>
+                <p className="text-xl font-bold text-olive-800">{stats.in_stock}</p>
               </div>
             </CardContent>
           </Card>
@@ -385,17 +385,17 @@ export function InventoryWarehouseView({
                         className={`border-b border-gray-100 transition-colors ${
                           isResolved
                             ? 'bg-gray-50/50 text-gray-400'
-                            : 'bg-red-50/30 hover:bg-red-50/50'
+                            : 'bg-brick-50/30 hover:bg-brick-50/50'
                         }`}
                       >
                         {/* 상태 뱃지 */}
                         <td className="p-3 text-center">
                           {isResolved ? (
-                            <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] border">
+                            <Badge className="bg-olive-50 text-olive-700 border-olive-200 text-[10px] border">
                               사용완료
                             </Badge>
                           ) : (
-                            <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px] border">
+                            <Badge className="bg-brick-50 text-brick-700 border-brick-200 text-[10px] border">
                               유휴재고
                             </Badge>
                           )}
@@ -429,15 +429,15 @@ export function InventoryWarehouseView({
                         <td className="p-3">
                           {isResolved && item.usedByBusinessName ? (
                             <div className="flex items-center gap-1 text-xs">
-                              <ArrowRight className="h-3 w-3 text-green-500 shrink-0" />
-                              <span className="text-green-700 font-medium truncate" title={item.usedByBusinessName}>
+                              <ArrowRight className="h-3 w-3 text-olive-500 shrink-0" />
+                              <span className="text-olive-700 font-medium truncate" title={item.usedByBusinessName}>
                                 {item.usedByBusinessName}
                               </span>
                             </div>
                           ) : isResolved ? (
                             <span className="text-xs text-gray-400">처리완료</span>
                           ) : (
-                            <span className="text-xs text-red-400">대기중</span>
+                            <span className="text-xs text-brick-400">대기중</span>
                           )}
                         </td>
                       </tr>
@@ -464,17 +464,17 @@ export function InventoryWarehouseView({
                     className={`border rounded-lg p-4 space-y-2 ${
                       isResolved
                         ? 'bg-gray-50 border-gray-200'
-                        : 'bg-red-50/30 border-red-200'
+                        : 'bg-brick-50/30 border-brick-200'
                     }`}
                   >
                     {/* 상단: 상태 + 입고일 */}
                     <div className="flex items-center justify-between">
                       {isResolved ? (
-                        <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] border">
+                        <Badge className="bg-olive-50 text-olive-700 border-olive-200 text-[10px] border">
                           사용완료
                         </Badge>
                       ) : (
-                        <Badge className="bg-red-50 text-red-700 border-red-200 text-[10px] border">
+                        <Badge className="bg-brick-50 text-brick-700 border-brick-200 text-[10px] border">
                           유휴재고
                         </Badge>
                       )}
@@ -505,10 +505,10 @@ export function InventoryWarehouseView({
                     </div>
                     {/* 사용 내역 */}
                     {isResolved && item.usedByBusinessName && (
-                      <div className="flex items-center gap-1 text-xs bg-green-50 rounded px-2 py-1.5">
-                        <ArrowRight className="h-3 w-3 text-green-500 shrink-0" />
-                        <span className="text-green-700 font-medium">{item.usedByBusinessName}</span>
-                        <span className="text-green-500 text-[10px] ml-auto">{formatShortDate(item.resolvedDate)}</span>
+                      <div className="flex items-center gap-1 text-xs bg-olive-50 rounded px-2 py-1.5">
+                        <ArrowRight className="h-3 w-3 text-olive-500 shrink-0" />
+                        <span className="text-olive-700 font-medium">{item.usedByBusinessName}</span>
+                        <span className="text-olive-500 text-[10px] ml-auto">{formatShortDate(item.resolvedDate)}</span>
                       </div>
                     )}
                   </div>

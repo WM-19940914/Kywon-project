@@ -152,7 +152,7 @@ function PriceTableDialog({
       <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader className="border-b border-slate-200 pb-4">
           <div className="flex items-center gap-3">
-            <div className={`h-10 w-10 rounded-xl ${mode === 'add' ? 'bg-gradient-to-br from-blue-500 to-blue-600' : 'bg-gradient-to-br from-amber-500 to-amber-600'} flex items-center justify-center shadow-md`}>
+            <div className={`h-10 w-10 rounded-xl ${mode === 'add' ? 'bg-gradient-to-br from-teal-500 to-teal-600' : 'bg-gradient-to-br from-gold-500 to-gold-600'} flex items-center justify-center shadow-md`}>
               <Plus className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -168,9 +168,9 @@ function PriceTableDialog({
 
         <div className="space-y-6 py-4">
           {/* SET 모델 정보 */}
-          <div className="space-y-4 p-5 border-2 border-blue-100 rounded-xl bg-gradient-to-br from-blue-50 to-white">
+          <div className="space-y-4 p-5 border-2 border-teal-100 rounded-xl bg-gradient-to-br from-teal-50 to-white">
             <div className="flex items-center gap-2">
-              <div className="h-8 w-1 bg-blue-500 rounded-full"></div>
+              <div className="h-8 w-1 bg-teal-500 rounded-full"></div>
               <h3 className="font-bold text-base text-gray-800">SET 모델 정보</h3>
             </div>
 
@@ -182,7 +182,7 @@ function PriceTableDialog({
                   value={formData.category}
                   onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                   placeholder="예: 스탠드형 냉난방"
-                  className="h-10 border-slate-200 focus:border-blue-500 rounded-lg"
+                  className="h-10 border-slate-200 focus:border-teal-500 rounded-lg"
                 />
                 <p className="text-xs text-gray-500">스탠드형/벽걸이형 등</p>
               </div>
@@ -194,7 +194,7 @@ function PriceTableDialog({
                   value={formData.size}
                   onChange={(e) => setFormData({ ...formData, size: e.target.value })}
                   placeholder="예: 36평"
-                  className="h-10 border-slate-200 focus:border-blue-500 rounded-lg"
+                  className="h-10 border-slate-200 focus:border-teal-500 rounded-lg"
                 />
                 <p className="text-xs text-gray-500">숫자+평 형식</p>
               </div>
@@ -208,7 +208,7 @@ function PriceTableDialog({
                   value={formData.model}
                   onChange={(e) => setFormData({ ...formData, model: e.target.value })}
                   placeholder="예: AP290DAPDHH1S"
-                  className="h-10 font-mono border-slate-200 focus:border-blue-500 rounded-lg"
+                  className="h-10 font-mono border-slate-200 focus:border-teal-500 rounded-lg"
                 />
               </div>
 
@@ -220,20 +220,20 @@ function PriceTableDialog({
                   value={formData.price || ''}
                   onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) || 0 })}
                   placeholder="0"
-                  className="h-10 border-slate-200 focus:border-blue-500 rounded-lg"
+                  className="h-10 border-slate-200 focus:border-teal-500 rounded-lg"
                 />
               </div>
             </div>
           </div>
 
           {/* 구성품 정보 */}
-          <div className="space-y-4 p-5 border-2 border-emerald-100 rounded-xl bg-gradient-to-br from-emerald-50 to-white">
+          <div className="space-y-4 p-5 border-2 border-olive-100 rounded-xl bg-gradient-to-br from-olive-50 to-white">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="h-8 w-1 bg-emerald-500 rounded-full"></div>
+                <div className="h-8 w-1 bg-olive-500 rounded-full"></div>
                 <h3 className="font-bold text-base text-gray-800">구성품 정보</h3>
               </div>
-              <Button size="sm" onClick={addComponent} className="bg-emerald-600 hover:bg-emerald-700 rounded-lg">
+              <Button size="sm" onClick={addComponent} className="bg-olive-600 hover:bg-olive-700 rounded-lg">
                 <Plus className="h-4 w-4 mr-1.5" />
                 구성품 추가
               </Button>
@@ -244,8 +244,8 @@ function PriceTableDialog({
                 <div key={idx} className="p-4 border-2 border-slate-200 rounded-lg bg-white shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex items-center justify-between mb-3">
                     <div className="flex items-center gap-2">
-                      <div className="h-6 w-6 rounded-full bg-emerald-100 flex items-center justify-center">
-                        <span className="text-xs font-bold text-emerald-700">#{idx + 1}</span>
+                      <div className="h-6 w-6 rounded-full bg-olive-100 flex items-center justify-center">
+                        <span className="text-xs font-bold text-olive-700">#{idx + 1}</span>
                       </div>
                       <span className="text-sm font-semibold text-gray-700">구성품</span>
                     </div>
@@ -254,7 +254,7 @@ function PriceTableDialog({
                         size="sm"
                         variant="ghost"
                         onClick={() => removeComponent(idx)}
-                        className="h-7 w-7 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                        className="h-7 w-7 p-0 text-brick-500 hover:text-brick-700 hover:bg-brick-50 rounded-lg"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -331,8 +331,8 @@ function PriceTableDialog({
               onClick={handleSave}
               className={`flex-1 h-11 text-base font-semibold shadow-md hover:shadow-lg transition-all rounded-lg ${
                 mode === 'add'
-                  ? 'bg-blue-600 hover:bg-blue-700'
-                  : 'bg-amber-600 hover:bg-amber-700'
+                  ? 'bg-teal-600 hover:bg-teal-700'
+                  : 'bg-gold-600 hover:bg-gold-700'
               }`}
             >
               <Plus className="h-5 w-5 mr-2" />
@@ -367,7 +367,7 @@ function EditButton({ data, onSave }: { data: any; onSave: (data: any) => void }
           e.stopPropagation()
           setOpen(true)
         }}
-        className="h-8 w-8 p-0 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg"
+        className="h-8 w-8 p-0 text-gold-500 hover:text-gold-700 hover:bg-gold-50 rounded-lg"
       >
         <Pencil className="h-4 w-4" />
       </Button>
@@ -698,7 +698,7 @@ export default function PriceTablePage() {
       {/* 페이지 헤더 */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-4">
-          <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+          <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
             <BookOpen className="h-6 w-6" />
           </div>
           <div>
@@ -727,7 +727,7 @@ export default function PriceTablePage() {
           onClick={() => setActiveTab('equipment')}
           className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'equipment'
-              ? 'bg-white text-blue-700 shadow-sm'
+              ? 'bg-white text-teal-700 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -739,7 +739,7 @@ export default function PriceTablePage() {
           onClick={() => setActiveTab('installation')}
           className={`inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-all ${
             activeTab === 'installation'
-              ? 'bg-white text-emerald-700 shadow-sm'
+              ? 'bg-white text-olive-700 shadow-sm'
               : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -792,7 +792,7 @@ export default function PriceTablePage() {
                     {/* SET 모델 행 */}
                     <tr
                       key={row.model}
-                      className="border-b border-slate-200 transition-colors hover:bg-blue-50/40"
+                      className="border-b border-slate-200 transition-colors hover:bg-teal-50/40"
                     >
                       <td
                         className="px-4 py-3 cursor-pointer"
@@ -830,13 +830,13 @@ export default function PriceTablePage() {
                         className="px-4 py-3 text-center cursor-pointer"
                         onClick={() => toggleRow(row.model)}
                       >
-                        <span className="text-sm font-semibold text-orange-600">45%</span>
+                        <span className="text-sm font-semibold text-carrot-600">45%</span>
                       </td>
                       <td
                         className="px-4 py-3 text-right cursor-pointer"
                         onClick={() => toggleRow(row.model)}
                       >
-                        <span className="tabular-nums font-semibold text-emerald-600">
+                        <span className="tabular-nums font-semibold text-olive-600">
                           {row.listPrice > 0 ? formatPrice(Math.round(row.listPrice * 0.55)) : '-'}
                         </span>
                       </td>
@@ -844,7 +844,7 @@ export default function PriceTablePage() {
                         className="px-4 py-3 text-right cursor-pointer"
                         onClick={() => toggleRow(row.model)}
                       >
-                        <span className="font-semibold text-blue-600">
+                        <span className="font-semibold text-teal-600">
                           {formatPrice(row.price)}
                         </span>
                       </td>
@@ -858,7 +858,7 @@ export default function PriceTablePage() {
                               e.stopPropagation()
                               handleDelete(row.id, row.model)
                             }}
-                            className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50 rounded-lg"
+                            className="h-8 w-8 p-0 text-brick-500 hover:text-brick-700 hover:bg-brick-50 rounded-lg"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
@@ -893,26 +893,26 @@ export default function PriceTablePage() {
                                 </thead>
                                 <tbody>
                                   {sortedComponents.map((comp, idx) => (
-                                    <tr key={idx} className="border-b border-slate-100 last:border-b-0 hover:bg-blue-50/40 transition-colors">
+                                    <tr key={idx} className="border-b border-slate-100 last:border-b-0 hover:bg-teal-50/40 transition-colors">
                                       <td className="px-4 py-2 text-sm text-gray-700">{comp.type}</td>
                                       <td className="px-4 py-2 text-sm font-mono text-gray-800">{comp.model}</td>
                                       <td className="px-4 py-2 text-sm text-center text-gray-700">{comp.quantity}개</td>
                                       <td className="px-4 py-2 text-sm text-right tabular-nums text-slate-500">
                                         {comp.unitPrice?.toLocaleString() || 0}원
                                       </td>
-                                      <td className="px-4 py-2 text-sm text-center font-semibold text-orange-600">
+                                      <td className="px-4 py-2 text-sm text-center font-semibold text-carrot-600">
                                         45%
                                       </td>
-                                      <td className="px-4 py-2 text-sm text-right tabular-nums font-semibold text-emerald-600">
+                                      <td className="px-4 py-2 text-sm text-right tabular-nums font-semibold text-olive-600">
                                         {comp.unitPrice ? Math.round(comp.unitPrice * 0.55).toLocaleString() : 0}원
                                       </td>
-                                      <td className="px-4 py-2 text-sm text-right font-semibold text-blue-600">
+                                      <td className="px-4 py-2 text-sm text-right font-semibold text-teal-600">
                                         {comp.salePrice.toLocaleString()}원
                                       </td>
                                     </tr>
                                   ))}
                                   {/* 합계 행 */}
-                                  <tr className="bg-blue-50 border-t-2 border-blue-200">
+                                  <tr className="bg-teal-50 border-t-2 border-teal-200">
                                     <td colSpan={3} className="px-4 py-2 text-sm font-semibold text-gray-800">
                                       합계
                                     </td>
@@ -921,15 +921,15 @@ export default function PriceTablePage() {
                                         .reduce((sum: number, comp: any) => sum + (comp.unitPrice || 0), 0)
                                         .toLocaleString()}원
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-center font-bold text-orange-600">
+                                    <td className="px-4 py-2 text-sm text-center font-bold text-carrot-600">
                                       45%
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-right font-bold text-emerald-600">
+                                    <td className="px-4 py-2 text-sm text-right font-bold text-olive-600">
                                       {Math.round(row.components
                                         .reduce((sum: number, comp: any) => sum + (comp.unitPrice || 0), 0) * 0.55)
                                         .toLocaleString()}원
                                     </td>
-                                    <td className="px-4 py-2 text-sm text-right font-bold text-blue-600">
+                                    <td className="px-4 py-2 text-sm text-right font-bold text-teal-600">
                                       {row.components
                                         .reduce((sum: number, comp: any) => sum + comp.salePrice, 0)
                                         .toLocaleString()}원
@@ -951,8 +951,8 @@ export default function PriceTablePage() {
       </div>
 
       {/* 안내 문구 */}
-      <div className="bg-blue-50 rounded-xl p-4 border border-blue-200 mt-6">
-        <p className="text-sm text-blue-800 leading-relaxed">
+      <div className="bg-teal-50 rounded-xl p-4 border border-teal-200 mt-6">
+        <p className="text-sm text-teal-800 leading-relaxed">
           <strong>사용 방법</strong>
           <br />
           SET 모델 행을 클릭하면 구성품별 판매가를 확인할 수 있습니다.
@@ -970,16 +970,16 @@ export default function PriceTablePage() {
         {/* ── 좌측: 단가계약 설치비 ── */}
         <div className="space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-emerald-500" />
+          <div className="w-2 h-2 rounded-full bg-olive-500" />
           <span className="text-[13px] font-bold text-slate-700">단가계약 항목</span>
-          <span className="text-[10px] text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full font-medium">고정 단가</span>
+          <span className="text-[10px] text-olive-600 bg-olive-50 px-2 py-0.5 rounded-full font-medium">고정 단가</span>
         </div>
         <div className="max-w-[400px] space-y-5">
 
         {/* ── 신규 설치비 ── */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-blue-500" />
+            <div className="w-1 h-4 rounded-full bg-teal-500" />
             <h3 className="text-[13px] font-bold text-slate-800">신규 설치비</h3>
           </div>
           <table className="w-full text-[12px]">
@@ -992,7 +992,7 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {newInstallRows.map((row, i) => (
-                <tr key={`ns-${i}`} className="hover:bg-blue-50/30 transition-colors">
+                <tr key={`ns-${i}`} className="hover:bg-teal-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className="px-4 py-2 text-slate-600">{row.model}</td>
                   <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
@@ -1005,7 +1005,7 @@ export default function PriceTablePage() {
         {/* ── 이전 설치비 ── */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-violet-500" />
+            <div className="w-1 h-4 rounded-full bg-teal-500" />
             <h3 className="text-[13px] font-bold text-slate-800">이전 설치비</h3>
           </div>
           <table className="w-full text-[12px]">
@@ -1018,7 +1018,7 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {relocationRows.map((row, i) => (
-                <tr key={`os-${i}`} className="hover:bg-violet-50/30 transition-colors">
+                <tr key={`os-${i}`} className="hover:bg-teal-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className="px-4 py-2 text-slate-600">{row.model}</td>
                   <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
@@ -1031,7 +1031,7 @@ export default function PriceTablePage() {
         {/* ── 추가 설치비 ── */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-emerald-500" />
+            <div className="w-1 h-4 rounded-full bg-olive-500" />
             <h3 className="text-[13px] font-bold text-slate-800">추가 설치비</h3>
           </div>
           <table className="w-full text-[12px]">
@@ -1044,7 +1044,7 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {additionalRows.map((row, i) => (
-                <tr key={`ex-${i}`} className="hover:bg-emerald-50/30 transition-colors">
+                <tr key={`ex-${i}`} className="hover:bg-olive-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className={`px-4 py-2 ${row.model === '-' ? 'text-slate-400' : 'text-slate-600'} ${row.category === '냉매관 설치' ? 'font-mono text-[11px]' : ''}`}>{row.model}</td>
                   <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
@@ -1057,7 +1057,7 @@ export default function PriceTablePage() {
         {/* ── 반납 비용 ── */}
         <div className="bg-white rounded-xl border border-slate-200/80 shadow-sm overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-200/80 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-amber-500" />
+            <div className="w-1 h-4 rounded-full bg-gold-500" />
             <h3 className="text-[13px] font-bold text-slate-800">반납 비용</h3>
             <span className="ml-auto text-[10px] text-slate-400 font-medium">신규기기 설치 동반 시 무료</span>
           </div>
@@ -1071,7 +1071,7 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {returnRows.map((row, i) => (
-                <tr key={`rt-${i}`} className="hover:bg-amber-50/30 transition-colors">
+                <tr key={`rt-${i}`} className="hover:bg-gold-50/30 transition-colors">
                   <td className="px-5 py-2 font-semibold text-slate-700 border-r border-slate-100">{row.category}</td>
                   <td className="px-4 py-2 text-slate-400">{row.model}</td>
                   <td className="px-5 py-2 text-right font-semibold text-slate-800 tabular-nums">{row.price.toLocaleString()}원</td>
@@ -1095,19 +1095,19 @@ export default function PriceTablePage() {
         {/* ── 우측: 현장별 변동 비용 ── */}
         <div className="space-y-5">
         <div className="flex items-center gap-2 mb-1">
-          <div className="w-2 h-2 rounded-full bg-amber-500" />
+          <div className="w-2 h-2 rounded-full bg-gold-500" />
           <span className="text-[13px] font-bold text-slate-700">현장별 변동 항목</span>
-          <span className="text-[10px] text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full font-medium">현장별 상이</span>
+          <span className="text-[10px] text-gold-600 bg-gold-50 px-2 py-0.5 rounded-full font-medium">현장별 상이</span>
         </div>
-        <p className="text-[11px] text-amber-600/80 bg-amber-50/50 border border-amber-200/50 rounded-lg px-3 py-2 leading-relaxed">
+        <p className="text-[11px] text-gold-600/80 bg-gold-50/50 border border-gold-200/50 rounded-lg px-3 py-2 leading-relaxed">
           아래 항목은 현장 조건에 따라 금액이 달라집니다. 견적서 작성 시 현장 확인 후 별도 산출합니다.
         </p>
         <div className="flex gap-5 items-start">
 
         {/* ── 전기공사 ── */}
-        <div className="bg-white rounded-xl border border-dashed border-amber-300/80 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-amber-200/50 bg-amber-50/30 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-sky-500" />
+        <div className="bg-white rounded-xl border border-dashed border-gold-300/80 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gold-200/50 bg-gold-50/30 flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full bg-teal-500" />
             <h3 className="text-[13px] font-bold text-slate-800">전기공사</h3>
           </div>
           <table className="w-full text-[12px]">
@@ -1120,14 +1120,14 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {elecRows.map((row, i) => (
-                <tr key={`elec-${i}`} className="hover:bg-sky-50/30 transition-colors">
+                <tr key={`elec-${i}`} className="hover:bg-teal-50/30 transition-colors">
                   <td className="px-2 py-1 border-r border-slate-100">
                     <input
                       type="text"
                       value={row.category}
                       onChange={(e) => handleElecChange(i, 'category', e.target.value)}
                       placeholder="품목 입력"
-                      className="w-full text-[12px] font-semibold text-slate-700 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-200 placeholder:text-slate-300"
+                      className="w-full text-[12px] font-semibold text-slate-700 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-200 placeholder:text-slate-300"
                     />
                   </td>
                   <td className="px-2 py-1">
@@ -1136,7 +1136,7 @@ export default function PriceTablePage() {
                       value={row.model}
                       onChange={(e) => handleElecChange(i, 'model', e.target.value)}
                       placeholder="모델명 입력"
-                      className="w-full text-[12px] text-slate-600 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-200 placeholder:text-slate-300"
+                      className="w-full text-[12px] text-slate-600 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-200 placeholder:text-slate-300"
                     />
                   </td>
                   <td className="px-5 py-2 text-right text-slate-300">-</td>
@@ -1144,7 +1144,7 @@ export default function PriceTablePage() {
               ))}
               <tr>
                 <td colSpan={3} className="px-5 py-2">
-                  <button onClick={addElecRow} className="text-[11px] text-sky-500 hover:text-sky-700 font-medium transition-colors">+ 행 추가</button>
+                  <button onClick={addElecRow} className="text-[11px] text-teal-500 hover:text-teal-700 font-medium transition-colors">+ 행 추가</button>
                   {savingElec && <span className="text-[10px] text-slate-400 ml-3">저장 중...</span>}
                 </td>
               </tr>
@@ -1153,9 +1153,9 @@ export default function PriceTablePage() {
         </div>
 
         {/* ── 기타공사 ── */}
-        <div className="bg-white rounded-xl border border-dashed border-amber-300/80 shadow-sm overflow-hidden">
-          <div className="px-5 py-3 border-b border-amber-200/50 bg-amber-50/30 flex items-center gap-2">
-            <div className="w-1 h-4 rounded-full bg-orange-500" />
+        <div className="bg-white rounded-xl border border-dashed border-gold-300/80 shadow-sm overflow-hidden">
+          <div className="px-5 py-3 border-b border-gold-200/50 bg-gold-50/30 flex items-center gap-2">
+            <div className="w-1 h-4 rounded-full bg-carrot-500" />
             <h3 className="text-[13px] font-bold text-slate-800">기타공사</h3>
           </div>
           <table className="w-full text-[12px]">
@@ -1168,14 +1168,14 @@ export default function PriceTablePage() {
             </thead>
             <tbody className="divide-y divide-slate-100">
               {etcRows.map((row, i) => (
-                <tr key={`etc-${i}`} className="hover:bg-orange-50/30 transition-colors">
+                <tr key={`etc-${i}`} className="hover:bg-carrot-50/30 transition-colors">
                   <td className="px-2 py-1 border-r border-slate-100">
                     <input
                       type="text"
                       value={row.category}
                       onChange={(e) => handleEtcChange(i, 'category', e.target.value)}
                       placeholder="품목 입력"
-                      className="w-full text-[12px] font-semibold text-slate-700 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 placeholder:text-slate-300"
+                      className="w-full text-[12px] font-semibold text-slate-700 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-carrot-400 focus:ring-1 focus:ring-carrot-200 placeholder:text-slate-300"
                     />
                   </td>
                   <td className="px-2 py-1">
@@ -1184,7 +1184,7 @@ export default function PriceTablePage() {
                       value={row.model}
                       onChange={(e) => handleEtcChange(i, 'model', e.target.value)}
                       placeholder="모델명 입력"
-                      className="w-full text-[12px] text-slate-600 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-200 placeholder:text-slate-300"
+                      className="w-full text-[12px] text-slate-600 bg-transparent border border-transparent rounded px-2 py-1 hover:border-slate-200 focus:outline-none focus:border-carrot-400 focus:ring-1 focus:ring-carrot-200 placeholder:text-slate-300"
                     />
                   </td>
                   <td className="px-5 py-2 text-right text-slate-300">-</td>
@@ -1192,7 +1192,7 @@ export default function PriceTablePage() {
               ))}
               <tr>
                 <td colSpan={3} className="px-5 py-2">
-                  <button onClick={addEtcRow} className="text-[11px] text-orange-500 hover:text-orange-700 font-medium transition-colors">+ 행 추가</button>
+                  <button onClick={addEtcRow} className="text-[11px] text-carrot-500 hover:text-carrot-700 font-medium transition-colors">+ 행 추가</button>
                   {savingEtc && <span className="text-[10px] text-slate-400 ml-3">저장 중...</span>}
                 </td>
               </tr>

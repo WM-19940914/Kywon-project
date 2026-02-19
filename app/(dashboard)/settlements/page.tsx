@@ -35,10 +35,10 @@ import { SitePhotoViewer } from '@/components/schedule/site-photo-viewer'
 
 /** 계열사별 색상 (가로 스택 바 + 범례용) */
 const AFFILIATE_COLORS: Record<string, string> = {
-  '구몬': 'bg-blue-500',
-  'Wells 영업': 'bg-emerald-500',
-  'Wells 서비스': 'bg-amber-500',
-  '교육플랫폼': 'bg-violet-500',
+  '구몬': 'bg-teal-500',
+  'Wells 영업': 'bg-olive-500',
+  'Wells 서비스': 'bg-gold-500',
+  '교육플랫폼': 'bg-teal-500',
   '기타': 'bg-gray-400',
 }
 
@@ -145,12 +145,12 @@ function AffiliateGroup({
   }, { subtotal: 0, vat: 0, total: 0 })
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && orders.length > 0 ? 'ring-1 ring-blue-200 shadow-md' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && orders.length > 0 ? 'ring-1 ring-teal-200 shadow-md' : ''}`}>
       {/* 계열사 헤더 (아코디언 토글) */}
       <button
         className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
           orders.length > 0
-            ? (isOpen ? 'bg-blue-50/60' : 'hover:bg-slate-50')
+            ? (isOpen ? 'bg-teal-50/60' : 'hover:bg-slate-50')
             : ''
         }`}
         onClick={() => orders.length > 0 && setIsOpen(prev => !prev)}
@@ -174,7 +174,7 @@ function AffiliateGroup({
               <p className="text-sm font-bold tabular-nums text-slate-500">{totals.vat.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-5">
-              <p className="text-[10px] text-blue-500 leading-tight">부가세포함</p>
+              <p className="text-[10px] text-teal-500 leading-tight">부가세포함</p>
               <p className="text-base font-extrabold tabular-nums text-slate-900">{totals.total.toLocaleString('ko-KR')}</p>
             </div>
           </div>
@@ -218,7 +218,7 @@ function AffiliateGroup({
                     <React.Fragment key={order.id}>
                       {/* 현장 행 (클릭 시 견적서 토글) */}
                       <tr
-                        className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer`}
+                        className={`border-b border-slate-100 hover:bg-teal-50/40 transition-colors cursor-pointer`}
                         onClick={() => handleToggleExpand(order.id)}
                       >
                         {/* 작업종류 뱃지 */}
@@ -249,7 +249,7 @@ function AffiliateGroup({
                           <Button
                             variant="ghost"
                             size="sm"
-                            className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg"
+                            className="h-7 text-xs text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded-lg"
                             onClick={() => onViewOrder(order)}
                           >
                             <FileText className="h-3.5 w-3.5 mr-1" />
@@ -274,7 +274,7 @@ function AffiliateGroup({
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 text-xs text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded-lg"
+                              className="h-7 text-xs text-teal-600 hover:text-teal-800 hover:bg-teal-50 rounded-lg"
                               onClick={() => onQuoteView(order)}
                             >
                               <FileText className="h-3.5 w-3.5 mr-1" />
@@ -320,12 +320,12 @@ function AffiliateGroup({
                       <tr>
                         <td colSpan={11} className="p-0">
                             <div className="mx-4 my-3">
-                              <div className="border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
+                              <div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
                                 {/* 견적서 헤더 — gradient + 현장명 */}
-                                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-600">
+                                <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
                                   <Receipt className="h-4 w-4 text-white" />
                                   <span className="text-sm font-bold text-white tracking-wide">견적서</span>
-                                  <span className="text-xs text-blue-200 ml-2">— {order.businessName}</span>
+                                  <span className="text-xs text-teal-200 ml-2">— {order.businessName}</span>
                                 </div>
 
                                 <table className="w-full text-sm">
@@ -357,7 +357,7 @@ function AffiliateGroup({
                                     {amounts.equipItems.length > 0 ? amounts.equipItems.map((item, idx) => {
                                       const { product: displayName, model: displayModel } = splitItemName(item.itemName)
                                       return (
-                                        <tr key={item.id || `eq-${idx}`} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                                        <tr key={item.id || `eq-${idx}`} className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors">
                                           <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{idx + 1}</td>
                                           <td className="py-2 px-2 text-center text-slate-800 font-medium truncate">{displayName}</td>
                                           <td className="py-2 px-2 text-center text-slate-500 truncate">{displayModel || '-'}</td>
@@ -375,7 +375,7 @@ function AffiliateGroup({
                                     {amounts.equipRounding > 0 && (
                                       <tr className="border-t border-dashed border-slate-300">
                                         <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td>
-                                        <td className="py-1.5 px-2 text-right text-red-500 font-medium text-xs tabular-nums">-{amounts.equipRounding.toLocaleString('ko-KR')}</td>
+                                        <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs tabular-nums">-{amounts.equipRounding.toLocaleString('ko-KR')}</td>
                                         <td></td>
                                       </tr>
                                     )}
@@ -392,7 +392,7 @@ function AffiliateGroup({
                                     {amounts.installItems.length > 0 ? amounts.installItems.map((item, idx) => {
                                       const { product: displayName, model: displayModel } = splitItemName(item.itemName)
                                       return (
-                                        <tr key={item.id || `in-${idx}`} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                                        <tr key={item.id || `in-${idx}`} className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors">
                                           <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{idx + 1}</td>
                                           <td className="py-2 px-2 text-center text-slate-800 font-medium truncate">{displayName}</td>
                                           <td className="py-2 px-2 text-center text-slate-500 truncate">{displayModel || '-'}</td>
@@ -410,7 +410,7 @@ function AffiliateGroup({
                                     {amounts.installRounding > 0 && (
                                       <tr className="border-t border-dashed border-slate-300">
                                         <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td>
-                                        <td className="py-1.5 px-2 text-right text-red-500 font-medium text-xs tabular-nums">-{amounts.installRounding.toLocaleString('ko-KR')}</td>
+                                        <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs tabular-nums">-{amounts.installRounding.toLocaleString('ko-KR')}</td>
                                         <td></td>
                                       </tr>
                                     )}
@@ -432,8 +432,8 @@ function AffiliateGroup({
                                               <span className="text-sm font-semibold text-slate-700 tabular-nums">{amounts.supplyAmount.toLocaleString('ko-KR')}</span>
                                             </div>
                                             <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                                              <span className="text-xs text-amber-600">기업이윤(설치비 3%)</span>
-                                              <span className="text-sm font-semibold text-amber-700 tabular-nums">+{amounts.adjustedProfit.toLocaleString('ko-KR')}</span>
+                                              <span className="text-xs text-gold-600">기업이윤(설치비 3%)</span>
+                                              <span className="text-sm font-semibold text-gold-700 tabular-nums">+{amounts.adjustedProfit.toLocaleString('ko-KR')}</span>
                                             </div>
                                             <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white">
                                               <span className="text-xs font-bold text-slate-600">소계</span>
@@ -443,7 +443,7 @@ function AffiliateGroup({
                                               <span className="text-xs text-slate-500">VAT(10%)</span>
                                               <span className="text-sm font-semibold text-slate-600 tabular-nums">+{amounts.vat.toLocaleString('ko-KR')}</span>
                                             </div>
-                                            <div className="flex items-center justify-between px-4 py-3 bg-blue-600 text-white rounded-b-xl">
+                                            <div className="flex items-center justify-between px-4 py-3 bg-teal-600 text-white rounded-b-xl">
                                               <span className="text-sm font-bold">최종금액</span>
                                               <span className="text-lg font-black tabular-nums">{amounts.grandTotal.toLocaleString('ko-KR')}<span className="text-sm font-medium ml-0.5">원</span></span>
                                             </div>
@@ -472,7 +472,7 @@ function AffiliateGroup({
               const amounts = calcOrderAmounts(order)
 
               return (
-                <div key={order.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(order.id) ? 'ring-1 ring-blue-300' : ''}`} onClick={() => handleToggleExpand(order.id)}>
+                <div key={order.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(order.id) ? 'ring-1 ring-teal-300' : ''}`} onClick={() => handleToggleExpand(order.id)}>
                   <div className="p-4 space-y-3">
                     {/* 상단: 작업종류 */}
                     <div className="flex items-center justify-between">
@@ -509,7 +509,7 @@ function AffiliateGroup({
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 text-xs text-blue-600 hover:text-blue-800 rounded-lg"
+                          className="h-7 text-xs text-teal-600 hover:text-teal-800 rounded-lg"
                           onClick={() => onQuoteView(order)}
                         >
                           <FileText className="h-3.5 w-3.5 mr-1" />
@@ -519,7 +519,7 @@ function AffiliateGroup({
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 text-xs text-blue-600 hover:text-blue-800 rounded-lg"
+                        className="h-7 text-xs text-teal-600 hover:text-teal-800 rounded-lg"
                         onClick={() => onViewOrder(order)}
                       >
                         <FileText className="h-3.5 w-3.5 mr-1" />
@@ -530,11 +530,11 @@ function AffiliateGroup({
 
                   {/* 견적서 상세 (아코디언) */}
                   {expandedIds.has(order.id) && (
-                  <div className="mx-3 mb-3 border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
-                      <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-600">
+                  <div className="mx-3 mb-3 border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
+                      <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
                         <Receipt className="h-4 w-4 text-white" />
                         <span className="text-sm font-bold text-white tracking-wide">견적서</span>
-                        <span className="text-xs text-blue-200 ml-1 truncate">— {order.businessName}</span>
+                        <span className="text-xs text-teal-200 ml-1 truncate">— {order.businessName}</span>
                       </div>
                       <div className="divide-y divide-slate-100">
                         <div className="px-3 py-1.5 bg-slate-100 text-xs font-bold text-slate-600 tracking-widest uppercase">[ 장비 ]</div>
@@ -556,7 +556,7 @@ function AffiliateGroup({
                         {amounts.equipRounding > 0 && (
                           <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-dashed border-slate-300">
                             <span className="text-xs text-slate-500">단위절사</span>
-                            <span className="text-sm text-red-500 font-medium tabular-nums">-{amounts.equipRounding.toLocaleString('ko-KR')}</span>
+                            <span className="text-sm text-brick-500 font-medium tabular-nums">-{amounts.equipRounding.toLocaleString('ko-KR')}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b-2 border-b-slate-300">
@@ -583,7 +583,7 @@ function AffiliateGroup({
                         {amounts.installRounding > 0 && (
                           <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-dashed border-slate-300">
                             <span className="text-xs text-slate-500">단위절사</span>
-                            <span className="text-sm text-red-500 font-medium tabular-nums">-{amounts.installRounding.toLocaleString('ko-KR')}</span>
+                            <span className="text-sm text-brick-500 font-medium tabular-nums">-{amounts.installRounding.toLocaleString('ko-KR')}</span>
                           </div>
                         )}
                         <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b-2 border-b-slate-300">
@@ -598,8 +598,8 @@ function AffiliateGroup({
                             <span className="text-xs font-semibold text-slate-700 tabular-nums">{amounts.supplyAmount.toLocaleString('ko-KR')}</span>
                           </div>
                           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50/50">
-                            <span className="text-[11px] text-amber-600">기업이윤(설치비 3%)</span>
-                            <span className="text-xs font-semibold text-amber-700 tabular-nums">+{amounts.adjustedProfit.toLocaleString('ko-KR')}</span>
+                            <span className="text-[11px] text-gold-600">기업이윤(설치비 3%)</span>
+                            <span className="text-xs font-semibold text-gold-700 tabular-nums">+{amounts.adjustedProfit.toLocaleString('ko-KR')}</span>
                           </div>
                           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-white">
                             <span className="text-[11px] font-bold text-slate-600">소계</span>
@@ -609,7 +609,7 @@ function AffiliateGroup({
                             <span className="text-[11px] text-slate-500">VAT(10%)</span>
                             <span className="text-xs font-semibold text-slate-600 tabular-nums">+{amounts.vat.toLocaleString('ko-KR')}</span>
                           </div>
-                          <div className="flex items-center justify-between px-3 py-2.5 bg-blue-600 text-white rounded-b-xl">
+                          <div className="flex items-center justify-between px-3 py-2.5 bg-teal-600 text-white rounded-b-xl">
                             <span className="text-xs font-bold">최종금액</span>
                             <span className="text-sm font-black tabular-nums">{amounts.grandTotal.toLocaleString('ko-KR')}<span className="text-[11px] font-medium ml-0.5">원</span></span>
                           </div>
@@ -650,12 +650,12 @@ function ASAffiliateGroup({
   const totalWithVat = subtotal + vat
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && requests.length > 0 ? 'ring-1 ring-orange-200 shadow-md' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && requests.length > 0 ? 'ring-1 ring-carrot-200 shadow-md' : ''}`}>
       {/* AS 계열사 헤더 */}
       <button
         className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
           requests.length > 0
-            ? (isOpen ? 'bg-orange-50/60' : 'hover:bg-slate-50')
+            ? (isOpen ? 'bg-carrot-50/60' : 'hover:bg-slate-50')
             : ''
         }`}
         onClick={() => requests.length > 0 && setIsOpen(prev => !prev)}
@@ -665,7 +665,7 @@ function ASAffiliateGroup({
           <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${
             requests.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
           }`} />
-          <Wrench className="h-4 w-4 text-orange-500" />
+          <Wrench className="h-4 w-4 text-carrot-500" />
           <h3 className="text-lg font-bold text-slate-800">{affiliateName} AS</h3>
           <span className="text-sm text-slate-500">({requests.length}건)</span>
         </div>
@@ -677,7 +677,7 @@ function ASAffiliateGroup({
             </div>
             <div className="border-l border-slate-200 pl-3">
               <p className="text-[10px] text-slate-400 leading-tight">단위절사</p>
-              <p className="text-sm font-bold tabular-nums text-red-500">-{truncationAmount.toLocaleString('ko-KR')}</p>
+              <p className="text-sm font-bold tabular-nums text-brick-500">-{truncationAmount.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-3">
               <p className="text-[10px] text-slate-400 leading-tight">소계</p>
@@ -688,7 +688,7 @@ function ASAffiliateGroup({
               <p className="text-sm font-bold tabular-nums text-slate-500">{vat.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-3">
-              <p className="text-[10px] text-orange-500 leading-tight">부가세포함</p>
+              <p className="text-[10px] text-carrot-500 leading-tight">부가세포함</p>
               <p className="text-base font-extrabold tabular-nums text-slate-900">{totalWithVat.toLocaleString('ko-KR')}원</p>
             </div>
           </div>
@@ -727,7 +727,7 @@ function ASAffiliateGroup({
                 {requests.map((req, idx) => (
                   <tr
                     key={req.id}
-                    className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors ${idx === requests.length - 1 ? 'border-b-2 border-b-slate-400' : ''}`}
+                    className={`border-b border-slate-100 hover:bg-teal-50/40 transition-colors ${idx === requests.length - 1 ? 'border-b-2 border-b-slate-400' : ''}`}
                   >
                     <td className="p-2.5 text-xs tabular-nums whitespace-nowrap">{req.receptionDate || '-'}</td>
                     <td className="p-2.5"><p className="text-xs font-semibold truncate">{req.businessName}</p></td>
@@ -1095,7 +1095,7 @@ export default function SettlementsPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <Receipt className="h-6 w-6" />
         </div>
         <div>
@@ -1139,11 +1139,11 @@ export default function SettlementsPage() {
         {/* ── 설치 정산 ── */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow mb-3">
           <div className="flex items-center gap-2 mb-2">
-            <CircleDollarSign className="h-4 w-4 text-blue-500" />
+            <CircleDollarSign className="h-4 w-4 text-teal-500" />
             <p className="text-sm font-bold text-slate-800">설치 정산</p>
-            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-blue-100 text-blue-600">{totalCount}건</span>
+            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-teal-100 text-teal-600">{totalCount}건</span>
             {grandTotals.total > 0 && (
-              <span className="text-sm font-bold tabular-nums text-blue-700 ml-auto">
+              <span className="text-sm font-bold tabular-nums text-teal-700 ml-auto">
                 {grandTotals.total.toLocaleString('ko-KR')}원
                 <span className="text-[10px] text-slate-400 font-normal ml-1">VAT포함</span>
               </span>
@@ -1167,11 +1167,11 @@ export default function SettlementsPage() {
         {/* ── AS 정산 ── */}
         <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 hover:shadow-md transition-shadow mb-3">
           <div className="flex items-center gap-2 mb-2">
-            <Wrench className="h-4 w-4 text-orange-500" />
+            <Wrench className="h-4 w-4 text-carrot-500" />
             <p className="text-sm font-bold text-slate-800">AS 정산</p>
-            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-orange-100 text-orange-600">{filteredASRequests.length}건</span>
+            <span className="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-carrot-100 text-carrot-600">{filteredASRequests.length}건</span>
             {asTotalAmount > 0 && (
-              <span className="text-sm font-bold tabular-nums text-orange-700 ml-auto">
+              <span className="text-sm font-bold tabular-nums text-carrot-700 ml-auto">
                 {(asTotalAmount + Math.floor(asTotalAmount * 0.1)).toLocaleString('ko-KR')}원
                 <span className="text-[10px] text-slate-400 font-normal ml-1">VAT포함</span>
               </span>
@@ -1206,13 +1206,13 @@ export default function SettlementsPage() {
           const finalTotal = grandTotals.total + asVatTotal
           const finalCount = totalCount + filteredASRequests.length
           return (
-            <div className="bg-blue-700 rounded-xl px-5 py-4 text-center">
-              <p className="text-xs text-blue-200 font-medium mb-1">
+            <div className="bg-teal-700 rounded-xl px-5 py-4 text-center">
+              <p className="text-xs text-teal-200 font-medium mb-1">
                 총 {finalCount}건 최종 정산금액 (VAT포함)
               </p>
               <p className="text-3xl md:text-4xl font-black tabular-nums text-white">
                 {finalTotal.toLocaleString('ko-KR')}
-                <span className="text-lg font-bold text-blue-200 ml-1">원</span>
+                <span className="text-lg font-bold text-teal-200 ml-1">원</span>
               </p>
             </div>
           )
@@ -1223,11 +1223,11 @@ export default function SettlementsPage() {
           <p className="text-xs font-bold text-slate-700 mb-3">{selectedYear}년 {selectedMonth}월 정산 확인</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {/* 멜레아 확인 */}
-            <div className={`rounded-xl border-2 p-3 ${confirmation?.melleeaConfirmedAt ? 'border-green-300 bg-green-50/50' : 'border-slate-200 bg-slate-50'}`}>
+            <div className={`rounded-xl border-2 p-3 ${confirmation?.melleeaConfirmedAt ? 'border-olive-300 bg-olive-50/50' : 'border-slate-200 bg-slate-50'}`}>
               <p className="text-xs font-semibold text-slate-600 mb-2">멜레아 확인금액</p>
               {confirmation?.melleeaConfirmedAt ? (
                 <div>
-                  <p className="text-lg font-black tabular-nums text-green-700">
+                  <p className="text-lg font-black tabular-nums text-olive-700">
                     {(confirmation.melleeaAmount || 0).toLocaleString('ko-KR')}원
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1">
@@ -1237,7 +1237,7 @@ export default function SettlementsPage() {
                   </p>
                   <button
                     onClick={() => handleClearConfirmation('mellea')}
-                    className="text-[10px] text-red-400 hover:text-red-600 mt-1 underline"
+                    className="text-[10px] text-brick-400 hover:text-brick-600 mt-1 underline"
                   >
                     초기화
                   </button>
@@ -1250,14 +1250,14 @@ export default function SettlementsPage() {
                       value={melleeaName}
                       onChange={e => setMelleeaName(e.target.value)}
                       placeholder="담당자명"
-                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-green-300"
+                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-300"
                     />
                     <input
                       type="text"
                       value={melleeaInput}
                       onChange={e => setMelleeaInput(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="금액 입력"
-                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-green-300"
+                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-olive-300"
                     />
                     <span className="text-xs text-slate-500">원</span>
                   </div>
@@ -1265,7 +1265,7 @@ export default function SettlementsPage() {
                     size="sm"
                     onClick={() => handleConfirmAmount('mellea')}
                     disabled={!melleeaInput || !melleeaName.trim()}
-                    className="w-full bg-green-600 hover:bg-green-700 text-white text-xs rounded-lg"
+                    className="w-full bg-olive-600 hover:bg-olive-700 text-white text-xs rounded-lg"
                   >
                     확인
                   </Button>
@@ -1274,11 +1274,11 @@ export default function SettlementsPage() {
             </div>
 
             {/* 교원 확인 */}
-            <div className={`rounded-xl border-2 p-3 ${confirmation?.kyowonConfirmedAt ? 'border-blue-300 bg-blue-50/50' : 'border-slate-200 bg-slate-50'}`}>
+            <div className={`rounded-xl border-2 p-3 ${confirmation?.kyowonConfirmedAt ? 'border-teal-300 bg-teal-50/50' : 'border-slate-200 bg-slate-50'}`}>
               <p className="text-xs font-semibold text-slate-600 mb-2">교원 확인금액</p>
               {confirmation?.kyowonConfirmedAt ? (
                 <div>
-                  <p className="text-lg font-black tabular-nums text-blue-700">
+                  <p className="text-lg font-black tabular-nums text-teal-700">
                     {(confirmation.kyowonAmount || 0).toLocaleString('ko-KR')}원
                   </p>
                   <p className="text-[10px] text-slate-400 mt-1">
@@ -1288,7 +1288,7 @@ export default function SettlementsPage() {
                   </p>
                   <button
                     onClick={() => handleClearConfirmation('kyowon')}
-                    className="text-[10px] text-red-400 hover:text-red-600 mt-1 underline"
+                    className="text-[10px] text-brick-400 hover:text-brick-600 mt-1 underline"
                   >
                     초기화
                   </button>
@@ -1301,14 +1301,14 @@ export default function SettlementsPage() {
                       value={kyowonName}
                       onChange={e => setKyowonName(e.target.value)}
                       placeholder="담당자명"
-                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
                     />
                     <input
                       type="text"
                       value={kyowonInput}
                       onChange={e => setKyowonInput(e.target.value.replace(/[^0-9]/g, ''))}
                       placeholder="금액 입력"
-                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-blue-300"
+                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-teal-300"
                     />
                     <span className="text-xs text-slate-500">원</span>
                   </div>
@@ -1316,7 +1316,7 @@ export default function SettlementsPage() {
                     size="sm"
                     onClick={() => handleConfirmAmount('kyowon')}
                     disabled={!kyowonInput || !kyowonName.trim()}
-                    className="w-full bg-blue-600 hover:bg-blue-700 text-white text-xs rounded-lg"
+                    className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-lg"
                   >
                     확인
                   </Button>
@@ -1329,8 +1329,8 @@ export default function SettlementsPage() {
           {confirmation?.melleeaConfirmedAt && confirmation?.kyowonConfirmedAt && (
             <div className={`mt-3 rounded-xl px-3 py-2 text-center text-sm font-bold ${
               confirmation.melleeaAmount === confirmation.kyowonAmount
-                ? 'bg-green-100 text-green-800'
-                : 'bg-red-100 text-red-800'
+                ? 'bg-olive-100 text-olive-800'
+                : 'bg-brick-100 text-brick-800'
             }`}>
               {confirmation.melleeaAmount === confirmation.kyowonAmount
                 ? '양측 금액 일치 -- 정산 확인 완료'
@@ -1381,9 +1381,9 @@ export default function SettlementsPage() {
 
           {/* AS 정산 구분선 */}
           <div className="flex items-center gap-3 pt-4 pb-1">
-            <Wrench className="h-5 w-5 text-orange-500" />
+            <Wrench className="h-5 w-5 text-carrot-500" />
             <h2 className="text-lg font-bold text-slate-700">AS 정산</h2>
-            <div className="flex-1 border-t border-orange-200" />
+            <div className="flex-1 border-t border-carrot-200" />
           </div>
 
           {/* AS 계열사별 그룹 */}

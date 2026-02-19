@@ -130,7 +130,7 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
           <span className="text-xs font-bold text-slate-600">{title}</span>
-          <span className="text-[10px] text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded-full">{filtered.length}건</span>
+          <span className="text-[10px] text-olive-600 bg-olive-50 px-1.5 py-0.5 rounded-full">{filtered.length}건</span>
         </div>
         <div className="space-y-1">
           {filtered.map((item, i) => {
@@ -143,8 +143,8 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
                 onClick={() => handleFixedClick(key, item)}
                 className={`w-full text-left group rounded-lg border px-4 py-2.5 active:scale-[0.99] transition-all duration-150 cursor-pointer ${
                   isClicked
-                    ? 'border-emerald-400 bg-emerald-50 shadow-sm'
-                    : 'border-gray-150 bg-white hover:border-emerald-300 hover:bg-emerald-50/50 hover:shadow-sm'
+                    ? 'border-olive-400 bg-olive-50 shadow-sm'
+                    : 'border-gray-150 bg-white hover:border-olive-300 hover:bg-olive-50/50 hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -158,17 +158,17 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
                   </div>
                   <div className="flex items-center gap-2 ml-3 shrink-0">
                     <div className="text-right">
-                      <span className="text-[12px] font-bold text-emerald-700">
+                      <span className="text-[12px] font-bold text-olive-700">
                         {item.price.toLocaleString()}원
                       </span>
                       <span className="text-[10px] text-slate-400 ml-1">/ {item.unit}</span>
                     </div>
                     {isClicked ? (
-                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-olive-500 flex items-center justify-center shrink-0">
                         <Check className="h-3 w-3 text-white" />
                       </div>
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-emerald-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-olive-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <ArrowRight className="h-3 w-3 text-white" />
                       </div>
                     )}
@@ -191,7 +191,7 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
         <div className="flex items-center gap-2 mb-2">
           <div className={`w-1.5 h-1.5 rounded-full ${color}`} />
           <span className="text-xs font-bold text-slate-600">{title}</span>
-          <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">현장별 상이</span>
+          <span className="text-[10px] text-gold-600 bg-gold-50 px-1.5 py-0.5 rounded-full">현장별 상이</span>
         </div>
         <div className="space-y-1">
           {filtered.map((item, i) => {
@@ -204,8 +204,8 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
                 onClick={() => handleVariableClick(key, item)}
                 className={`w-full text-left group rounded-lg border border-dashed px-4 py-2.5 active:scale-[0.99] transition-all duration-150 cursor-pointer ${
                   isClicked
-                    ? 'border-amber-400 bg-amber-50 shadow-sm'
-                    : 'border-amber-200 bg-white hover:border-amber-400 hover:bg-amber-50/50 hover:shadow-sm'
+                    ? 'border-gold-400 bg-gold-50 shadow-sm'
+                    : 'border-gold-200 bg-white hover:border-gold-400 hover:bg-gold-50/50 hover:shadow-sm'
                 }`}
               >
                 <div className="flex items-center justify-between">
@@ -218,13 +218,13 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 ml-3 shrink-0">
-                    <span className="text-[11px] text-amber-500 font-medium">직접 입력</span>
+                    <span className="text-[11px] text-gold-500 font-medium">직접 입력</span>
                     {isClicked ? (
-                      <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-gold-500 flex items-center justify-center shrink-0">
                         <Check className="h-3 w-3 text-white" />
                       </div>
                     ) : (
-                      <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-gold-500 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                         <ArrowRight className="h-3 w-3 text-white" />
                       </div>
                     )}
@@ -263,7 +263,7 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-orange-400 focus:ring-2 focus:ring-orange-100 placeholder:text-gray-400"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-carrot-400 focus:ring-2 focus:ring-carrot-100 placeholder:text-gray-400"
               placeholder="품목, 모델명으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -277,26 +277,26 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
               onClick={() => setActiveTab('fixed')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[12px] font-semibold transition-all ${
                 activeTab === 'fixed'
-                  ? 'bg-white text-emerald-700 shadow-sm'
+                  ? 'bg-white text-olive-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-olive-500" />
               단가계약 항목
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'fixed' ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-200 text-slate-400'}`}>고정</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'fixed' ? 'bg-olive-50 text-olive-600' : 'bg-slate-200 text-slate-400'}`}>고정</span>
             </button>
             <button
               type="button"
               onClick={() => setActiveTab('variable')}
               className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-[12px] font-semibold transition-all ${
                 activeTab === 'variable'
-                  ? 'bg-white text-amber-700 shadow-sm'
+                  ? 'bg-white text-gold-700 shadow-sm'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
-              <div className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+              <div className="w-1.5 h-1.5 rounded-full bg-gold-500" />
               전기 · 기타공사
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'variable' ? 'bg-amber-50 text-amber-600' : 'bg-slate-200 text-slate-400'}`}>변동</span>
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${activeTab === 'variable' ? 'bg-gold-50 text-gold-600' : 'bg-slate-200 text-slate-400'}`}>변동</span>
             </button>
           </div>
         </div>
@@ -307,21 +307,21 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
           {/* 고정 단가 탭 */}
           {activeTab === 'fixed' && (
             <>
-              {renderFixedGroup('신규 설치비', 'bg-blue-500', FIXED_INSTALL_COSTS.new)}
-              {renderFixedGroup('이전 설치비', 'bg-violet-500', FIXED_INSTALL_COSTS.relocation)}
-              {renderFixedGroup('추가 설치비', 'bg-emerald-500', FIXED_INSTALL_COSTS.additional)}
-              {renderFixedGroup('반납 비용', 'bg-amber-500', FIXED_INSTALL_COSTS.return)}
+              {renderFixedGroup('신규 설치비', 'bg-teal-500', FIXED_INSTALL_COSTS.new)}
+              {renderFixedGroup('이전 설치비', 'bg-teal-500', FIXED_INSTALL_COSTS.relocation)}
+              {renderFixedGroup('추가 설치비', 'bg-olive-500', FIXED_INSTALL_COSTS.additional)}
+              {renderFixedGroup('반납 비용', 'bg-gold-500', FIXED_INSTALL_COSTS.return)}
             </>
           )}
 
           {/* 변동 비용 탭 */}
           {activeTab === 'variable' && (
             <>
-              <p className="text-[11px] text-amber-600/80 bg-amber-50/50 border border-amber-200/50 rounded-lg px-3 py-2 leading-relaxed">
+              <p className="text-[11px] text-gold-600/80 bg-gold-50/50 border border-gold-200/50 rounded-lg px-3 py-2 leading-relaxed">
                 아래 항목은 현장 조건에 따라 금액이 달라집니다. 품목만 자동 입력되며, 단가는 직접 입력하세요.
               </p>
-              {renderVariableGroup('전기공사', 'bg-sky-500', elecItems)}
-              {renderVariableGroup('기타공사', 'bg-orange-500', etcItems)}
+              {renderVariableGroup('전기공사', 'bg-teal-500', elecItems)}
+              {renderVariableGroup('기타공사', 'bg-carrot-500', etcItems)}
             </>
           )}
         </div>
@@ -332,10 +332,10 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 min-w-0">
                 <div className="flex items-center gap-1.5 shrink-0">
-                  <div className="w-5 h-5 rounded-full bg-emerald-500 flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full bg-olive-500 flex items-center justify-center">
                     <Check className="h-3 w-3 text-white" />
                   </div>
-                  <span className="text-sm font-bold text-emerald-700">{addedCount}건</span>
+                  <span className="text-sm font-bold text-olive-700">{addedCount}건</span>
                   <span className="text-xs text-slate-500">추가됨</span>
                 </div>
                 {lastAdded && (
@@ -347,7 +347,7 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
               <Button
                 size="sm"
                 onClick={() => setIsOpen(false)}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 shrink-0 ml-3"
+                className="bg-olive-600 hover:bg-olive-700 text-white gap-1.5 shrink-0 ml-3"
               >
                 <Check className="h-3.5 w-3.5" />
                 완료
@@ -355,7 +355,7 @@ export function InstallPriceSheet({ onSelect }: InstallPriceSheetProps) {
             </div>
           ) : (
             <div className="flex items-start gap-2">
-              <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+              <Zap className="h-3.5 w-3.5 text-gold-500 mt-0.5 shrink-0" />
               <p className="text-xs text-gray-500 leading-relaxed">
                 {activeTab === 'fixed'
                   ? '항목 클릭 시 품목·모델명·단가가 자동 입력됩니다. 여러 항목을 연속으로 선택할 수 있습니다.'

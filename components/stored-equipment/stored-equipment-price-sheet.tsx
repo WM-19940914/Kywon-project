@@ -152,7 +152,7 @@ export function StoredEquipmentPriceSheet({
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <input
-                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+                className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-400"
                 placeholder="품목, 모델명, 평형으로 검색..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -163,7 +163,7 @@ export function StoredEquipmentPriceSheet({
               onClick={() => setPartMode(!partMode)}
               className={`px-3 py-2 text-xs font-medium rounded-lg border whitespace-nowrap transition-colors ${
                 partMode
-                  ? 'bg-orange-50 border-orange-300 text-orange-700'
+                  ? 'bg-carrot-50 border-carrot-300 text-carrot-700'
                   : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
               }`}
             >
@@ -178,7 +178,7 @@ export function StoredEquipmentPriceSheet({
             <div key={group.category}>
               {/* 카테고리 뱃지 */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
                   {group.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -197,16 +197,16 @@ export function StoredEquipmentPriceSheet({
                       className={`w-full text-left group px-4 py-3 transition-all duration-150 ${
                         partMode
                           ? 'cursor-default'
-                          : 'hover:border-blue-300 hover:bg-blue-50/60 hover:shadow-sm active:scale-[0.99] cursor-pointer'
+                          : 'hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm active:scale-[0.99] cursor-pointer'
                       }`}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                            <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-teal-100 group-hover:text-teal-700 transition-colors">
                               {row.size}
                             </span>
-                            <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-blue-700 truncate">
+                            <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-teal-700 truncate">
                               {row.model}
                             </span>
                           </div>
@@ -217,12 +217,12 @@ export function StoredEquipmentPriceSheet({
                               .map((comp, ci) => (
                                 <div
                                   key={ci}
-                                  className="flex flex-col items-start bg-gray-50 px-2 py-1 rounded group-hover:bg-blue-50 transition-colors"
+                                  className="flex flex-col items-start bg-gray-50 px-2 py-1 rounded group-hover:bg-teal-50 transition-colors"
                                 >
-                                  <span className="text-[10px] font-medium text-gray-500 group-hover:text-blue-600">
+                                  <span className="text-[10px] font-medium text-gray-500 group-hover:text-teal-600">
                                     [{comp.type}]
                                   </span>
-                                  <span className="text-[11px] font-mono text-gray-600 group-hover:text-blue-700">
+                                  <span className="text-[11px] font-mono text-gray-600 group-hover:text-teal-700">
                                     {comp.model}
                                   </span>
                                 </div>
@@ -231,7 +231,7 @@ export function StoredEquipmentPriceSheet({
                         </div>
                         {!partMode && (
                           <div className="ml-4 shrink-0">
-                            <span className="text-xs text-gray-400 group-hover:text-blue-500">
+                            <span className="text-xs text-gray-400 group-hover:text-teal-500">
                               실내기+실외기
                             </span>
                           </div>
@@ -241,7 +241,7 @@ export function StoredEquipmentPriceSheet({
 
                     {/* 부품 모드: 개별 구성품 선택 버튼 */}
                     {partMode && (
-                      <div className="border-t border-gray-100 px-4 py-2 flex gap-2 bg-orange-50/30">
+                      <div className="border-t border-gray-100 px-4 py-2 flex gap-2 bg-carrot-50/30">
                         {row.components
                           .filter(c => c.type === '실내기' || c.type === '실외기')
                           .map((comp, ci) => (
@@ -249,9 +249,9 @@ export function StoredEquipmentPriceSheet({
                               key={ci}
                               type="button"
                               onClick={() => handlePartSelect(comp, row)}
-                              className="flex-1 text-left px-3 py-2 rounded-md border border-orange-200 bg-white hover:bg-orange-50 hover:border-orange-400 transition-colors cursor-pointer"
+                              className="flex-1 text-left px-3 py-2 rounded-md border border-carrot-200 bg-white hover:bg-carrot-50 hover:border-carrot-400 transition-colors cursor-pointer"
                             >
-                              <div className="text-[10px] font-bold text-orange-600">{comp.type}</div>
+                              <div className="text-[10px] font-bold text-carrot-600">{comp.type}</div>
                               <div className="text-xs font-mono text-gray-700 mt-0.5">{comp.model}</div>
                             </button>
                           ))}
@@ -276,7 +276,7 @@ export function StoredEquipmentPriceSheet({
         {/* 하단 안내 */}
         <div className="border-t bg-slate-50 px-6 py-3">
           <div className="flex items-start gap-2">
-            <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+            <Zap className="h-3.5 w-3.5 text-gold-500 mt-0.5 shrink-0" />
             <p className="text-xs text-gray-500 leading-relaxed">
               철거보관은 <strong>실내기·실외기</strong>만 등록됩니다. 우측 상단 버튼으로 SET/부품 모드를 전환할 수 있습니다.
             </p>

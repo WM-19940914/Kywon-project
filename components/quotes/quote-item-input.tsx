@@ -158,7 +158,7 @@ export function QuoteItemInput({ items, onItemsChange }: QuoteItemInputProps) {
               onClick={() => removeItem(index)}
               className="h-9 w-9"
             >
-              <Trash2 className="h-4 w-4 text-red-500" />
+              <Trash2 className="h-4 w-4 text-brick-500" />
             </Button>
           </div>
         </div>
@@ -180,7 +180,7 @@ export function QuoteItemInput({ items, onItemsChange }: QuoteItemInputProps) {
         <div className="pt-4 border-t">
           <div className="flex justify-between items-center">
             <span className="text-lg font-semibold">총 견적 금액</span>
-            <span className="text-2xl font-bold text-blue-600">
+            <span className="text-2xl font-bold text-teal-600">
               {items.reduce((sum, item) => sum + item.totalPrice, 0).toLocaleString('ko-KR')} 원
             </span>
           </div>

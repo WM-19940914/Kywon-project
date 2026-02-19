@@ -51,7 +51,7 @@ export function SitePhotoViewer({ photos = [], businessName }: SitePhotoViewerPr
         <DialogTrigger asChild>
           <button
             type="button"
-            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors border bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100"
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs transition-colors border bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100"
             onClick={(e) => e.stopPropagation()}
           >
             <ImageIcon className="h-3 w-3" />
@@ -72,7 +72,7 @@ export function SitePhotoViewer({ photos = [], businessName }: SitePhotoViewerPr
               {photos.map((url, index) => (
                 <div
                   key={index}
-                  className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:border-blue-400 transition-colors"
+                  className="relative group aspect-square rounded-lg overflow-hidden border border-gray-200 cursor-pointer hover:border-teal-400 transition-colors"
                   onClick={() => setSelectedPhoto(url)}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}

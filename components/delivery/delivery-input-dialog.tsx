@@ -134,7 +134,7 @@ export function DeliveryInputDialog({
       <DialogContent className="max-w-[95vw] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center gap-2">
-            <Truck className="h-5 w-5 text-blue-600" />
+            <Truck className="h-5 w-5 text-teal-600" />
             <DialogTitle className="text-xl">배송정보 입력</DialogTitle>
           </div>
           <DialogDescription>
@@ -194,7 +194,7 @@ export function DeliveryInputDialog({
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="text-red-500 hover:text-red-700 hover:bg-red-50 h-8 w-8 p-0"
+                          className="text-brick-500 hover:text-brick-700 hover:bg-brick-50 h-8 w-8 p-0"
                           onClick={() => handleRemoveItem(index)}
                         >
                           <Trash2 className="h-4 w-4" />

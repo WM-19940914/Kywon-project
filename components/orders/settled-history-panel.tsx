@@ -180,12 +180,12 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
 function CancelledHistoryCard({ order, onClick }: { order: Order; onClick: (order: Order) => void }) {
   return (
     <div
-      className="bg-white rounded-lg border border-red-100 p-3 cursor-pointer hover:shadow-sm transition-shadow"
+      className="bg-white rounded-lg border border-brick-100 p-3 cursor-pointer hover:shadow-sm transition-shadow"
       onClick={() => onClick(order)}
     >
       <div className="flex items-center justify-between mb-1">
         <p className="font-medium text-sm text-gray-700 truncate" title={order.businessName}>{order.businessName}</p>
-        <Badge className="bg-red-100 text-red-700 border-red-200 text-[10px] border ml-2 shrink-0">
+        <Badge className="bg-brick-100 text-brick-700 border-brick-200 text-[10px] border ml-2 shrink-0">
           취소
         </Badge>
       </div>
@@ -194,7 +194,7 @@ function CancelledHistoryCard({ order, onClick }: { order: Order; onClick: (orde
         <span className="shrink-0 ml-2">발주일: {order.orderDate?.replace(/-/g, '.') || '-'}</span>
       </div>
       {order.cancelReason && (
-        <p className="text-xs text-red-500 mt-1 truncate" title={`사유: ${order.cancelReason}`}>사유: {order.cancelReason}</p>
+        <p className="text-xs text-brick-500 mt-1 truncate" title={`사유: ${order.cancelReason}`}>사유: {order.cancelReason}</p>
       )}
       {order.cancelledAt && (
         <p className="text-[10px] text-gray-400 mt-0.5">

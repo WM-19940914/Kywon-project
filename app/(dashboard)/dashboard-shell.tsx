@@ -37,11 +37,11 @@ import { logout } from '@/app/login/actions'
 
 /** 그룹별 컬러 테마 — 도트 색상, 라벨 텍스트, 액티브 아이템 강조색 */
 const GROUP_THEME: Record<string, { dot: string; label: string; active: string }> = {
-  '교원그룹':       { dot: '#60a5fa', label: 'text-blue-400/90',     active: '#60a5fa' },
-  '교원 · 멜레아':  { dot: '#a78bfa', label: 'text-violet-400/90',   active: '#a78bfa' },
-  '멜레아 · 에스원': { dot: '#34d399', label: 'text-emerald-400/90',  active: '#34d399' },
-  '공통 정보':      { dot: '#fbbf24', label: 'text-amber-400/90',    active: '#fbbf24' },
-  '멜레아 전용':    { dot: '#fb7185', label: 'text-rose-400/90',     active: '#fb7185' },
+  '교원그룹':       { dot: '#F4E285', label: 'text-gold-300/90',     active: '#F4E285' },
+  '교원 · 멜레아':  { dot: '#F3933F', label: 'text-carrot-400/90',   active: '#F3933F' },
+  '멜레아 · 에스원': { dot: '#5B8E7D', label: 'text-teal-400/90',    active: '#5B8E7D' },
+  '공통 정보':      { dot: '#8CB369', label: 'text-olive-400/90',    active: '#8CB369' },
+  '멜레아 전용':    { dot: '#BC4B51', label: 'text-brick-400/90',    active: '#BC4B51' },
 }
 
 interface DashboardShellProps {
@@ -77,7 +77,7 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
         <SidebarHeader className="border-b border-sidebar-border px-5 py-4">
           <Link href="/" className="flex items-center gap-3">
             {/* MeLEA 브랜드 로고 */}
-            <div className="flex items-center rounded-lg px-2.5 py-1.5 shadow-lg shadow-orange-500/20" style={{ backgroundColor: '#E09520' }}>
+            <div className="flex items-center rounded-lg px-2.5 py-1.5 shadow-lg shadow-carrot-500/20" style={{ backgroundColor: '#E09520' }}>
               <span className="font-extrabold text-sm leading-none" style={{ color: '#2D2519' }}>M</span>
               <span className="font-bold italic leading-none" style={{ color: '#FFFFFF', fontSize: '0.95rem', paddingRight: '1.5px' }}>e</span>
               <span className="font-extrabold text-sm leading-none" style={{ color: '#2D2519' }}>LEA</span>

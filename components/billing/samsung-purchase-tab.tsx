@@ -329,7 +329,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
   if (isGenerating) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-        <Loader2 className="h-10 w-10 mx-auto mb-4 text-orange-500 animate-spin" />
+        <Loader2 className="h-10 w-10 mx-auto mb-4 text-carrot-500 animate-spin" />
         <p className="text-lg font-semibold text-slate-700">
           {selectedYear}년 {selectedMonth}월 매입내역 생성 중...
         </p>
@@ -340,8 +340,8 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
 
   if (showConfirm) {
     return (
-      <div className="bg-white rounded-xl border-2 border-orange-300 shadow-lg p-8 text-center max-w-lg mx-auto">
-        <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+      <div className="bg-white rounded-xl border-2 border-carrot-300 shadow-lg p-8 text-center max-w-lg mx-auto">
+        <ShoppingCart className="h-12 w-12 mx-auto mb-4 text-carrot-500" />
         <h3 className="text-lg font-bold text-slate-900 mb-2">
           {selectedYear}년 {selectedMonth}월 매입내역 생성
         </h3>
@@ -351,7 +351,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
         </p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline" onClick={() => setShowConfirm(false)}>취소</Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleGenerate}>생성하기</Button>
+          <Button className="bg-carrot-500 hover:bg-carrot-600 text-white" onClick={handleGenerate}>생성하기</Button>
         </div>
       </div>
     )
@@ -359,16 +359,16 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
 
   if (showRewriteConfirm) {
     return (
-      <div className="bg-white rounded-xl border-2 border-red-300 shadow-lg p-8 text-center max-w-lg mx-auto">
-        <RefreshCw className="h-12 w-12 mx-auto mb-4 text-red-500" />
+      <div className="bg-white rounded-xl border-2 border-brick-300 shadow-lg p-8 text-center max-w-lg mx-auto">
+        <RefreshCw className="h-12 w-12 mx-auto mb-4 text-brick-500" />
         <h3 className="text-lg font-bold text-slate-900 mb-2">
           {selectedYear}년 {selectedMonth}월 매입내역 재작성
         </h3>
         <p className="text-sm text-slate-600 mb-2">기존 매입내역을 삭제하고 현재 데이터로 다시 작성합니다.</p>
-        <p className="text-sm text-red-600 font-semibold mb-6">기존 확정본은 복구할 수 없습니다.</p>
+        <p className="text-sm text-brick-600 font-semibold mb-6">기존 확정본은 복구할 수 없습니다.</p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline" onClick={() => setShowRewriteConfirm(false)}>취소</Button>
-          <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={handleGenerate}>재작성하기</Button>
+          <Button className="bg-brick-500 hover:bg-brick-600 text-white" onClick={handleGenerate}>재작성하기</Button>
         </div>
       </div>
     )
@@ -383,7 +383,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
           <p className="text-slate-400 text-sm mb-6">아직 이 달의 매입내역이 작성되지 않았습니다.</p>
           <Button
             size="lg"
-            className="bg-orange-500 hover:bg-orange-600 text-white gap-2 px-8 py-6 text-base"
+            className="bg-carrot-500 hover:bg-carrot-600 text-white gap-2 px-8 py-6 text-base"
             onClick={() => setShowConfirm(true)}
           >
             <Plus className="h-5 w-5" />
@@ -407,7 +407,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
               <span className="text-xs font-semibold">수정 중</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+            <div className="flex items-center gap-1.5 text-olive-600 bg-olive-50 px-3 py-1.5 rounded-lg border border-olive-200">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-xs font-semibold">확정됨</span>
             </div>
@@ -424,7 +424,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
               <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
                 <X className="h-3.5 w-3.5" />취소
               </Button>
-              <Button size="sm" className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSaveEdit} disabled={isSaving}>
+              <Button size="sm" className="gap-1.5 bg-olive-500 hover:bg-olive-600 text-white" onClick={handleSaveEdit} disabled={isSaving}>
                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 저장
               </Button>
@@ -463,7 +463,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                   ? <ChevronDown className="h-4 w-4 text-slate-400 shrink-0" />
                   : <ChevronRight className="h-4 w-4 text-slate-400 shrink-0" />
                 }
-                <Badge className="bg-green-50 text-green-700 border-green-200 text-[10px] shrink-0">배송완료</Badge>
+                <Badge className="bg-olive-50 text-olive-700 border-olive-200 text-[10px] shrink-0">배송완료</Badge>
                 <div className="text-left flex-1 min-w-0">
                   <p className="font-semibold text-sm text-slate-800 truncate">{group.businessName}</p>
                   <div className="flex items-center gap-3 mt-0.5">
@@ -480,7 +480,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                 </div>
                 <div className="text-right shrink-0">
                   {orderTotal > 0 ? (
-                    <p className="text-sm font-bold tabular-nums text-blue-700">
+                    <p className="text-sm font-bold tabular-nums text-teal-700">
                       {orderTotal.toLocaleString('ko-KR')}
                       <span className="text-slate-400 font-medium ml-0.5">원</span>
                     </p>
@@ -506,9 +506,9 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '85px' }}>배송예정일</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '85px' }}>배송확정일</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '160px' }}>모델명</th>
-                          <th className="text-right px-2 py-2 font-medium bg-blue-50/50" style={{ width: '85px' }}>매입단가</th>
+                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '85px' }}>매입단가</th>
                           <th className="text-center px-2 py-2 font-medium" style={{ width: '40px' }}>수량</th>
-                          <th className="text-right px-2 py-2 font-medium bg-blue-50/50" style={{ width: '95px' }}>매입금액</th>
+                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '95px' }}>매입금액</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '65px' }}>구성품</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '120px' }}>창고명</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '180px' }}>창고주소</th>
@@ -521,7 +521,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                           const editIndex = isEditing ? editItems.findIndex(e => e.sortOrder === item.sortOrder) : -1
 
                           return (
-                            <tr key={item.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-blue-50/20'}`}>
+                            <tr key={item.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-teal-50/20'}`}>
                               <td className="px-2 py-2 text-center text-slate-400 tabular-nums text-xs">{idx + 1}</td>
                               <td className="px-2 py-2">
                                 {item.deliveryStatus === 'none' ? (
@@ -543,7 +543,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                   />
                                 ) : (
                                   <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-semibold ${
-                                    item.supplier === '삼성전자' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                    item.supplier === '삼성전자' ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
                                   }`}>{item.supplier}</span>
                                 )}
                               </td>
@@ -568,7 +568,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                 {item.componentModel || <span className="text-slate-300">-</span>}
                               </td>
                               {/* 매입단가 (수정 가능) */}
-                              <td className="px-2 py-2 text-right text-xs tabular-nums text-blue-600">
+                              <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-600">
                                 {isEditing && editIndex >= 0 ? (
                                   <input
                                     type="number"
@@ -592,7 +592,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                 ) : item.quantity}
                               </td>
                               {/* 매입금액 (자동 계산) */}
-                              <td className="px-2 py-2 text-right text-xs tabular-nums text-blue-700 font-semibold">
+                              <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-700 font-semibold">
                                 {item.totalPrice > 0
                                   ? item.totalPrice.toLocaleString('ko-KR')
                                   : <span className="text-slate-300">-</span>
@@ -616,11 +616,11 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                         })}
                       </tbody>
                       <tfoot>
-                        <tr className="bg-blue-50 border-t-2 border-blue-200">
-                          <td colSpan={10} className="px-3 py-2 text-right text-xs font-bold text-blue-800">
+                        <tr className="bg-teal-50 border-t-2 border-teal-200">
+                          <td colSpan={10} className="px-3 py-2 text-right text-xs font-bold text-teal-800">
                             매입 소계
                           </td>
-                          <td className="px-3 py-2 text-right text-xs font-bold text-blue-800 tabular-nums">
+                          <td className="px-3 py-2 text-right text-xs font-bold text-teal-800 tabular-nums">
                             {orderTotal.toLocaleString('ko-KR')}원
                           </td>
                           <td colSpan={3}></td>
@@ -644,7 +644,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                               <div className="flex items-center gap-2">
                                 <span className="text-[10px] text-slate-400 bg-slate-100 rounded w-5 h-5 flex items-center justify-center shrink-0">{idx + 1}</span>
                                 <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                  item.supplier === '삼성전자' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
+                                  item.supplier === '삼성전자' ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
                                 }`}>{item.supplier}</span>
                               </div>
                               <p className="text-sm font-medium text-slate-800 mt-1 truncate">{item.componentModel || '-'}</p>
@@ -659,21 +659,21 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                 </p>
                               )}
                               {item.unitPrice > 0 && (
-                                <p className="text-[10px] text-blue-500 mt-0.5">
+                                <p className="text-[10px] text-teal-500 mt-0.5">
                                   매입 {item.unitPrice.toLocaleString('ko-KR')}원 × {item.quantity}
                                 </p>
                               )}
                             </div>
-                            <p className="text-sm font-semibold tabular-nums text-blue-700 shrink-0 ml-3">
+                            <p className="text-sm font-semibold tabular-nums text-teal-700 shrink-0 ml-3">
                               {item.totalPrice > 0 ? `${item.totalPrice.toLocaleString('ko-KR')}원` : '-'}
                             </p>
                           </div>
                         </div>
                       )
                     })}
-                    <div className="px-4 py-3 bg-blue-50 flex items-center justify-between">
-                      <span className="text-sm font-bold text-blue-800">매입 소계</span>
-                      <span className="text-sm font-bold text-blue-800 tabular-nums">{orderTotal.toLocaleString('ko-KR')}원</span>
+                    <div className="px-4 py-3 bg-teal-50 flex items-center justify-between">
+                      <span className="text-sm font-bold text-teal-800">매입 소계</span>
+                      <span className="text-sm font-bold text-teal-800 tabular-nums">{orderTotal.toLocaleString('ko-KR')}원</span>
                     </div>
                   </div>
                 </div>

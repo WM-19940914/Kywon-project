@@ -549,8 +549,8 @@ export function OrderForm({
                 key={option}
                 className={`cursor-pointer transition-all hover:shadow-lg ${
                   affiliate === option
-                    ? 'border-blue-500 border-2 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300'
+                    ? 'border-teal-500 border-2 bg-teal-50'
+                    : 'border-gray-200 hover:border-teal-300'
                 }`}
                 onClick={() => setAffiliate(option)}
               >
@@ -572,7 +572,7 @@ export function OrderForm({
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="h-5 w-5 text-blue-600" />
+                <CalendarDays className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-base">발주일</h3>
               </div>
               <Input
@@ -588,14 +588,14 @@ export function OrderForm({
           </Card>
 
           {/* 사전견적 요청 체크박스 */}
-          <Card className="border-blue-300 bg-blue-50/50">
+          <Card className="border-teal-300 bg-teal-50/50">
             <CardContent className="p-4">
               <label className="flex items-start gap-3 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={isPreliminaryQuote}
                   onChange={(e) => setIsPreliminaryQuote(e.target.checked)}
-                  className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500 mt-0.5"
+                  className="h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500 mt-0.5"
                 />
                 <div>
                   <p className="font-semibold text-base">사전 견적 신청 (대량 설치/천장형/환경 복잡 대상)</p>
@@ -621,14 +621,14 @@ export function OrderForm({
           <Card>
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-5 w-5 text-blue-600" />
+                <MapPin className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-lg">장소 정보</h3>
               </div>
 
               {/* 주소 검색 */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  작업 장소 (대표 주소) <span className="text-red-500">*</span>
+                  작업 장소 (대표 주소) <span className="text-brick-500">*</span>
                 </label>
                 <div className="flex gap-2">
                   <Input
@@ -671,7 +671,7 @@ export function OrderForm({
               {/* 사업자명 */}
               <div>
                 <label className="block text-sm font-medium mb-2">
-                  사업자명 <span className="text-red-500">*</span>
+                  사업자명 <span className="text-brick-500">*</span>
                 </label>
                 <Input
                   value={businessName}
@@ -686,10 +686,10 @@ export function OrderForm({
           </Card>
 
           {/* 담당자 정보 섹션 */}
-          <Card className="border-blue-200">
+          <Card className="border-teal-200">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <User className="h-5 w-5 text-blue-600" />
+                <User className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-lg">담당자 정보</h3>
               </div>
 
@@ -697,7 +697,7 @@ export function OrderForm({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    성함 <span className="text-red-500">*</span>
+                    성함 <span className="text-brick-500">*</span>
                   </label>
                   <Input
                     value={contactName}
@@ -707,7 +707,7 @@ export function OrderForm({
                 </div>
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    연락처 <span className="text-red-500">*</span>
+                    연락처 <span className="text-brick-500">*</span>
                   </label>
                   <Input
                     type="tel"
@@ -740,10 +740,10 @@ export function OrderForm({
           </Card>
 
           {/* 설치요청일 섹션 */}
-          <Card className="border-orange-200">
+          <Card className="border-carrot-200">
             <CardContent className="p-6 space-y-4">
               <div className="flex items-center gap-2 mb-2">
-                <CalendarDays className="h-5 w-5 text-orange-600" />
+                <CalendarDays className="h-5 w-5 text-carrot-600" />
                 <h3 className="font-bold text-lg">설치요청일</h3>
               </div>
 
@@ -760,9 +760,9 @@ export function OrderForm({
               </div>
 
               {/* 안내 문구 */}
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 flex items-start gap-2">
-                <AlertTriangle className="h-4 w-4 text-orange-500 mt-0.5 flex-shrink-0" />
-                <p className="text-sm text-orange-700">
+              <div className="bg-carrot-50 border border-carrot-200 rounded-lg p-3 flex items-start gap-2">
+                <AlertTriangle className="h-4 w-4 text-carrot-500 mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-carrot-700">
                   설치 일정은 장비 입고 상황 및 현장 여건에 따라 변동될 수 있습니다.
                   확정된 설치일은 담당자에게 별도 안내드립니다.
                 </p>
@@ -787,13 +787,13 @@ export function OrderForm({
               const getBorderColor = () => {
                 switch (item.workType) {
                   case '신규설치':
-                    return 'border-green-300 bg-green-50'
+                    return 'border-olive-300 bg-olive-50'
                   case '이전설치':
-                    return 'border-blue-300 bg-blue-50'
+                    return 'border-teal-300 bg-teal-50'
                   case '철거보관':
-                    return 'border-purple-300 bg-purple-50'
+                    return 'border-teal-300 bg-teal-50'
                   case '철거폐기':
-                    return 'border-orange-300 bg-orange-50'
+                    return 'border-carrot-300 bg-carrot-50'
                   default:
                     return 'border-gray-300'
                 }
@@ -811,7 +811,7 @@ export function OrderForm({
                         variant="ghost"
                         size="sm"
                         onClick={() => handleRemoveItem(item.id!)}
-                        className="absolute top-2 right-2 h-7 w-7 p-0 text-red-500 hover:bg-red-100 z-10"
+                        className="absolute top-2 right-2 h-7 w-7 p-0 text-brick-500 hover:bg-brick-100 z-10"
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -828,7 +828,7 @@ export function OrderForm({
                       <div className="grid grid-cols-4 gap-3">
                         <div>
                           <label className="block text-sm font-medium mb-2">
-                            작업종류 <span className="text-red-500">*</span>
+                            작업종류 <span className="text-brick-500">*</span>
                           </label>
                           <Select
                             value={item.workType}
@@ -855,7 +855,7 @@ export function OrderForm({
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="w-full gap-2 text-blue-600 border-blue-300 hover:bg-blue-50"
+                                className="w-full gap-2 text-teal-600 border-teal-300 hover:bg-teal-50"
                                 onClick={() => handleOpenEquipmentDialog(item.id!)}
                               >
                                 <Package className="h-4 w-4" />
@@ -867,7 +867,7 @@ export function OrderForm({
 
                         <div>
                           <label className="block text-sm font-medium mb-2">
-                            품목 <span className="text-red-500">*</span>
+                            품목 <span className="text-brick-500">*</span>
                           </label>
                           <Select
                             value={item.category}
@@ -904,7 +904,7 @@ export function OrderForm({
 
                         <div>
                           <label className="block text-sm font-medium mb-2">
-                            수량 <span className="text-red-500">*</span>
+                            수량 <span className="text-brick-500">*</span>
                           </label>
                           <Input
                             type="number"
@@ -925,22 +925,22 @@ export function OrderForm({
                         const unitType = eq.equipmentUnitType as EquipmentUnitType | undefined
                         const unitLabel = unitType ? EQUIPMENT_UNIT_TYPE_LABELS[unitType] : null
                         return (
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                          <div className="bg-teal-50 border border-teal-200 rounded-lg p-4 space-y-2">
                             <div className="flex items-center gap-2 flex-wrap">
                               {/* 실내기/실외기 표시 (빨간 글씨) */}
                               {unitLabel && (
-                                <span className="text-red-600 font-bold text-sm">
+                                <span className="text-brick-600 font-bold text-sm">
                                   [{unitLabel}]
                                 </span>
                               )}
-                              <span className="font-bold text-blue-900 text-sm">
+                              <span className="font-bold text-teal-900 text-sm">
                                 {eq.affiliate && !eq.siteName.startsWith(eq.affiliate) ? `${eq.affiliate} · ` : ''}{eq.siteName} 철거 장비
                               </span>
                             </div>
                             {eq.address && (
-                              <p className="text-sm text-blue-700">{eq.address}</p>
+                              <p className="text-sm text-teal-700">{eq.address}</p>
                             )}
-                            <div className="flex gap-4 text-sm text-blue-600 flex-wrap">
+                            <div className="flex gap-4 text-sm text-teal-600 flex-wrap">
                               {eq.removalDate && <span>철거일: {eq.removalDate.replace(/-/g, '.')}</span>}
                               {eq.manufacturer && <span>제조사: {eq.manufacturer}</span>}
                               {eq.manufacturingDate && <span>{eq.manufacturingDate}년식</span>}
@@ -981,11 +981,11 @@ export function OrderForm({
 
           {/* 이전설치가 있으면 이전 목적지 입력 */}
           {isRelocation && (
-            <Card className="border-blue-300 bg-blue-50">
+            <Card className="border-teal-300 bg-teal-50">
               <CardContent className="p-6 space-y-4">
                 <div>
                   <h3 className="font-bold text-lg flex items-center gap-2 mb-2">
-                    <Truck className="h-5 w-5 text-blue-600" /> 이전설치 목적지
+                    <Truck className="h-5 w-5 text-teal-600" /> 이전설치 목적지
                   </h3>
                   <p className="text-sm text-gray-600">
                     &quot;{baseAddress}&quot;에서 어디로 옮기나요?
@@ -993,7 +993,7 @@ export function OrderForm({
                 </div>
 
                 {/* 건물 내 이동 체크박스 */}
-                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-blue-200 bg-white">
+                <label className="flex items-center gap-3 cursor-pointer p-3 rounded-lg border border-teal-200 bg-white">
                   <input
                     type="checkbox"
                     checked={isInBuildingMove}
@@ -1009,7 +1009,7 @@ export function OrderForm({
                         setRelocationDetailAddress('')
                       }
                     }}
-                    className="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                    className="h-5 w-5 rounded border-gray-300 text-teal-600 focus:ring-teal-500"
                   />
                   <div>
                     <p className="font-semibold text-sm">같은 건물 내 이동</p>
@@ -1037,7 +1037,7 @@ export function OrderForm({
                     {/* 다른 건물로 이동 → 주소 검색 */}
                     <div>
                       <label className="block text-sm font-medium mb-2">
-                        이전할 주소 <span className="text-red-500">*</span>
+                        이전할 주소 <span className="text-brick-500">*</span>
                       </label>
                       <div className="flex gap-2">
                         <Input
@@ -1073,7 +1073,7 @@ export function OrderForm({
                   </>
                 )}
 
-                <p className="text-xs text-blue-600">
+                <p className="text-xs text-teal-600">
                   TIP: 다른 작업(신규설치/철거)은 &quot;{baseAddress}&quot;에서 진행됩니다
                 </p>
               </CardContent>
@@ -1091,10 +1091,10 @@ export function OrderForm({
           </div>
 
           {/* 문서 정보 */}
-          <Card className="border-purple-200 bg-purple-50">
+          <Card className="border-teal-200 bg-teal-50">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <FileText className="h-5 w-5 text-violet-600" />
+                <FileText className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-base">문서 정보</h3>
               </div>
 
@@ -1128,10 +1128,10 @@ export function OrderForm({
           </Card>
 
           {/* 발주처 정보 */}
-          <Card className="border-blue-200">
+          <Card className="border-teal-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <Building2 className="h-5 w-5 text-blue-600" />
+                <Building2 className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-base">발주처 정보</h3>
               </div>
 
@@ -1149,10 +1149,10 @@ export function OrderForm({
           </Card>
 
           {/* 담당자 정보 */}
-          <Card className="border-green-200">
+          <Card className="border-olive-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <User className="h-5 w-5 text-emerald-600" />
+                <User className="h-5 w-5 text-olive-600" />
                 <h3 className="font-bold text-base">담당자</h3>
               </div>
 
@@ -1177,10 +1177,10 @@ export function OrderForm({
           </Card>
 
           {/* 작업 장소 */}
-          <Card className="border-orange-200">
+          <Card className="border-carrot-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <MapPin className="h-5 w-5 text-orange-600" />
+                <MapPin className="h-5 w-5 text-carrot-600" />
                 <h3 className="font-bold text-base">작업 장소</h3>
               </div>
 
@@ -1192,9 +1192,9 @@ export function OrderForm({
               </div>
 
               {isRelocation && (
-                <div className="pt-2 border-t border-orange-200">
+                <div className="pt-2 border-t border-carrot-200">
                   <p className="text-xs text-gray-600 mb-1">이전 목적지 (이전설치만)</p>
-                  <p className="font-semibold text-sm text-blue-600 leading-relaxed">
+                  <p className="font-semibold text-sm text-teal-600 leading-relaxed">
                     → {relocationDetailAddress ? `${relocationAddress}, ${relocationDetailAddress}` : relocationAddress}
                   </p>
                 </div>
@@ -1203,10 +1203,10 @@ export function OrderForm({
           </Card>
 
           {/* 작업 내역 */}
-          <Card className="border-indigo-200">
+          <Card className="border-teal-200">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <Package className="h-5 w-5 text-indigo-600" />
+                <Package className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-base">작업 내역</h3>
               </div>
 
@@ -1243,11 +1243,11 @@ export function OrderForm({
                       </div>
                       {/* 재고설치: 철거 현장 + 제조년월 정보 */}
                       {linkedEquip && (
-                        <div className="ml-10 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1.5">
+                        <div className="ml-10 text-xs text-teal-600 bg-teal-50 rounded px-2 py-1.5">
                           <span className="font-medium">
                             {linkedEquip.affiliate && !linkedEquip.siteName.startsWith(linkedEquip.affiliate) ? `${linkedEquip.affiliate} · ` : ''}{linkedEquip.siteName} 철거 장비
                           </span>
-                          <span className="text-blue-400 ml-2">
+                          <span className="text-teal-400 ml-2">
                             {linkedEquip.removalDate && `철거 ${linkedEquip.removalDate.replace(/-/g, '.')}`}
                             {linkedEquip.manufacturingDate && ` · ${linkedEquip.manufacturingDate}년식`}
                             {linkedEquip.manufacturer && ` · ${linkedEquip.manufacturer}`}
@@ -1267,7 +1267,7 @@ export function OrderForm({
           <Card className="border-yellow-200 bg-yellow-50">
             <CardContent className="p-5 space-y-3">
               <div className="flex items-center gap-2 mb-2">
-                <MessageSquare className="h-5 w-5 text-amber-600" />
+                <MessageSquare className="h-5 w-5 text-gold-600" />
                 <h3 className="font-bold text-base">설치기사님께 전달사항</h3>
               </div>
 
@@ -1329,7 +1329,7 @@ export function OrderForm({
           </DialogHeader>
 
           {/* 안내 문구 */}
-          <p className="text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
+          <p className="text-sm text-gray-600 bg-teal-50 px-3 py-2 rounded-md">
             철거 보관중인 실내기 및 실외기를 선택해주세요. 여러 대를 한번에 선택할 수 있습니다.
           </p>
 
@@ -1377,10 +1377,10 @@ export function OrderForm({
                               type="button"
                               className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
                                 allChecked
-                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  ? 'bg-teal-600 border-teal-600 text-white'
                                   : someChecked
-                                    ? 'bg-blue-200 border-blue-400'
-                                    : 'border-gray-300 hover:border-blue-400'
+                                    ? 'bg-teal-200 border-teal-400'
+                                    : 'border-gray-300 hover:border-teal-400'
                               }`}
                               onClick={() => {
                                 setCheckedEquipmentIds(prev => {
@@ -1397,7 +1397,7 @@ export function OrderForm({
                               }}
                             >
                               {allChecked && <span className="text-[10px] font-bold">✓</span>}
-                              {someChecked && !allChecked && <span className="text-[8px] text-blue-600 font-bold">—</span>}
+                              {someChecked && !allChecked && <span className="text-[8px] text-teal-600 font-bold">—</span>}
                             </button>
                             <MapPin className="h-4 w-4 text-gray-500 shrink-0" />
                             {first.affiliate && (
@@ -1439,14 +1439,14 @@ export function OrderForm({
                             type="button"
                             key={equipment.id}
                             className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left ${
-                              isChecked ? 'bg-blue-50' : 'hover:bg-gray-50'
+                              isChecked ? 'bg-teal-50' : 'hover:bg-gray-50'
                             }`}
                             onClick={() => handleToggleEquipment(equipment.id)}
                           >
                             {/* 체크박스 */}
                             <div className={`w-4 h-4 mt-0.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
                               isChecked
-                                ? 'bg-blue-600 border-blue-600 text-white'
+                                ? 'bg-teal-600 border-teal-600 text-white'
                                 : 'border-gray-300'
                             }`}>
                               {isChecked && <span className="text-[10px] font-bold">✓</span>}
@@ -1460,7 +1460,7 @@ export function OrderForm({
                                     {unitLabel}
                                   </Badge>
                                 ) : (
-                                  <Badge className="bg-blue-50 text-blue-700 text-xs shrink-0">
+                                  <Badge className="bg-teal-50 text-teal-700 text-xs shrink-0">
                                     {equipment.category}
                                   </Badge>
                                 )}

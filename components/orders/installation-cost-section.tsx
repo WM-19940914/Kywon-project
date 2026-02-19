@@ -113,7 +113,7 @@ export function InstallationCostSection({
   return (
     <div className="space-y-3">
       {/* 테이블 헤더 (sticky) */}
-      <div className="bg-blue-100 border rounded-t-lg sticky top-0 z-10">
+      <div className="bg-teal-100 border rounded-t-lg sticky top-0 z-10">
         <div className="grid grid-cols-[200px_100px_120px_120px_1fr_50px] gap-2 p-2 text-xs font-bold text-gray-700">
           <div>항목명</div>
           <div>수량</div>
@@ -129,7 +129,7 @@ export function InstallationCostSection({
         {items.map((item, rowIndex) => (
           <div
             key={item.id}
-            className="grid grid-cols-[200px_100px_120px_120px_1fr_50px] gap-2 p-2 border-b last:border-b-0 hover:bg-blue-50/30"
+            className="grid grid-cols-[200px_100px_120px_120px_1fr_50px] gap-2 p-2 border-b last:border-b-0 hover:bg-teal-50/30"
           >
             {/* 항목명 (Select) */}
             <div>
@@ -183,7 +183,7 @@ export function InstallationCostSection({
                 readOnly
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, rowIndex, 3)}
-                className="h-8 text-xs text-right bg-blue-50 text-blue-700 font-semibold"
+                className="h-8 text-xs text-right bg-teal-50 text-teal-700 font-semibold"
               />
             </div>
 
@@ -206,7 +206,7 @@ export function InstallationCostSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleRemove(item.id!)}
-                className="h-6 w-6 p-0 text-red-500 hover:bg-red-50"
+                className="h-6 w-6 p-0 text-brick-500 hover:bg-brick-50"
               >
                 <X className="h-3 w-3" />
               </Button>
@@ -228,10 +228,10 @@ export function InstallationCostSection({
 
       {/* 합계 표시 */}
       {items.length > 0 && (
-        <div className="bg-blue-100 border-2 border-blue-300 rounded-lg p-4">
+        <div className="bg-teal-100 border-2 border-teal-300 rounded-lg p-4">
           <div className="flex justify-between items-center">
             <span className="font-bold text-lg">총 설치비</span>
-            <span className="font-bold text-2xl text-blue-600">
+            <span className="font-bold text-2xl text-teal-600">
               {totalAmount.toLocaleString()} 원
             </span>
           </div>

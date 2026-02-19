@@ -440,7 +440,7 @@ export function QuoteCreateDialog({
           <span className="block px-2 py-1.5 text-sm">{item.product}</span>
         ) : (
           <input
-            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             placeholder="품목"
             value={item.product}
             onChange={(e) => updateItem(items, setItems, index, 'product', e.target.value)}
@@ -454,7 +454,7 @@ export function QuoteCreateDialog({
           <span className="block px-2 py-1.5 text-sm">{item.model}</span>
         ) : (
           <input
-            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-2 py-1.5 text-sm border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             placeholder="모델명"
             value={item.model}
             onChange={(e) => updateItem(items, setItems, index, 'model', e.target.value)}
@@ -470,7 +470,7 @@ export function QuoteCreateDialog({
           <input
             type="number"
             min="0"
-            className="w-full px-2 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-2 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             value={item.quantity || ''}
             onChange={(e) => updateItem(items, setItems, index, 'quantity', e.target.value)}
             onPaste={(e) => handlePaste(e, index, 2, items, setItems)}
@@ -483,7 +483,7 @@ export function QuoteCreateDialog({
           <span className="block px-1.5 py-1.5 text-sm text-center">{item.unit}</span>
         ) : (
           <input
-            className="w-full px-1.5 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-1.5 py-1.5 text-sm text-center border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             placeholder="단위"
             value={item.unit}
             onChange={(e) => updateItem(items, setItems, index, 'unit', e.target.value)}
@@ -498,7 +498,7 @@ export function QuoteCreateDialog({
         ) : (
           <input
             type="text"
-            className="w-full px-2 py-1.5 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-2 py-1.5 text-sm text-right border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             placeholder="0"
             value={item.price ? item.price.toLocaleString('ko-KR') : ''}
             onChange={(e) => {
@@ -521,7 +521,7 @@ export function QuoteCreateDialog({
           <span className="block px-2 py-1.5 text-xs">{item.notes}</span>
         ) : (
           <input
-            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-100"
+            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:border-teal-400 focus:ring-1 focus:ring-teal-100"
             placeholder="비고"
             value={item.notes}
             onChange={(e) => updateItem(items, setItems, index, 'notes', e.target.value)}
@@ -533,10 +533,10 @@ export function QuoteCreateDialog({
       <td className="py-1.5 px-1 w-8 print-hide">
         <button
           type="button"
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-red-50"
+          className="opacity-0 group-hover:opacity-100 transition-opacity p-1 rounded hover:bg-brick-50"
           onClick={() => setItems(items.filter((_, i) => i !== index))}
         >
-          <X className="h-3.5 w-3.5 text-red-400" />
+          <X className="h-3.5 w-3.5 text-brick-400" />
         </button>
       </td>
     </tr>
@@ -573,7 +573,7 @@ export function QuoteCreateDialog({
           )}
           <button
             type="button"
-            className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700 px-2 py-1 rounded hover:bg-blue-50 transition-colors"
+            className="flex items-center gap-1 text-xs text-teal-500 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors"
             onClick={() => setItems([...items, createEmptyItem()])}
           >
             <Plus className="h-3 w-3" /> 행 추가
@@ -604,16 +604,16 @@ export function QuoteCreateDialog({
 
         {/* 설치비 단위절사 (설치비 섹션에서만, 소계 위에 표시) */}
         {showRounding && (
-          <div className="flex justify-end items-center px-4 py-2 border-t border-orange-100 bg-orange-50/30">
+          <div className="flex justify-end items-center px-4 py-2 border-t border-carrot-100 bg-carrot-50/30">
             <span className="text-sm text-gray-600 mr-4">설치비 단위절사</span>
             <div className="flex items-center gap-2">
-              <span className="text-sm text-red-600 font-semibold">-</span>
+              <span className="text-sm text-brick-600 font-semibold">-</span>
               {printMode ? (
-                <span className="text-sm text-right text-red-600 font-semibold">{installRounding ? installRounding.toLocaleString('ko-KR') : '0'}</span>
+                <span className="text-sm text-right text-brick-600 font-semibold">{installRounding ? installRounding.toLocaleString('ko-KR') : '0'}</span>
               ) : (
                 <input
                   type="text"
-                  className="w-28 px-2 py-1 text-sm text-right border border-orange-200 rounded focus:outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-100 text-red-600 font-semibold"
+                  className="w-28 px-2 py-1 text-sm text-right border border-carrot-200 rounded focus:outline-none focus:border-carrot-400 focus:ring-1 focus:ring-carrot-100 text-brick-600 font-semibold"
                   placeholder="0"
                   value={installRounding ? installRounding.toLocaleString('ko-KR') : ''}
                   onChange={(e) => {
@@ -631,14 +631,14 @@ export function QuoteCreateDialog({
 
         {/* 소계 */}
         <div className={`flex justify-end items-center px-4 py-2.5 border-t-2 ${
-          color === 'bg-blue-500' ? 'border-blue-200 bg-blue-50/50' : 'border-orange-200 bg-orange-50/50'
+          color === 'bg-teal-500' ? 'border-teal-200 bg-teal-50/50' : 'border-carrot-200 bg-carrot-50/50'
         }`}>
           <div className="flex items-center gap-2 mr-4">
             <span className="text-sm font-medium text-gray-600">소계</span>
             <span className="text-[10px] text-gray-400">(VAT별도)</span>
           </div>
           <span className={`text-base font-bold min-w-[120px] text-right ${
-            color === 'bg-blue-500' ? 'text-blue-600' : 'text-orange-600'
+            color === 'bg-teal-500' ? 'text-teal-600' : 'text-carrot-600'
           }`}>
             {showRounding
               ? (subtotal(items) - installRounding > 0 ? `${(subtotal(items) - installRounding).toLocaleString('ko-KR')}원` : '-')
@@ -662,7 +662,7 @@ export function QuoteCreateDialog({
         {pdfLoading && (
           <div className="absolute inset-0 bg-white/80 z-50 flex items-center justify-center rounded-lg">
             <div className="text-center">
-              <Loader2 className="h-8 w-8 animate-spin mx-auto text-red-500" />
+              <Loader2 className="h-8 w-8 animate-spin mx-auto text-brick-500" />
               <p className="mt-2 text-sm text-gray-600">PDF 생성 중...</p>
             </div>
           </div>
@@ -733,28 +733,28 @@ export function QuoteCreateDialog({
         {/* 본문 */}
         <div className="px-6 py-4 space-y-6">
           {/* 발주 내역 요약 */}
-          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-            <h3 className="text-sm font-semibold text-blue-900 mb-2">📋 발주 요청 내역</h3>
+          <div className="bg-teal-50 border border-teal-200 rounded-lg p-4">
+            <h3 className="text-sm font-semibold text-teal-900 mb-2">📋 발주 요청 내역</h3>
             <div className="space-y-1">
               {order.items.map((item, index) => (
-                <div key={index} className="text-sm text-blue-800">
+                <div key={index} className="text-sm text-teal-800">
                   • {item.workType} - {item.category} {item.model && `(${item.model})`} {item.size} × {item.quantity}대
                 </div>
               ))}
               {order.notes && (
-                <div className="mt-2 pt-2 border-t border-blue-200">
-                  <span className="text-xs font-semibold text-blue-700">특이사항:</span>
-                  <span className="text-xs text-blue-800 ml-1">{order.notes}</span>
+                <div className="mt-2 pt-2 border-t border-teal-200">
+                  <span className="text-xs font-semibold text-teal-700">특이사항:</span>
+                  <span className="text-xs text-teal-800 ml-1">{order.notes}</span>
                 </div>
               )}
             </div>
           </div>
 
           {/* 장비 테이블 (단가표 버튼 포함) */}
-          {renderTable('장비', 'bg-blue-500', equipmentItems, setEquipmentItems, true)}
+          {renderTable('장비', 'bg-teal-500', equipmentItems, setEquipmentItems, true)}
 
           {/* 설치비 테이블 (단위절사 + 설치비 단가표 포함) */}
-          {renderTable('설치비', 'bg-orange-500', installationItems, setInstallationItems, false, true, true)}
+          {renderTable('설치비', 'bg-carrot-500', installationItems, setInstallationItems, false, true, true)}
 
           {/* 총 견적 금액 */}
           <div className="border-2 border-gray-300 rounded-lg p-4 bg-white">
@@ -786,9 +786,9 @@ export function QuoteCreateDialog({
               </div>
 
               {/* 최종 견적 */}
-              <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-blue-500 bg-blue-50 -mx-4 px-4 py-3 rounded-b-lg">
-                <span className="text-base font-bold text-blue-900">최종 견적</span>
-                <span className="text-2xl font-bold text-blue-600">
+              <div className="flex justify-between items-center pt-3 mt-2 border-t-2 border-teal-500 bg-teal-50 -mx-4 px-4 py-3 rounded-b-lg">
+                <span className="text-base font-bold text-teal-900">최종 견적</span>
+                <span className="text-2xl font-bold text-teal-600">
                   {Math.floor((total() - installRounding) * 1.1).toLocaleString('ko-KR')}원
                 </span>
               </div>
@@ -805,12 +805,12 @@ export function QuoteCreateDialog({
           <div className="text-xs text-gray-400">
             {autoSaveStatus === 'saving' && (
               <span className="inline-flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-orange-400 animate-pulse" />
+                <span className="h-1.5 w-1.5 rounded-full bg-carrot-400 animate-pulse" />
                 저장 중...
               </span>
             )}
             {autoSaveStatus === 'saved' && (
-              <span className="inline-flex items-center gap-1 text-green-600">
+              <span className="inline-flex items-center gap-1 text-olive-600">
                 <Check className="h-3 w-3" />
                 자동 저장됨
               </span>
@@ -825,7 +825,7 @@ export function QuoteCreateDialog({
               type="button"
               variant="outline"
               size="sm"
-              className="border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700"
+              className="border-brick-300 text-brick-600 hover:bg-brick-50 hover:text-brick-700"
               disabled={pdfLoading || !order.customerQuote?.items?.length}
               onClick={async () => {
                 if (!order || !contentRef.current) return

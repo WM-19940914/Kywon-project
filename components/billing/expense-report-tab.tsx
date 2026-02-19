@@ -95,7 +95,7 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
               const showWarning = amounts.sales > 0 && !amounts.hasSamsungData
 
               return (
-                <tr key={order.id} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                <tr key={order.id} className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors">
                   {/* 발주일 */}
                   <td className="p-3 text-sm tabular-nums">{formatShortDate(order.orderDate)}</td>
 
@@ -122,7 +122,7 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
 
                   {/* 매출 */}
                   <td className="p-3 text-right">
-                    <p className="text-sm font-semibold tabular-nums text-blue-700">
+                    <p className="text-sm font-semibold tabular-nums text-teal-700">
                       {amounts.sales > 0 ? amounts.sales.toLocaleString('ko-KR') : '-'}
                     </p>
                   </td>
@@ -130,11 +130,11 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
                   {/* 삼성매입비 */}
                   <td className="p-3 text-right">
                     {amounts.hasSamsungData ? (
-                      <p className="text-sm tabular-nums text-red-600">
+                      <p className="text-sm tabular-nums text-brick-600">
                         {amounts.samsungPurchase.toLocaleString('ko-KR')}
                       </p>
                     ) : (
-                      <span className="inline-flex items-center gap-1 text-xs text-amber-600">
+                      <span className="inline-flex items-center gap-1 text-xs text-gold-600">
                         <AlertTriangle className="h-3 w-3" />
                         미입력
                       </span>
@@ -152,9 +152,9 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
                   <td className="p-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       {showWarning && (
-                        <span title="삼성매입비 미입력 — 마진이 실제보다 높게 표시됩니다"><AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" /></span>
+                        <span title="삼성매입비 미입력 — 마진이 실제보다 높게 표시됩니다"><AlertTriangle className="h-3 w-3 text-gold-500 shrink-0" /></span>
                       )}
-                      <p className={`text-sm font-bold tabular-nums ${amounts.margin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                      <p className={`text-sm font-bold tabular-nums ${amounts.margin >= 0 ? 'text-olive-700' : 'text-brick-700'}`}>
                         {amounts.margin.toLocaleString('ko-KR')}
                       </p>
                     </div>
@@ -171,16 +171,16 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
                 합계 ({orders.length}건)
               </td>
               <td className="p-3 text-right">
-                <p className="text-sm font-bold tabular-nums text-blue-700">{totals.sales.toLocaleString('ko-KR')}</p>
+                <p className="text-sm font-bold tabular-nums text-teal-700">{totals.sales.toLocaleString('ko-KR')}</p>
               </td>
               <td className="p-3 text-right">
-                <p className="text-sm font-bold tabular-nums text-red-600">{totals.samsungPurchase.toLocaleString('ko-KR')}</p>
+                <p className="text-sm font-bold tabular-nums text-brick-600">{totals.samsungPurchase.toLocaleString('ko-KR')}</p>
               </td>
               <td className="p-3 text-right">
                 <p className="text-sm font-bold tabular-nums text-slate-600">{totals.installCost.toLocaleString('ko-KR')}</p>
               </td>
               <td className="p-3 text-right">
-                <p className={`text-sm font-bold tabular-nums ${totals.margin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                <p className={`text-sm font-bold tabular-nums ${totals.margin >= 0 ? 'text-olive-700' : 'text-brick-700'}`}>
                   {totals.margin.toLocaleString('ko-KR')}
                 </p>
               </td>
@@ -220,16 +220,16 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
 
                 {/* 금액 2x2 그리드 */}
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-blue-50 rounded-lg px-3 py-2">
-                    <p className="text-blue-500">매출</p>
-                    <p className="font-bold text-blue-700 tabular-nums">{amounts.sales > 0 ? `${amounts.sales.toLocaleString('ko-KR')}원` : '-'}</p>
+                  <div className="bg-teal-50 rounded-lg px-3 py-2">
+                    <p className="text-teal-500">매출</p>
+                    <p className="font-bold text-teal-700 tabular-nums">{amounts.sales > 0 ? `${amounts.sales.toLocaleString('ko-KR')}원` : '-'}</p>
                   </div>
-                  <div className="bg-red-50 rounded-lg px-3 py-2">
-                    <p className="text-red-400">삼성매입</p>
+                  <div className="bg-brick-50 rounded-lg px-3 py-2">
+                    <p className="text-brick-400">삼성매입</p>
                     {amounts.hasSamsungData ? (
-                      <p className="font-bold text-red-600 tabular-nums">{amounts.samsungPurchase.toLocaleString('ko-KR')}원</p>
+                      <p className="font-bold text-brick-600 tabular-nums">{amounts.samsungPurchase.toLocaleString('ko-KR')}원</p>
                     ) : (
-                      <p className="text-amber-600 flex items-center gap-1">
+                      <p className="text-gold-600 flex items-center gap-1">
                         <AlertTriangle className="h-3 w-3" />미입력
                       </p>
                     )}
@@ -238,11 +238,11 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
                     <p className="text-slate-400">에스원설치비</p>
                     <p className="font-bold text-slate-600 tabular-nums">{amounts.installCost > 0 ? `${amounts.installCost.toLocaleString('ko-KR')}원` : '-'}</p>
                   </div>
-                  <div className={`rounded-lg px-3 py-2 ${amounts.margin >= 0 ? 'bg-emerald-50' : 'bg-red-50'}`}>
-                    <p className={amounts.margin >= 0 ? 'text-emerald-500' : 'text-red-400'}>마진</p>
+                  <div className={`rounded-lg px-3 py-2 ${amounts.margin >= 0 ? 'bg-olive-50' : 'bg-brick-50'}`}>
+                    <p className={amounts.margin >= 0 ? 'text-olive-500' : 'text-brick-400'}>마진</p>
                     <div className="flex items-center gap-1">
-                      {showWarning && <AlertTriangle className="h-3 w-3 text-amber-500" />}
-                      <p className={`font-bold tabular-nums ${amounts.margin >= 0 ? 'text-emerald-700' : 'text-red-700'}`}>
+                      {showWarning && <AlertTriangle className="h-3 w-3 text-gold-500" />}
+                      <p className={`font-bold tabular-nums ${amounts.margin >= 0 ? 'text-olive-700' : 'text-brick-700'}`}>
                         {amounts.margin.toLocaleString('ko-KR')}원
                       </p>
                     </div>
@@ -258,11 +258,11 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
           <p className="text-xs text-slate-300 mb-2">합계 ({orders.length}건)</p>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <p className="text-blue-300 text-xs">매출</p>
+              <p className="text-teal-300 text-xs">매출</p>
               <p className="font-bold tabular-nums">{totals.sales.toLocaleString('ko-KR')}</p>
             </div>
             <div>
-              <p className="text-red-300 text-xs">삼성매입</p>
+              <p className="text-brick-300 text-xs">삼성매입</p>
               <p className="font-bold tabular-nums">{totals.samsungPurchase.toLocaleString('ko-KR')}</p>
             </div>
             <div>
@@ -270,8 +270,8 @@ export function ExpenseReportTab({ orders, calcAmounts }: ExpenseReportTabProps)
               <p className="font-bold tabular-nums">{totals.installCost.toLocaleString('ko-KR')}</p>
             </div>
             <div>
-              <p className="text-emerald-300 text-xs">마진</p>
-              <p className={`font-bold tabular-nums ${totals.margin >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+              <p className="text-olive-300 text-xs">마진</p>
+              <p className={`font-bold tabular-nums ${totals.margin >= 0 ? 'text-olive-400' : 'text-brick-400'}`}>
                 {totals.margin.toLocaleString('ko-KR')}
               </p>
             </div>

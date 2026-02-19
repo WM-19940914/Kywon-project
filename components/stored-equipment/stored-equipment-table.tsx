@@ -217,8 +217,8 @@ export function StoredEquipmentTable({
           </>
         ) : (
           <>
-            <div className="w-16 h-16 rounded-2xl bg-emerald-50 flex items-center justify-center mb-4">
-              <LogOut className="h-8 w-8 text-emerald-300" />
+            <div className="w-16 h-16 rounded-2xl bg-olive-50 flex items-center justify-center mb-4">
+              <LogOut className="h-8 w-8 text-olive-300" />
             </div>
             <p className="text-base font-medium text-slate-500">출고 완료된 장비가 없습니다</p>
             <p className="text-sm text-slate-400 mt-1">보관중인 장비를 출고하면 여기에 표시됩니다</p>
@@ -238,7 +238,7 @@ export function StoredEquipmentTable({
           onClick={() => handleSort('removalDate')}
           className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
             sortField === 'removalDate'
-              ? 'bg-red-50 border-red-300 text-red-600 shadow-sm shadow-red-100'
+              ? 'bg-brick-50 border-brick-300 text-brick-600 shadow-sm shadow-brick-100'
               : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
           }`}
         >
@@ -255,7 +255,7 @@ export function StoredEquipmentTable({
           onClick={() => handleSort('manufacturingDate')}
           className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
             sortField === 'manufacturingDate'
-              ? 'bg-blue-50 border-blue-300 text-blue-600 shadow-sm shadow-blue-100'
+              ? 'bg-teal-50 border-teal-300 text-teal-600 shadow-sm shadow-teal-100'
               : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
           }`}
         >
@@ -280,7 +280,7 @@ export function StoredEquipmentTable({
                 style={{ width: '78px' }}
                 onClick={() => handleSort('removalDate')}
               >
-                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'removalDate' ? 'text-red-600' : 'text-slate-500 group-hover/th:text-slate-700'}`}>
+                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'removalDate' ? 'text-brick-600' : 'text-slate-500 group-hover/th:text-slate-700'}`}>
                   철거일
                   {sortField === 'removalDate' ? (
                     sortDir === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
@@ -294,7 +294,7 @@ export function StoredEquipmentTable({
                 style={{ width: '74px' }}
                 onClick={() => handleSort('manufacturingDate')}
               >
-                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'manufacturingDate' ? 'text-blue-600' : 'text-slate-500 group-hover/th2:text-slate-700'}`}>
+                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'manufacturingDate' ? 'text-teal-600' : 'text-slate-500 group-hover/th2:text-slate-700'}`}>
                   제조년월
                   {sortField === 'manufacturingDate' ? (
                     sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
@@ -338,7 +338,7 @@ export function StoredEquipmentTable({
                 return (
                   <tr
                     key={item.id}
-                    className={`transition-colors hover:bg-blue-50/30 ${bgColor} ${
+                    className={`transition-colors hover:bg-teal-50/30 ${bgColor} ${
                       isFirst && gIdx > 0 ? 'border-t-[2px] border-t-slate-200' : isFirst ? '' : 'border-t border-t-slate-100/50'
                     }`}
                   >
@@ -354,7 +354,7 @@ export function StoredEquipmentTable({
                         )}
                         <p className="text-xs font-semibold text-slate-800 truncate" title={item.siteName}>{item.siteName}</p>
                         {isGrouped && (
-                          <p className="text-[9px] text-blue-500/60 mt-0.5">{groupSize}대 구성</p>
+                          <p className="text-[9px] text-teal-500/60 mt-0.5">{groupSize}대 구성</p>
                         )}
                       </td>
                     )}
@@ -362,7 +362,7 @@ export function StoredEquipmentTable({
                     {/* ── 철거일 [MERGED] ── */}
                     {isFirst && (
                       <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
-                        <span className="text-[11px] text-red-600 font-bold tabular-nums">
+                        <span className="text-[11px] text-brick-600 font-bold tabular-nums">
                           {item.removalDate ? formatDate(item.removalDate) : '-'}
                         </span>
                       </td>
@@ -370,7 +370,7 @@ export function StoredEquipmentTable({
 
                     {/* ── 제조년월 [INDIVIDUAL] ── */}
                     <td className="px-1.5 py-1.5 text-center">
-                      <span className="text-[11px] font-bold text-blue-700 tabular-nums">
+                      <span className="text-[11px] font-bold text-teal-700 tabular-nums">
                         {item.manufacturingDate ? item.manufacturingDate.replace('-', '.') : '-'}
                       </span>
                     </td>
@@ -396,7 +396,7 @@ export function StoredEquipmentTable({
                     {isFirst && (
                       <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
                         {item.size ? (
-                          <span className="text-[11px] font-bold text-violet-700">{item.size}</span>
+                          <span className="text-[11px] font-bold text-teal-700">{item.size}</span>
                         ) : (
                           <span className="text-[10px] text-slate-300">-</span>
                         )}
@@ -418,7 +418,7 @@ export function StoredEquipmentTable({
                         if (!matchedOrder) return <span className="text-[10px] text-slate-300">-</span>
                         return (
                           <div className="space-y-0.5">
-                            <p className="text-[11px] font-semibold text-emerald-700 leading-tight truncate">
+                            <p className="text-[11px] font-semibold text-olive-700 leading-tight truncate">
                               {matchedOrder.businessName}
                             </p>
                             <p className="text-[10px] text-slate-400 leading-tight">
@@ -444,7 +444,7 @@ export function StoredEquipmentTable({
                               <Button
                                 size="sm"
                                 variant="ghost"
-                                className="h-6 px-1.5 text-[11px] gap-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                                className="h-6 px-1.5 text-[11px] gap-0.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50"
                                 onClick={() => handleViewOrder(item.orderId)}
                               >
                                 <FileText className="h-2.5 w-2.5" />
@@ -541,12 +541,12 @@ export function StoredEquipmentTable({
                                 <DropdownMenuItem onClick={() => onEdit(item)} className="text-xs gap-2">
                                   <Edit2 className="h-3 w-3" /> 수정
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-blue-600">
+                                <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-teal-600">
                                   <LogOut className="h-3 w-3" /> 출고
                                 </DropdownMenuItem>
                                 <DropdownMenuItem
                                   onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
-                                  className="text-xs gap-2 text-red-600 focus:text-red-600"
+                                  className="text-xs gap-2 text-brick-600 focus:text-brick-600"
                                 >
                                   <Trash2 className="h-3 w-3" /> 삭제
                                 </DropdownMenuItem>
@@ -554,7 +554,7 @@ export function StoredEquipmentTable({
                             ) : (
                               <DropdownMenuItem
                                 onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
-                                className="text-xs gap-2 text-amber-600"
+                                className="text-xs gap-2 text-gold-600"
                               >
                                 <Undo2 className="h-3 w-3" /> 되돌리기
                               </DropdownMenuItem>
@@ -592,7 +592,7 @@ export function StoredEquipmentTable({
                   </div>
                   <div className="flex items-center gap-1.5 shrink-0">
                     {first.size && (
-                      <Badge variant="outline" className="text-xs font-bold text-violet-700 border-violet-200 bg-violet-50/50">
+                      <Badge variant="outline" className="text-xs font-bold text-teal-700 border-teal-200 bg-teal-50/50">
                         {first.size}
                       </Badge>
                     )}
@@ -634,12 +634,12 @@ export function StoredEquipmentTable({
                               <DropdownMenuItem onClick={() => onEdit(item)} className="text-xs gap-2">
                                 <Edit2 className="h-3 w-3" /> 수정
                               </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-blue-600">
+                              <DropdownMenuItem onClick={() => onRelease(item)} className="text-xs gap-2 text-teal-600">
                                 <LogOut className="h-3 w-3" /> 출고
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => setDeleteTarget({ id: item.id, siteName: item.siteName })}
-                                className="text-xs gap-2 text-red-600 focus:text-red-600"
+                                className="text-xs gap-2 text-brick-600 focus:text-brick-600"
                               >
                                 <Trash2 className="h-3 w-3" /> 삭제
                               </DropdownMenuItem>
@@ -647,7 +647,7 @@ export function StoredEquipmentTable({
                           ) : (
                             <DropdownMenuItem
                               onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
-                              className="text-xs gap-2 text-amber-600"
+                              className="text-xs gap-2 text-gold-600"
                             >
                               <Undo2 className="h-3 w-3" /> 되돌리기
                             </DropdownMenuItem>
@@ -663,11 +663,11 @@ export function StoredEquipmentTable({
               <div className="px-4 pb-3 flex items-center gap-4">
                 <div className="text-xs">
                   <span className="text-slate-400">철거일</span>
-                  <span className="ml-1.5 font-bold text-red-600 tabular-nums">{first.removalDate ? formatDate(first.removalDate) : '-'}</span>
+                  <span className="ml-1.5 font-bold text-brick-600 tabular-nums">{first.removalDate ? formatDate(first.removalDate) : '-'}</span>
                 </div>
                 <div className="text-xs">
                   <span className="text-slate-400">제조</span>
-                  <span className="ml-1.5 font-bold text-blue-700 tabular-nums">{first.manufacturingDate ? first.manufacturingDate.replace('-', '.') : '-'}</span>
+                  <span className="ml-1.5 font-bold text-teal-700 tabular-nums">{first.manufacturingDate ? first.manufacturingDate.replace('-', '.') : '-'}</span>
                 </div>
               </div>
 
@@ -678,16 +678,16 @@ export function StoredEquipmentTable({
                 )
                 if (!matchedOrder) return null
                 return (
-                  <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
-                    <p className="text-[10px] text-emerald-500 font-medium">설치예정</p>
-                    <p className="text-xs font-bold text-emerald-800">{matchedOrder.affiliate} · {matchedOrder.businessName}</p>
+                  <div className="mx-4 mb-3 bg-olive-50 border border-olive-200 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-olive-500 font-medium">설치예정</p>
+                    <p className="text-xs font-bold text-olive-800">{matchedOrder.affiliate} · {matchedOrder.businessName}</p>
                   </div>
                 )
               })()}
 
               {/* 출고 정보 (출고완료 탭) */}
               {activeTab === 'released' && first.releaseType && (
-                <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-100 rounded-lg p-3">
+                <div className="mx-4 mb-3 bg-olive-50 border border-olive-100 rounded-lg p-3">
                   <div className="flex items-center gap-2 mb-1.5">
                     <Badge className={`${RELEASE_TYPE_COLORS[first.releaseType as ReleaseType]} text-xs font-medium`}>
                       {RELEASE_TYPE_LABELS[first.releaseType as ReleaseType]}
@@ -696,7 +696,7 @@ export function StoredEquipmentTable({
                   </div>
                   {first.releaseDestination && (
                     <div className="flex items-start gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-emerald-500 mt-0.5 shrink-0" />
+                      <MapPin className="h-3.5 w-3.5 text-olive-500 mt-0.5 shrink-0" />
                       <p className="text-sm font-medium text-slate-800">{first.releaseDestination}</p>
                     </div>
                   )}
@@ -728,7 +728,7 @@ export function StoredEquipmentTable({
                   <Button
                     size="sm"
                     variant="ghost"
-                    className="h-8 px-2.5 text-xs gap-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50"
+                    className="h-8 px-2.5 text-xs gap-1.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50"
                     onClick={() => handleViewOrder(first.orderId)}
                   >
                     <FileText className="h-3.5 w-3.5" />
@@ -755,7 +755,7 @@ export function StoredEquipmentTable({
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-brick-600 hover:bg-brick-700 text-white"
               onClick={handleConfirmDelete}
             >
               삭제
@@ -776,7 +776,7 @@ export function StoredEquipmentTable({
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-amber-600 hover:bg-amber-700 text-white"
+              className="bg-gold-600 hover:bg-gold-700 text-white"
               onClick={handleConfirmRevert}
             >
               되돌리기

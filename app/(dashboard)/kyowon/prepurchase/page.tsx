@@ -229,7 +229,7 @@ export default function PrepurchasePage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <ShoppingCart className="h-6 w-6" />
         </div>
         <div>
@@ -335,7 +335,7 @@ export default function PrepurchasePage() {
                         {item.usedQuantity}사용
                       </span>
                       <span className="text-xs text-slate-300">/</span>
-                      <span className={`text-xs font-bold ${remaining > 0 ? 'text-blue-600' : 'text-slate-400'}`}>
+                      <span className={`text-xs font-bold ${remaining > 0 ? 'text-teal-600' : 'text-slate-400'}`}>
                         {remaining}잔여
                       </span>
                     </div>
@@ -399,7 +399,7 @@ export default function PrepurchasePage() {
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="text-xs text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg"
+                            className="text-xs text-brick-500 hover:text-brick-600 hover:bg-brick-50 rounded-lg"
                             onClick={(e) => {
                               e.stopPropagation()
                               handleDelete(item.id)
@@ -450,7 +450,7 @@ export default function PrepurchasePage() {
                                 )}
                               </div>
                               <button
-                                className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                                className="text-slate-300 hover:text-brick-500 transition-colors p-1"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleDeleteUsage(usage)
@@ -709,7 +709,7 @@ function PrepurchasePriceSheet({
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-400"
               placeholder="품목, 모델명, 평형으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -722,7 +722,7 @@ function PrepurchasePriceSheet({
           {grouped.map((group) => (
             <div key={group.category}>
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
                   {group.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -736,13 +736,13 @@ function PrepurchasePriceSheet({
                     key={row.model}
                     type="button"
                     onClick={() => onSelect(row.model)}
-                    className="w-full text-left group px-4 py-3 rounded-lg border border-gray-150 bg-white hover:border-blue-300 hover:bg-blue-50/60 hover:shadow-sm transition-all cursor-pointer"
+                    className="w-full text-left group px-4 py-3 rounded-lg border border-gray-150 bg-white hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm transition-all cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
-                      <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                      <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-teal-100 group-hover:text-teal-700 transition-colors">
                         {row.size}
                       </span>
-                      <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-blue-700 truncate">
+                      <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-teal-700 truncate">
                         {row.model}
                       </span>
                     </div>
@@ -753,7 +753,7 @@ function PrepurchasePriceSheet({
                         .map((comp, ci) => (
                           <span
                             key={ci}
-                            className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded group-hover:bg-blue-50 group-hover:text-blue-500"
+                            className="text-[10px] text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded group-hover:bg-teal-50 group-hover:text-teal-500"
                           >
                             [{comp.type}] {comp.model}
                           </span>

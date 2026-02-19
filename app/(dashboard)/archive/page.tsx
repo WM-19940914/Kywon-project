@@ -88,27 +88,27 @@ type SortDir = 'asc' | 'desc'
 const rawData: ArchiveOrder[] = archiveRaw as ArchiveOrder[]
 
 const TYPE_COLORS: Record<string, string> = {
-  '신규설치': 'bg-blue-100 text-blue-700 border-blue-200',
-  '반납폐기': 'bg-red-100 text-red-700 border-red-200',
-  '이전설치': 'bg-purple-100 text-purple-700 border-purple-200',
-  '철거보관': 'bg-amber-100 text-amber-700 border-amber-200',
-  '재고설치': 'bg-emerald-100 text-emerald-700 border-emerald-200',
+  '신규설치': 'bg-teal-100 text-teal-700 border-teal-200',
+  '반납폐기': 'bg-brick-100 text-brick-700 border-brick-200',
+  '이전설치': 'bg-teal-100 text-teal-700 border-teal-200',
+  '철거보관': 'bg-gold-100 text-gold-700 border-gold-200',
+  '재고설치': 'bg-olive-100 text-olive-700 border-olive-200',
   '사전견적': 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  '완료': 'bg-green-100 text-green-700 border-green-200',
-  '취소': 'bg-red-100 text-red-700 border-red-200',
+  '완료': 'bg-olive-100 text-olive-700 border-olive-200',
+  '취소': 'bg-brick-100 text-brick-700 border-brick-200',
   '보류': 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  '처리중': 'bg-blue-100 text-blue-700 border-blue-200',
-  '접수': 'bg-sky-100 text-sky-700 border-sky-200',
+  '처리중': 'bg-teal-100 text-teal-700 border-teal-200',
+  '접수': 'bg-teal-100 text-teal-700 border-teal-200',
 }
 
 const SENDER_COLORS: Record<string, string> = {
-  '구몬': 'bg-orange-100 text-orange-700',
-  '교육플랫폼': 'bg-indigo-100 text-indigo-700',
+  '구몬': 'bg-carrot-100 text-carrot-700',
+  '교육플랫폼': 'bg-teal-100 text-teal-700',
   'Wells 영업': 'bg-teal-100 text-teal-700',
-  'Wells 서비스': 'bg-cyan-100 text-cyan-700',
+  'Wells 서비스': 'bg-teal-100 text-teal-700',
   '기타': 'bg-gray-100 text-gray-600',
 }
 
@@ -316,7 +316,7 @@ export default function ArchivePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50/30">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-teal-50/30">
       <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-6 space-y-5">
 
         {/* ────── 헤더 ────── */}
@@ -338,8 +338,8 @@ export default function ArchivePage() {
               onClick={() => { setYearFilter(y); setPage(1) }}
               className={`px-3.5 py-1.5 rounded-full text-xs font-medium transition-all ${
                 yearFilter === y
-                  ? 'bg-blue-600 text-white shadow-sm'
-                  : 'bg-white text-gray-600 border border-gray-200 hover:border-blue-300 hover:text-blue-600'
+                  ? 'bg-teal-600 text-white shadow-sm'
+                  : 'bg-white text-gray-600 border border-gray-200 hover:border-teal-300 hover:text-teal-600'
               }`}
             >
               {y === 'all' ? '전체' : `${y}년`}
@@ -359,7 +359,7 @@ export default function ArchivePage() {
                 onChange={e => { setSearch(e.target.value); setPage(1) }}
                 placeholder="문서명, 주소, 담당자, 모델명 검색..."
                 className="w-full pl-10 pr-10 py-2.5 text-sm border border-gray-200 rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
+                           focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400
                            placeholder:text-gray-400"
               />
               {search && (
@@ -385,9 +385,9 @@ export default function ArchivePage() {
                 onFocus={() => { if (siteInput.trim()) setShowSiteSuggestions(true) }}
                 placeholder="사업장 검색..."
                 className={`w-full pl-10 pr-10 py-2.5 text-sm border rounded-lg
-                           focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400
+                           focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400
                            placeholder:text-gray-400 ${
-                             siteFilter ? 'border-blue-400 bg-blue-50/30' : 'border-gray-200'
+                             siteFilter ? 'border-teal-400 bg-teal-50/30' : 'border-gray-200'
                            }`}
               />
               {(siteInput || siteFilter) && (
@@ -405,7 +405,7 @@ export default function ArchivePage() {
                     <button
                       key={site}
                       onClick={() => selectSite(site)}
-                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-blue-50 transition-colors border-b border-gray-50 last:border-0"
+                      className="w-full text-left px-4 py-2.5 text-sm hover:bg-teal-50 transition-colors border-b border-gray-50 last:border-0"
                     >
                       <span className="text-gray-800">{site}</span>
                     </button>
@@ -419,14 +419,14 @@ export default function ArchivePage() {
               onClick={() => setShowMoreFilters(v => !v)}
               className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border text-sm font-medium transition-all whitespace-nowrap ${
                 showMoreFilters || hasMoreFilter
-                  ? 'bg-blue-50 border-blue-200 text-blue-700'
+                  ? 'bg-teal-50 border-teal-200 text-teal-700'
                   : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
               }`}
             >
               <Filter className="w-4 h-4" />
               필터
               {hasMoreFilter && (
-                <span className="bg-blue-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
+                <span className="bg-teal-600 text-white text-[10px] font-bold rounded-full w-4 h-4 flex items-center justify-center">
                   {[typeFilter, senderFilter, statusFilter].filter(f => f !== 'all').length}
                 </span>
               )}
@@ -434,7 +434,7 @@ export default function ArchivePage() {
 
             {hasActiveFilter && (
               <button onClick={resetFilters}
-                className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm text-red-600 hover:bg-red-50 whitespace-nowrap">
+                className="flex items-center gap-1.5 px-3 py-2.5 rounded-lg text-sm text-brick-600 hover:bg-brick-50 whitespace-nowrap">
                 <X className="w-3.5 h-3.5" />
                 초기화
               </button>
@@ -445,10 +445,10 @@ export default function ArchivePage() {
           {siteFilter && (
             <div className="mt-3 flex items-center gap-2">
               <span className="text-xs text-gray-500">사업장:</span>
-              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-xs font-medium">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-100 text-teal-800 rounded-full text-xs font-medium">
                 <Building2 className="w-3 h-3" />
                 {siteFilter}
-                <button onClick={clearSite} className="hover:text-blue-600">
+                <button onClick={clearSite} className="hover:text-teal-600">
                   <X className="w-3 h-3" />
                 </button>
               </span>
@@ -504,8 +504,8 @@ export default function ArchivePage() {
                         onClick={() => setExpandedKey(isExpanded ? null : group.key)}
                         className={`cursor-pointer transition-colors border-b ${
                           isExpanded
-                            ? 'bg-blue-50/60 border-blue-200'
-                            : `${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} border-gray-100 hover:bg-blue-50/30`
+                            ? 'bg-teal-50/60 border-teal-200'
+                            : `${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'} border-gray-100 hover:bg-teal-50/30`
                         }`}
                       >
                         <td className="px-3 py-2.5 text-xs text-gray-400 font-mono">
@@ -535,7 +535,7 @@ export default function ArchivePage() {
                         <td className="px-3 py-2.5 text-xs font-medium text-gray-900 max-w-[200px] truncate" title={group.siteName}>
                           <button
                             onClick={(e) => { e.stopPropagation(); selectSite(group.siteName) }}
-                            className="hover:text-blue-600 hover:underline text-left truncate max-w-full"
+                            className="hover:text-teal-600 hover:underline text-left truncate max-w-full"
                             title={`"${group.siteName}" 필터`}
                           >
                             {group.siteName || '-'}
@@ -606,7 +606,7 @@ export default function ArchivePage() {
                 ) : (
                   <button key={pn} onClick={() => setPage(Number(pn))}
                     className={`min-w-[32px] h-8 rounded-md text-xs font-medium transition-colors ${
-                      Number(pn) === safePageNum ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
+                      Number(pn) === safePageNum ? 'bg-teal-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-100'
                     }`}>{pn}</button>
                 )
               )}
@@ -626,7 +626,7 @@ export default function ArchivePage() {
 
 function InlineDetail({ group, onClose }: { group: OrderGroup; onClose: () => void }) {
   return (
-    <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/40 border-y border-blue-200/60 px-6 py-4">
+    <div className="bg-gradient-to-r from-teal-50/80 to-olive-50/40 border-y border-teal-200/60 px-6 py-4">
       <div className="flex items-start justify-between mb-4">
         <div>
           <h4 className="text-sm font-bold text-gray-900">{group.siteName || '(사업장 미입력)'}</h4>
@@ -648,7 +648,7 @@ function InlineDetail({ group, onClose }: { group: OrderGroup; onClose: () => vo
         <InfoRow icon={<Phone className="w-3.5 h-3.5" />} label="휴대폰" value={group.mobile} />
       </div>
 
-      <div className="border-t border-blue-200/40 pt-3">
+      <div className="border-t border-teal-200/40 pt-3">
         <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2">
           품목 상세 ({group.items.length}건)
         </p>
@@ -666,7 +666,7 @@ function InlineDetail({ group, onClose }: { group: OrderGroup; onClose: () => vo
                 {item.status}
               </span>
               {item.note && (
-                <span className="shrink-0 text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded max-w-[200px] truncate" title={item.note}>
+                <span className="shrink-0 text-[10px] text-gold-600 bg-gold-50 px-1.5 py-0.5 rounded max-w-[200px] truncate" title={item.note}>
                   {item.note}
                 </span>
               )}
@@ -696,7 +696,7 @@ function FilterSelect({ label, value, onChange, options }: {
     <div>
       <label className="block text-xs font-medium text-gray-500 mb-1.5">{label}</label>
       <select value={value} onChange={e => onChange(e.target.value)}
-        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400">
+        className="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-teal-500/20 focus:border-teal-400">
         <option value="all">전체</option>
         {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
       </select>
@@ -714,7 +714,7 @@ function SortTh({ label, sortKey, currentKey, sortDir, onSort, className = '' }:
         {label}
         {currentKey !== sortKey
           ? <ArrowUpDown className="w-3 h-3 opacity-30" />
-          : sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-blue-600" /> : <ChevronDown className="w-3 h-3 text-blue-600" />
+          : sortDir === 'asc' ? <ChevronUp className="w-3 h-3 text-teal-600" /> : <ChevronDown className="w-3 h-3 text-teal-600" />
         }
       </span>
     </th>

@@ -89,7 +89,7 @@ export function CompleteOrderDialog({
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <CheckCircle2 className="h-5 w-5 text-emerald-600" /> 설치 완료 처리
+            <CheckCircle2 className="h-5 w-5 text-olive-600" /> 설치 완료 처리
           </DialogTitle>
           <DialogDescription>
             설치가 완료되었습니다. 완료 정보를 입력해주세요.
@@ -122,7 +122,7 @@ export function CompleteOrderDialog({
           {/* 완료일 입력 */}
           <div>
             <label htmlFor="completionDate" className="block text-sm font-medium mb-2">
-              설치 완료일 <span className="text-red-500">*</span>
+              설치 완료일 <span className="text-brick-500">*</span>
             </label>
             <Input
               id="completionDate"
@@ -143,15 +143,15 @@ export function CompleteOrderDialog({
           {/* 실제 공사비 입력 */}
           <div>
             <label htmlFor="actualCost" className="block text-sm font-medium mb-2">
-              실제 공사비 (원) <span className="text-red-500">*</span>
+              실제 공사비 (원) <span className="text-brick-500">*</span>
             </label>
 
             {/* 견적 금액 표시 */}
-            <div className="bg-blue-50 p-3 rounded-lg mb-2 border border-blue-100">
+            <div className="bg-teal-50 p-3 rounded-lg mb-2 border border-teal-100">
               <p className="text-xs text-muted-foreground flex items-center gap-1">
                 <ClipboardList className="h-3 w-3" /> 견적 금액
               </p>
-              <p className="text-lg font-bold text-blue-600">
+              <p className="text-lg font-bold text-teal-600">
                 {order.quoteAmount?.toLocaleString('ko-KR') || '미입력'}원
               </p>
             </div>
@@ -185,8 +185,8 @@ export function CompleteOrderDialog({
             {costDifference !== 0 && (
               <div className={`mt-2 p-2 rounded ${
                 costDifference > 0
-                  ? 'bg-red-50 text-red-700 border border-red-200'
-                  : 'bg-green-50 text-green-700 border border-green-200'
+                  ? 'bg-brick-50 text-brick-700 border border-brick-200'
+                  : 'bg-olive-50 text-olive-700 border border-olive-200'
               }`}>
                 <p className="text-sm font-medium">
                   {costDifference > 0 ? '견적 초과' : '견적 절감'}:{' '}

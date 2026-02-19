@@ -61,8 +61,8 @@ export function DeliveryAlertBar({ orders, onAlertClick, activeAlert }: Delivery
           onClick={() => handleClick('delayed')}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
             ${activeAlert === 'delayed'
-              ? 'bg-red-100 text-red-800 ring-2 ring-red-300'
-              : 'bg-red-50 text-red-700 hover:bg-red-100'
+              ? 'bg-brick-100 text-brick-800 ring-2 ring-brick-300'
+              : 'bg-brick-50 text-brick-700 hover:bg-brick-100'
             }`}
         >
           <AlertCircle className="h-4 w-4" />
@@ -76,8 +76,8 @@ export function DeliveryAlertBar({ orders, onAlertClick, activeAlert }: Delivery
           onClick={() => handleClick('today')}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
             ${activeAlert === 'today'
-              ? 'bg-orange-100 text-orange-800 ring-2 ring-orange-300'
-              : 'bg-orange-50 text-orange-700 hover:bg-orange-100'
+              ? 'bg-carrot-100 text-carrot-800 ring-2 ring-carrot-300'
+              : 'bg-carrot-50 text-carrot-700 hover:bg-carrot-100'
             }`}
         >
           <Clock className="h-4 w-4" />
@@ -91,8 +91,8 @@ export function DeliveryAlertBar({ orders, onAlertClick, activeAlert }: Delivery
           onClick={() => handleClick('tomorrow')}
           className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-all
             ${activeAlert === 'tomorrow'
-              ? 'bg-blue-100 text-blue-800 ring-2 ring-blue-300'
-              : 'bg-blue-50 text-blue-700 hover:bg-blue-100'
+              ? 'bg-teal-100 text-teal-800 ring-2 ring-teal-300'
+              : 'bg-teal-50 text-teal-700 hover:bg-teal-100'
             }`}
         >
           <CalendarClock className="h-4 w-4" />

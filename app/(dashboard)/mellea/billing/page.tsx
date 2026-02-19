@@ -155,7 +155,7 @@ export default function MelleaBillingPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-orange-50 text-orange-600 p-2.5 rounded-xl">
+        <div className="bg-carrot-50 text-carrot-600 p-2.5 rounded-xl">
           <CreditCard className="h-6 w-6" />
         </div>
         <div>
@@ -195,7 +195,7 @@ export default function MelleaBillingPage() {
               <button
                 key={tab.key}
                 className={active
-                  ? "border-b-2 border-orange-500 text-orange-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2"
+                  ? "border-b-2 border-carrot-500 text-carrot-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2"
                   : "text-slate-500 hover:text-slate-700 pb-3 px-4 text-sm flex items-center gap-2"
                 }
                 onClick={() => setActiveTab(tab.key)}
@@ -204,7 +204,7 @@ export default function MelleaBillingPage() {
                 {tab.label}
                 {/* 지출결의서 탭에만 건수 표시 */}
                 {tab.key === 'expense-report' && (
-                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${active ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'}`}>
+                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${active ? 'bg-carrot-100 text-carrot-600' : 'bg-slate-100 text-slate-500'}`}>
                     {filteredOrders.length}
                   </span>
                 )}

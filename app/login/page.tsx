@@ -93,7 +93,7 @@ export default function LoginPage() {
         <form action={formAction} className="space-y-5">
           {/* 에러 메시지 */}
           {state?.error && (
-            <div className="flex items-center gap-2 bg-red-50/80 border border-red-200/60 text-red-500 text-sm px-4 py-3 rounded-2xl">
+            <div className="flex items-center gap-2 bg-brick-50/80 border border-brick-200/60 text-brick-500 text-sm px-4 py-3 rounded-2xl">
               <svg className="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
@@ -114,7 +114,7 @@ export default function LoginPage() {
               autoComplete="username"
               autoFocus
               placeholder="사용자이름을 입력하세요"
-              className="w-full px-4 py-3.5 rounded-2xl border border-white/60 text-sm transition-all placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-400/25 focus:border-orange-300"
+              className="w-full px-4 py-3.5 rounded-2xl border border-white/60 text-sm transition-all placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-carrot-400/25 focus:border-carrot-300"
               style={{ background: 'rgba(255,255,255,0.7)' }}
             />
           </div>
@@ -131,7 +131,7 @@ export default function LoginPage() {
               required
               autoComplete="current-password"
               placeholder="비밀번호를 입력하세요"
-              className="w-full px-4 py-3.5 rounded-2xl border border-white/60 text-sm transition-all placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-orange-400/25 focus:border-orange-300"
+              className="w-full px-4 py-3.5 rounded-2xl border border-white/60 text-sm transition-all placeholder:text-slate-300 focus:outline-none focus:ring-2 focus:ring-carrot-400/25 focus:border-carrot-300"
               style={{ background: 'rgba(255,255,255,0.7)' }}
             />
           </div>

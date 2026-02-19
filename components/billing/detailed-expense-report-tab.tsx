@@ -379,7 +379,7 @@ export function DetailedExpenseReportTab({
   if (isGenerating) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-        <Loader2 className="h-10 w-10 mx-auto mb-4 text-orange-500 animate-spin" />
+        <Loader2 className="h-10 w-10 mx-auto mb-4 text-carrot-500 animate-spin" />
         <p className="text-lg font-semibold text-slate-700">
           {selectedYear}년 {selectedMonth}월 지출결의서 생성 중...
         </p>
@@ -390,8 +390,8 @@ export function DetailedExpenseReportTab({
 
   if (showConfirm) {
     return (
-      <div className="bg-white rounded-xl border-2 border-orange-300 shadow-lg p-8 text-center max-w-lg mx-auto">
-        <FileText className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+      <div className="bg-white rounded-xl border-2 border-carrot-300 shadow-lg p-8 text-center max-w-lg mx-auto">
+        <FileText className="h-12 w-12 mx-auto mb-4 text-carrot-500" />
         <h3 className="text-lg font-bold text-slate-900 mb-2">
           {selectedYear}년 {selectedMonth}월 지출결의서 생성
         </h3>
@@ -401,7 +401,7 @@ export function DetailedExpenseReportTab({
         </p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline" onClick={() => setShowConfirm(false)}>취소</Button>
-          <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleGenerate}>생성하기</Button>
+          <Button className="bg-carrot-500 hover:bg-carrot-600 text-white" onClick={handleGenerate}>생성하기</Button>
         </div>
       </div>
     )
@@ -409,16 +409,16 @@ export function DetailedExpenseReportTab({
 
   if (showRewriteConfirm) {
     return (
-      <div className="bg-white rounded-xl border-2 border-red-300 shadow-lg p-8 text-center max-w-lg mx-auto">
-        <RefreshCw className="h-12 w-12 mx-auto mb-4 text-red-500" />
+      <div className="bg-white rounded-xl border-2 border-brick-300 shadow-lg p-8 text-center max-w-lg mx-auto">
+        <RefreshCw className="h-12 w-12 mx-auto mb-4 text-brick-500" />
         <h3 className="text-lg font-bold text-slate-900 mb-2">
           {selectedYear}년 {selectedMonth}월 지출결의서 재작성
         </h3>
         <p className="text-sm text-slate-600 mb-2">기존 지출결의서를 삭제하고 현재 정산 데이터로 다시 작성합니다.</p>
-        <p className="text-sm text-red-600 font-semibold mb-6">기존 확정본은 복구할 수 없습니다.</p>
+        <p className="text-sm text-brick-600 font-semibold mb-6">기존 확정본은 복구할 수 없습니다.</p>
         <div className="flex gap-3 justify-center">
           <Button variant="outline" onClick={() => setShowRewriteConfirm(false)}>취소</Button>
-          <Button className="bg-red-500 hover:bg-red-600 text-white" onClick={handleGenerate}>재작성하기</Button>
+          <Button className="bg-brick-500 hover:bg-brick-600 text-white" onClick={handleGenerate}>재작성하기</Button>
         </div>
       </div>
     )
@@ -433,7 +433,7 @@ export function DetailedExpenseReportTab({
           <p className="text-slate-400 text-sm mb-6">아직 이 달의 지출결의서가 작성되지 않았습니다.</p>
           <Button
             size="lg"
-            className="bg-orange-500 hover:bg-orange-600 text-white gap-2 px-8 py-6 text-base"
+            className="bg-carrot-500 hover:bg-carrot-600 text-white gap-2 px-8 py-6 text-base"
             onClick={() => setShowConfirm(true)}
           >
             <Plus className="h-5 w-5" />
@@ -478,7 +478,7 @@ export function DetailedExpenseReportTab({
               <span className="text-xs font-semibold">수정 중</span>
             </div>
           ) : (
-            <div className="flex items-center gap-1.5 text-emerald-600 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+            <div className="flex items-center gap-1.5 text-olive-600 bg-olive-50 px-3 py-1.5 rounded-lg border border-olive-200">
               <CheckCircle2 className="h-4 w-4" />
               <span className="text-xs font-semibold">확정됨</span>
             </div>
@@ -493,7 +493,7 @@ export function DetailedExpenseReportTab({
               <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
                 <X className="h-3.5 w-3.5" />취소
               </Button>
-              <Button size="sm" className="gap-1.5 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={handleSaveEdit} disabled={isSaving}>
+              <Button size="sm" className="gap-1.5 bg-olive-500 hover:bg-olive-600 text-white" onClick={handleSaveEdit} disabled={isSaving}>
                 {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
                 저장
               </Button>
@@ -531,10 +531,10 @@ export function DetailedExpenseReportTab({
                 <th className="border border-slate-300 px-1 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '35px' }}>옵션</th>
                 <th colSpan={2} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-slate-50">매입가</th>
                 <th className="border border-slate-300 px-1 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '55px' }}>MG율</th>
-                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-blue-50">제안가</th>
-                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-blue-50">프론트 이윤</th>
-                <th colSpan={3} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-red-50">장려금 이윤</th>
-                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-red-100" style={{ width: '90px' }}>전체 이윤</th>
+                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-teal-50">제안가</th>
+                <th colSpan={2} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-teal-50">프론트 이윤</th>
+                <th colSpan={3} className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-brick-50">장려금 이윤</th>
+                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center bg-brick-100" style={{ width: '90px' }}>전체 이윤</th>
               </tr>
               {/* 2행 서브헤더 */}
               <tr className="bg-slate-50">
@@ -546,16 +546,16 @@ export function DetailedExpenseReportTab({
                 <th className="border border-slate-300 px-1 py-1 text-[9px] text-slate-500" style={{ width: '90px' }}>금액</th>
                 <th className="border border-slate-300 px-1 py-1 text-[9px] text-slate-500" style={{ width: '80px' }}>단가</th>
                 <th className="border border-slate-300 px-1 py-1 text-[9px] text-slate-500" style={{ width: '90px' }}>금액</th>
-                <th className="border border-slate-300 px-1 py-1 text-[9px] text-red-500" style={{ width: '50px' }}>등급Reb</th>
-                <th className="border border-slate-300 px-1 py-1 text-[9px] text-red-500" style={{ width: '45px' }}>품목Reb</th>
-                <th className="border border-slate-300 px-1 py-1 text-[9px] text-red-500" style={{ width: '85px' }}>금액</th>
+                <th className="border border-slate-300 px-1 py-1 text-[9px] text-brick-500" style={{ width: '50px' }}>등급Reb</th>
+                <th className="border border-slate-300 px-1 py-1 text-[9px] text-brick-500" style={{ width: '45px' }}>품목Reb</th>
+                <th className="border border-slate-300 px-1 py-1 text-[9px] text-brick-500" style={{ width: '85px' }}>금액</th>
                 <th className="border border-slate-300"></th>
               </tr>
             </thead>
 
             <tbody>
               {displayItems.map((row, idx) => (
-                <tr key={row.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-blue-50/30'}`}>
+                <tr key={row.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-teal-50/30'}`}>
                   {/* 구분 */}
                   <td className="border border-slate-200 px-2 py-1.5 text-[10px]">
                     <div className="font-semibold truncate">{row.businessName}</div>
@@ -572,9 +572,9 @@ export function DetailedExpenseReportTab({
                       />
                     ) : (
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                        row.supplier === '삼성전자' ? 'bg-blue-100 text-blue-700'
-                        : row.supplier === '에스원이엔지' ? 'bg-purple-100 text-purple-700'
-                        : 'bg-orange-100 text-orange-700'
+                        row.supplier === '삼성전자' ? 'bg-teal-100 text-teal-700'
+                        : row.supplier === '에스원이엔지' ? 'bg-teal-100 text-teal-700'
+                        : 'bg-carrot-100 text-carrot-700'
                       }`}>{row.supplier}</span>
                     )}
                   </td>
@@ -634,15 +634,15 @@ export function DetailedExpenseReportTab({
                     {row.salesTotalPrice.toLocaleString('ko-KR')}
                   </td>
                   {/* 프론트 단가 */}
-                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-blue-600">
+                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-teal-600">
                     {row.frontMarginUnit !== 0 ? row.frontMarginUnit.toLocaleString('ko-KR') : ''}
                   </td>
                   {/* 프론트 금액 */}
-                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-blue-700 font-semibold">
+                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-teal-700 font-semibold">
                     {row.frontMarginTotal.toLocaleString('ko-KR')}
                   </td>
                   {/* 장려금 등급Reb (비율) */}
-                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center tabular-nums text-red-500">
+                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center tabular-nums text-brick-500">
                     {isEditing ? (
                       <input
                         type="number"
@@ -656,15 +656,15 @@ export function DetailedExpenseReportTab({
                     )}
                   </td>
                   {/* 장려금 품목Reb */}
-                  <td className="border border-slate-200 px-1 py-1.5 text-[10px] text-center tabular-nums text-red-400">
+                  <td className="border border-slate-200 px-1 py-1.5 text-[10px] text-center tabular-nums text-brick-400">
                     0
                   </td>
                   {/* 장려금 금액 */}
-                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-red-600 font-semibold">
+                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-brick-600 font-semibold">
                     {row.incentiveGradeReb > 0 ? row.incentiveGradeReb.toLocaleString('ko-KR') : '0'}
                   </td>
                   {/* 전체 이윤 */}
-                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-red-700 font-bold">
+                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-brick-700 font-bold">
                     {row.totalMargin.toLocaleString('ko-KR')}
                   </td>
                 </tr>
@@ -687,10 +687,10 @@ export function DetailedExpenseReportTab({
                 <td colSpan={2} className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold">
                   {totals.totalFrontMargin.toLocaleString('ko-KR')}
                 </td>
-                <td colSpan={3} className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold text-orange-300">
+                <td colSpan={3} className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold text-carrot-300">
                   {totals.totalIncentive.toLocaleString('ko-KR')}
                 </td>
-                <td className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold text-emerald-300">
+                <td className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold text-olive-300">
                   {totals.totalMargin.toLocaleString('ko-KR')}
                 </td>
               </tr>
@@ -699,7 +699,7 @@ export function DetailedExpenseReportTab({
                 <td colSpan={11} className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-right text-slate-500">
                   부가세 포함 (VAT+)
                 </td>
-                <td colSpan={2} className="border border-slate-300 px-2 py-2 text-sm text-right tabular-nums font-bold text-blue-700">
+                <td colSpan={2} className="border border-slate-300 px-2 py-2 text-sm text-right tabular-nums font-bold text-teal-700">
                   {Math.round(totals.totalSales * 1.1).toLocaleString('ko-KR')}
                 </td>
                 <td colSpan={6} className="border border-slate-300"></td>
@@ -710,9 +710,9 @@ export function DetailedExpenseReportTab({
       </div>
 
       {/* 모바일 안내 */}
-      <div className="lg:hidden bg-orange-50 border border-orange-200 rounded-xl p-6 text-center">
-        <p className="text-orange-700 font-semibold mb-2">PC 화면에서 확인하세요</p>
-        <p className="text-sm text-orange-600">지출결의서는 컬럼이 많아 PC 화면에서 확인하는 것을 권장합니다.</p>
+      <div className="lg:hidden bg-carrot-50 border border-carrot-200 rounded-xl p-6 text-center">
+        <p className="text-carrot-700 font-semibold mb-2">PC 화면에서 확인하세요</p>
+        <p className="text-sm text-carrot-600">지출결의서는 컬럼이 많아 PC 화면에서 확인하는 것을 권장합니다.</p>
       </div>
     </div>
   )

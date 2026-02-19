@@ -113,7 +113,7 @@ export function DeliveryDetailDialog({
                         variant="outline"
                         className={`font-normal ${
                           item.workType === '신규설치'
-                            ? 'bg-blue-100 text-blue-700 border-blue-300 font-semibold'
+                            ? 'bg-teal-100 text-teal-700 border-teal-300 font-semibold'
                             : ''
                         }`}
                       >
@@ -123,7 +123,7 @@ export function DeliveryDetailDialog({
                       <span className="font-medium">{item.category}</span>
                     </div>
                     {/* 수량 */}
-                    <span className="text-lg font-bold text-blue-600">
+                    <span className="text-lg font-bold text-teal-600">
                       {item.quantity}대
                     </span>
                   </div>

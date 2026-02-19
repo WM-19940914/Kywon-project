@@ -268,7 +268,7 @@ export default function DeliveryPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <Truck className="h-6 w-6" />
         </div>
         <div>
@@ -279,7 +279,7 @@ export default function DeliveryPage() {
 
       {/* 신규설치 안내 */}
       <p className="text-xs text-slate-400 mb-5">
-        <span className="text-red-500 font-semibold">신규설치 건만 표시됩니다.</span> (철거보관, 이전설치 등 장비 배송이 없는 건은 제외)
+        <span className="text-brick-500 font-semibold">신규설치 건만 표시됩니다.</span> (철거보관, 이전설치 등 장비 배송이 없는 건은 제외)
       </p>
 
       {/* 상태 탭 필터 (Toss 스타일 border-b 기반) */}
@@ -291,14 +291,14 @@ export default function DeliveryPage() {
               onClick={() => setStatusFilter(tab.value)}
               className={`pb-3 px-4 text-sm transition-colors whitespace-nowrap ${
                 statusFilter === tab.value
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                  ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
                   : 'text-slate-500 hover:text-slate-700'
               }`}
             >
               {tab.label}
               <span className={`ml-1.5 px-2 rounded-full text-xs ${
                 statusFilter === tab.value
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-teal-100 text-teal-600'
                   : 'bg-slate-100 text-slate-500'
               }`}>
                 {tab.count}
@@ -402,7 +402,7 @@ export default function DeliveryPage() {
           <span className="text-sm text-slate-500 whitespace-nowrap">
             {filteredOrders.length}건 표시
             {searchTerm && (
-              <span className="text-blue-600 font-medium ml-1">(검색중)</span>
+              <span className="text-teal-600 font-medium ml-1">(검색중)</span>
             )}
           </span>
         </div>

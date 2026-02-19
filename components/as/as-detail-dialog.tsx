@@ -70,9 +70,9 @@ const STATUS_TRANSITIONS: Record<ASRequestStatus, { next?: ASRequestStatus; prev
 /** 상태별 헤더 배경색 */
 const STATUS_HEADER_BG: Record<ASRequestStatus, string> = {
   'received': 'bg-gray-600',
-  'in-progress': 'bg-orange-500',
-  'completed': 'bg-blue-600',
-  'settled': 'bg-green-600',
+  'in-progress': 'bg-carrot-500',
+  'completed': 'bg-teal-600',
+  'settled': 'bg-olive-600',
 }
 
 /** 상태별 아이콘 */
@@ -85,9 +85,9 @@ const STATUS_ICONS: Record<ASRequestStatus, React.ReactNode> = {
 
 /** 상태변경 버튼 색상 */
 const NEXT_STATUS_BUTTON_COLOR: Record<ASRequestStatus, string> = {
-  'received': 'bg-orange-500 hover:bg-orange-600',
-  'in-progress': 'bg-blue-600 hover:bg-blue-700',
-  'completed': 'bg-green-600 hover:bg-green-700',
+  'received': 'bg-carrot-500 hover:bg-carrot-600',
+  'in-progress': 'bg-teal-600 hover:bg-teal-700',
+  'completed': 'bg-olive-600 hover:bg-olive-700',
   'settled': '',
 }
 
@@ -370,7 +370,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                 </div>
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-affiliate" className="text-xs text-gray-500 font-medium">
-                    계열사 <span className="text-red-500">*</span>
+                    계열사 <span className="text-brick-500">*</span>
                   </Label>
                   <Select value={affiliate} onValueChange={setAffiliate}>
                     <SelectTrigger id="edit-affiliate" className="h-9">
@@ -394,7 +394,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                 </h4>
                 <div className="space-y-1.5">
                   <Label htmlFor="edit-business" className="text-xs text-gray-500 font-medium">
-                    사업자명 <span className="text-red-500">*</span>
+                    사업자명 <span className="text-brick-500">*</span>
                   </Label>
                   <Input
                     id="edit-business"
@@ -406,7 +406,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                 </div>
                 <div className="space-y-1.5">
                   <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                    <MapPin className="h-3 w-3" /> 현장주소 <span className="text-red-500">*</span>
+                    <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
                   </Label>
                   <div className="flex gap-2">
                     <Input
@@ -576,72 +576,72 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
               정산대기 — 처리 요약 (읽기 전용 요약)
               ============================================================ */}
           {request.status === 'completed' && (
-            <div className="bg-blue-50 rounded-lg px-4 py-3">
-              <h4 className="text-[11px] font-bold text-blue-400 uppercase tracking-wider mb-2">AS 처리 요약</h4>
+            <div className="bg-teal-50 rounded-lg px-4 py-3">
+              <h4 className="text-[11px] font-bold text-teal-400 uppercase tracking-wider mb-2">AS 처리 요약</h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-blue-400">접수일</span>
+                  <span className="text-[10px] text-teal-400">접수일</span>
                   <span className="font-medium text-gray-700">{request.receptionDate}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-blue-400">계열사</span>
+                  <span className="text-[10px] text-teal-400">계열사</span>
                   <span className="font-medium text-gray-700">{request.affiliate}</span>
                 </div>
                 {request.contactName && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-blue-400">담당자</span>
+                    <span className="text-[10px] text-teal-400">담당자</span>
                     <span className="font-medium text-gray-700">{request.contactName}</span>
                   </div>
                 )}
                 {request.contactPhone && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-blue-400">연락처</span>
+                    <span className="text-[10px] text-teal-400">연락처</span>
                     <span className="font-medium text-gray-700">{request.contactPhone}</span>
                   </div>
                 )}
                 {request.modelName && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-blue-400">모델명</span>
+                    <span className="text-[10px] text-teal-400">모델명</span>
                     <span className="font-medium text-gray-700">{request.modelName}</span>
                   </div>
                 )}
                 {request.outdoorUnitLocation && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-blue-400">실외기 위치</span>
+                    <span className="text-[10px] text-teal-400">실외기 위치</span>
                     <span className="font-medium text-gray-700">{request.outdoorUnitLocation}</span>
                   </div>
                 )}
                 {request.asReason && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-blue-200">
-                    <span className="text-[10px] text-blue-400">AS 사유</span>
+                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
+                    <span className="text-[10px] text-teal-400">AS 사유</span>
                     <span className="text-gray-700">{request.asReason}</span>
                   </div>
                 )}
                 {/* AS 처리 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-blue-200">
-                  <span className="text-[10px] text-blue-400 font-bold mb-1">AS 처리 정보</span>
+                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
+                  <span className="text-[10px] text-teal-400 font-bold mb-1">AS 처리 정보</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-blue-400">삼성AS센터</span>
+                  <span className="text-[10px] text-teal-400">삼성AS센터</span>
                   <span className="font-medium text-gray-700">{request.samsungAsCenter || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-blue-400">방문일</span>
+                  <span className="text-[10px] text-teal-400">방문일</span>
                   <span className="font-medium text-gray-700">{request.visitDate || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-blue-400">AS 기사</span>
+                  <span className="text-[10px] text-teal-400">AS 기사</span>
                   <span className="font-medium text-gray-700">{request.technicianName || '-'}</span>
                 </div>
                 {request.technicianPhone && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-blue-400">기사 연락처</span>
+                    <span className="text-[10px] text-teal-400">기사 연락처</span>
                     <span className="font-medium text-gray-700">{request.technicianPhone}</span>
                   </div>
                 )}
                 {request.processingDetails && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-blue-200">
-                    <span className="text-[10px] text-blue-400">처리내역</span>
+                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
+                    <span className="text-[10px] text-teal-400">처리내역</span>
                     <span className="text-gray-700">{request.processingDetails}</span>
                   </div>
                 )}
@@ -653,97 +653,97 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
               정산완료 — 전체 정보 읽기 전용
               ============================================================ */}
           {isSettled && (
-            <div className="bg-green-50 rounded-lg px-4 py-3">
-              <h4 className="text-[11px] font-bold text-green-500 uppercase tracking-wider mb-2 flex items-center gap-1">
+            <div className="bg-olive-50 rounded-lg px-4 py-3">
+              <h4 className="text-[11px] font-bold text-olive-500 uppercase tracking-wider mb-2 flex items-center gap-1">
                 <Lock className="h-3 w-3" /> 정산 완료 — 수정 불가
               </h4>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
                 {/* 접수 정보 */}
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">접수일</span>
+                  <span className="text-[10px] text-olive-400">접수일</span>
                   <span className="font-medium text-gray-700">{request.receptionDate}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">계열사</span>
+                  <span className="text-[10px] text-olive-400">계열사</span>
                   <span className="font-medium text-gray-700">{request.affiliate}</span>
                 </div>
                 {request.contactName && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400">담당자</span>
+                    <span className="text-[10px] text-olive-400">담당자</span>
                     <span className="font-medium text-gray-700">{request.contactName}</span>
                   </div>
                 )}
                 {request.contactPhone && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400">연락처</span>
+                    <span className="text-[10px] text-olive-400">연락처</span>
                     <span className="font-medium text-gray-700">{request.contactPhone}</span>
                   </div>
                 )}
                 {request.modelName && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400">모델명</span>
+                    <span className="text-[10px] text-olive-400">모델명</span>
                     <span className="font-medium text-gray-700">{request.modelName}</span>
                   </div>
                 )}
                 {request.outdoorUnitLocation && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400">실외기 위치</span>
+                    <span className="text-[10px] text-olive-400">실외기 위치</span>
                     <span className="font-medium text-gray-700">{request.outdoorUnitLocation}</span>
                   </div>
                 )}
                 {request.asReason && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-green-200">
-                    <span className="text-[10px] text-green-400">AS 사유</span>
+                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
+                    <span className="text-[10px] text-olive-400">AS 사유</span>
                     <span className="text-gray-700">{request.asReason}</span>
                   </div>
                 )}
                 {/* AS 처리 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-green-200">
-                  <span className="text-[10px] text-green-400 font-bold mb-1">AS 처리 정보</span>
+                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
+                  <span className="text-[10px] text-olive-400 font-bold mb-1">AS 처리 정보</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">삼성AS센터</span>
+                  <span className="text-[10px] text-olive-400">삼성AS센터</span>
                   <span className="font-medium text-gray-700">{request.samsungAsCenter || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">방문일</span>
+                  <span className="text-[10px] text-olive-400">방문일</span>
                   <span className="font-medium text-gray-700">{request.visitDate || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">AS 기사</span>
+                  <span className="text-[10px] text-olive-400">AS 기사</span>
                   <span className="font-medium text-gray-700">{request.technicianName || '-'}</span>
                 </div>
                 {request.technicianPhone && (
                   <div className="flex flex-col">
-                    <span className="text-[10px] text-green-400">기사 연락처</span>
+                    <span className="text-[10px] text-olive-400">기사 연락처</span>
                     <span className="font-medium text-gray-700">{request.technicianPhone}</span>
                   </div>
                 )}
                 {request.processingDetails && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-green-200">
-                    <span className="text-[10px] text-green-400">처리내역</span>
+                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
+                    <span className="text-[10px] text-olive-400">처리내역</span>
                     <span className="text-gray-700">{request.processingDetails}</span>
                   </div>
                 )}
                 {/* 정산 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-green-200">
-                  <span className="text-[10px] text-green-400 font-bold mb-1">정산 정보</span>
+                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
+                  <span className="text-[10px] text-olive-400 font-bold mb-1">정산 정보</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">처리일</span>
+                  <span className="text-[10px] text-olive-400">처리일</span>
                   <span className="font-medium text-gray-700">{request.processedDate || '-'}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">정산월</span>
-                  <span className="font-bold text-green-700">{formatSettlementMonth(request.settlementMonth)}</span>
+                  <span className="text-[10px] text-olive-400">정산월</span>
+                  <span className="font-bold text-olive-700">{formatSettlementMonth(request.settlementMonth)}</span>
                 </div>
                 <div className="flex flex-col">
-                  <span className="text-[10px] text-green-400">총금액</span>
-                  <span className="font-bold text-green-700">{formatAmount(request.totalAmount)}</span>
+                  <span className="text-[10px] text-olive-400">총금액</span>
+                  <span className="font-bold text-olive-700">{formatAmount(request.totalAmount)}</span>
                 </div>
                 {request.notes && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-green-200">
-                    <span className="text-[10px] text-green-400">메모</span>
+                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
+                    <span className="text-[10px] text-olive-400">메모</span>
                     <span className="text-gray-700">{request.notes}</span>
                   </div>
                 )}
@@ -758,9 +758,9 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
             <>
               {/* 방문 예정일 — 빨간 강조 (처리중에서만 표시) */}
               {request.status === 'in-progress' && (
-                <div className="border-2 border-red-300 rounded-lg p-3 bg-red-50">
+                <div className="border-2 border-brick-300 rounded-lg p-3 bg-brick-50">
                   <div className="flex items-center justify-between">
-                    <Label htmlFor="visit-date" className="flex items-center gap-1.5 text-red-600 font-bold text-sm">
+                    <Label htmlFor="visit-date" className="flex items-center gap-1.5 text-brick-600 font-bold text-sm">
                       <CalendarClock className="h-4 w-4" />
                       방문 예정일
                     </Label>
@@ -769,7 +769,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                       type="date"
                       value={visitDate}
                       onChange={e => setVisitDate(e.target.value)}
-                      className="w-[180px] h-9 border-red-300 bg-white text-red-700 font-bold text-center"
+                      className="w-[180px] h-9 border-brick-300 bg-white text-brick-700 font-bold text-center"
                     />
                   </div>
                 </div>
@@ -832,34 +832,34 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
 
               {/* 비용 섹션 (처리중/정산대기에서 표시) */}
               {(request.status === 'in-progress' || request.status === 'completed') && (
-                <div className="border-2 border-blue-300 rounded-lg p-4 bg-blue-50/50 space-y-3">
-                  <h4 className="text-[11px] font-bold text-blue-600 uppercase tracking-wider">비용 <span className="text-[10px] font-normal text-gray-400 normal-case">(부가세 별도)</span></h4>
+                <div className="border-2 border-teal-300 rounded-lg p-4 bg-teal-50/50 space-y-3">
+                  <h4 className="text-[11px] font-bold text-teal-600 uppercase tracking-wider">비용 <span className="text-[10px] font-normal text-gray-400 normal-case">(부가세 별도)</span></h4>
                   <div className="grid grid-cols-3 gap-3">
                     <div className="space-y-1">
-                      <Label htmlFor="as-cost" className="text-xs text-blue-500 font-medium">AS 비용</Label>
+                      <Label htmlFor="as-cost" className="text-xs text-teal-500 font-medium">AS 비용</Label>
                       <Input
                         id="as-cost"
                         type="number"
                         placeholder="0"
                         value={asCost || ''}
                         onChange={e => setAsCost(Number(e.target.value) || 0)}
-                        className="h-9 bg-white border-blue-200"
+                        className="h-9 bg-white border-teal-200"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label htmlFor="as-fee" className="text-xs text-blue-500 font-medium">접수비</Label>
+                      <Label htmlFor="as-fee" className="text-xs text-teal-500 font-medium">접수비</Label>
                       <Input
                         id="as-fee"
                         type="number"
                         placeholder="0"
                         value={receptionFee || ''}
                         onChange={e => setReceptionFee(Number(e.target.value) || 0)}
-                        className="h-9 bg-white border-blue-200"
+                        className="h-9 bg-white border-teal-200"
                       />
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs text-blue-500 font-medium">총금액</Label>
-                      <div className="h-9 flex items-center justify-center px-3 bg-blue-600 rounded-md text-sm font-bold text-white">
+                      <Label className="text-xs text-teal-500 font-medium">총금액</Label>
+                      <div className="h-9 flex items-center justify-center px-3 bg-teal-600 rounded-md text-sm font-bold text-white">
                         {totalAmount.toLocaleString('ko-KR')}원
                       </div>
                     </div>
@@ -941,7 +941,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
               {!isSettled && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-red-400 hover:text-red-600 hover:bg-red-50 text-xs">
+                    <Button variant="ghost" size="sm" className="text-brick-400 hover:text-brick-600 hover:bg-brick-50 text-xs">
                       <Trash2 className="h-3.5 w-3.5 mr-1" />
                       삭제
                     </Button>
@@ -956,7 +956,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                     </AlertDialogHeader>
                     <AlertDialogFooter>
                       <AlertDialogCancel>취소</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-red-600 hover:bg-red-700">
+                      <AlertDialogAction onClick={handleDelete} className="bg-brick-600 hover:bg-brick-700">
                         삭제
                       </AlertDialogAction>
                     </AlertDialogFooter>
@@ -971,7 +971,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                     <><Loader2 className="h-3 w-3 animate-spin" /> 저장 중...</>
                   )}
                   {saveStatus === 'saved' && (
-                    <><Check className="h-3 w-3 text-green-500" /> 자동 저장됨</>
+                    <><Check className="h-3 w-3 text-olive-500" /> 자동 저장됨</>
                   )}
                   {saveStatus === 'idle' && '입력 시 자동 저장'}
                 </span>

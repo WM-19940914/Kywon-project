@@ -85,7 +85,7 @@ export function DeliveryPriceTableSheet({ open, onOpenChange, onSelectSet }: Del
           <div className="relative mt-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <input
-              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100 placeholder:text-gray-400"
+              className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-lg bg-white focus:outline-none focus:border-teal-400 focus:ring-2 focus:ring-teal-100 placeholder:text-gray-400"
               placeholder="품목, 모델명, 평형으로 검색..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -99,7 +99,7 @@ export function DeliveryPriceTableSheet({ open, onOpenChange, onSelectSet }: Del
             <div key={group.category}>
               {/* 카테고리 헤더 */}
               <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-full">
                   {group.category}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -114,26 +114,26 @@ export function DeliveryPriceTableSheet({ open, onOpenChange, onSelectSet }: Del
                     key={row.model}
                     type="button"
                     onClick={() => handleSetModelClick(row)}
-                    className="w-full text-left group rounded-lg border border-gray-150 bg-white px-4 py-3 hover:border-blue-300 hover:bg-blue-50/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150 cursor-pointer"
+                    className="w-full text-left group rounded-lg border border-gray-150 bg-white px-4 py-3 hover:border-teal-300 hover:bg-teal-50/60 hover:shadow-sm active:scale-[0.99] transition-all duration-150 cursor-pointer"
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-3">
                           {/* 평형 뱃지 */}
-                          <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-blue-100 group-hover:text-blue-700 transition-colors">
+                          <span className="inline-flex items-center justify-center min-w-[40px] px-2 py-0.5 text-xs font-bold text-gray-700 bg-gray-100 rounded-md group-hover:bg-teal-100 group-hover:text-teal-700 transition-colors">
                             {row.size}
                           </span>
                           {/* SET 모델명 */}
-                          <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-blue-700 truncate">
+                          <span className="text-sm font-mono font-semibold text-gray-800 group-hover:text-teal-700 truncate">
                             {row.model}
                           </span>
                         </div>
                         {/* 구성품 목록 (타입 + 모델명 위아래) */}
                         <div className="mt-1.5 flex items-start gap-2 ml-0.5">
                           {row.components.map((comp, ci) => (
-                            <div key={ci} className="flex flex-col items-start bg-gray-50 px-2 py-1 rounded group-hover:bg-blue-50 transition-colors">
-                              <span className="text-[10px] font-medium text-gray-500 group-hover:text-blue-600">[{comp.type}]</span>
-                              <span className="text-[11px] font-mono text-gray-600 group-hover:text-blue-700">{comp.model}</span>
+                            <div key={ci} className="flex flex-col items-start bg-gray-50 px-2 py-1 rounded group-hover:bg-teal-50 transition-colors">
+                              <span className="text-[10px] font-medium text-gray-500 group-hover:text-teal-600">[{comp.type}]</span>
+                              <span className="text-[11px] font-mono text-gray-600 group-hover:text-teal-700">{comp.model}</span>
                             </div>
                           ))}
                         </div>
@@ -141,7 +141,7 @@ export function DeliveryPriceTableSheet({ open, onOpenChange, onSelectSet }: Del
 
                       {/* 구성품 수 표시 */}
                       <div className="ml-4 shrink-0">
-                        <span className="text-xs text-gray-400 group-hover:text-blue-500">
+                        <span className="text-xs text-gray-400 group-hover:text-teal-500">
                           {row.components.length}개 구성품
                         </span>
                       </div>
@@ -165,7 +165,7 @@ export function DeliveryPriceTableSheet({ open, onOpenChange, onSelectSet }: Del
         {/* 하단 안내 */}
         <div className="border-t bg-slate-50 px-6 py-3">
           <div className="flex items-start gap-2">
-            <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+            <Zap className="h-3.5 w-3.5 text-gold-500 mt-0.5 shrink-0" />
             <p className="text-xs text-gray-500 leading-relaxed">
               SET 모델을 클릭하면 실내기·실외기·자재박스(·리모컨)가 현재 행부터 자동 입력됩니다. 행이 부족하면 자동으로 추가됩니다.
             </p>

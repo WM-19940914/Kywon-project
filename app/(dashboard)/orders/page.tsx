@@ -334,7 +334,7 @@ export default function OrdersPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <ClipboardList className="h-6 w-6" />
         </div>
         <div>
@@ -409,7 +409,7 @@ export default function OrdersPage() {
         <p className="text-sm text-slate-500">
           총 {totalOrders}건의 발주
           {(searchTerm || affiliateFilter !== 'all') && (
-            <span className="text-blue-600 font-medium ml-2">
+            <span className="text-teal-600 font-medium ml-2">
               (필터링: {filteredOrders.length}건)
             </span>
           )}
@@ -494,11 +494,11 @@ interface KanbanColumnProps {
 
 function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps) {
   const columnStyles: Record<OrderStatus, { bg: string; stripe: string }> = {
-    'received': { bg: 'bg-amber-50/50', stripe: 'border-t-4 border-t-amber-400' },
-    'in-progress': { bg: 'bg-blue-50/50', stripe: 'border-t-4 border-t-blue-400' },
-    'completed': { bg: 'bg-violet-50/50', stripe: 'border-t-4 border-t-violet-400' },
-    'settled': { bg: 'bg-emerald-50/50', stripe: 'border-t-4 border-t-emerald-400' },
-    'cancelled': { bg: 'bg-red-50/50', stripe: 'border-t-4 border-t-red-400' },
+    'received': { bg: 'bg-gold-50/50', stripe: 'border-t-4 border-t-gold-400' },
+    'in-progress': { bg: 'bg-carrot-50/50', stripe: 'border-t-4 border-t-carrot-400' },
+    'completed': { bg: 'bg-teal-50/50', stripe: 'border-t-4 border-t-teal-500' },
+    'settled': { bg: 'bg-olive-50/50', stripe: 'border-t-4 border-t-olive-400' },
+    'cancelled': { bg: 'bg-brick-50/50', stripe: 'border-t-4 border-t-brick-500' },
   }
 
   const style = columnStyles[status]

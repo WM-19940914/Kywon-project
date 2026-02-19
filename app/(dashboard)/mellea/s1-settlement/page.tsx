@@ -56,8 +56,8 @@ type S1Tab = 'unsettled' | 'in-progress' | 'settled'
 
 const TAB_CONFIG: { key: S1Tab; label: string; icon: React.ReactNode; color: string }[] = [
   { key: 'unsettled', label: '설치비 미정산', icon: <CircleDot className="h-4 w-4" />, color: 'text-gray-700' },
-  { key: 'in-progress', label: '설치비 정산진행중', icon: <Clock className="h-4 w-4" />, color: 'text-orange-600' },
-  { key: 'settled', label: '설치비 정산완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-green-600' },
+  { key: 'in-progress', label: '설치비 정산진행중', icon: <Clock className="h-4 w-4" />, color: 'text-carrot-600' },
+  { key: 'settled', label: '설치비 정산완료', icon: <CheckCircle2 className="h-4 w-4" />, color: 'text-olive-600' },
 ]
 
 /** 탭 안내 문구 */
@@ -120,7 +120,7 @@ function SettledMonthGroup({
       {/* 월별 헤더 (클릭하면 접기/펼치기) */}
       <button
         className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-colors ${
-          isOpen ? 'bg-green-50 border border-green-200' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
+          isOpen ? 'bg-olive-50 border border-olive-200' : 'bg-slate-50 border border-slate-200 hover:bg-slate-100'
         }`}
         onClick={() => setIsOpen(prev => !prev)}
       >
@@ -176,7 +176,7 @@ function SettledMonthGroup({
                   return (
                     <React.Fragment key={order.id}>
                       <tr
-                        className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer ${isExpanded ? 'bg-green-50/40' : ''}`}
+                        className={`border-b border-slate-100 hover:bg-teal-50/40 transition-colors cursor-pointer ${isExpanded ? 'bg-olive-50/40' : ''}`}
                         onClick={() => onToggleExpand(order.id)}
                       >
                         <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
@@ -233,7 +233,7 @@ function SettledMonthGroup({
                           </Badge>
                         </td>
                         <td className="p-3 text-center">
-                          <span className="text-xs font-medium text-green-700">
+                          <span className="text-xs font-medium text-olive-700">
                             {order.s1SettlementMonth
                               ? formatYearMonth(order.s1SettlementMonth)
                               : '-'
@@ -247,8 +247,8 @@ function SettledMonthGroup({
                         <tr>
                           <td colSpan={8} className="p-0">
                             <div className="mx-4 my-3">
-                              <div className="border border-green-200 rounded-xl overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
-                                <div className="flex items-center gap-2 px-3 py-2 bg-green-600">
+                              <div className="border border-olive-200 rounded-xl overflow-hidden bg-white shadow-sm" style={{ width: '870px' }}>
+                                <div className="flex items-center gap-2 px-3 py-2 bg-olive-600">
                                   <Receipt className="h-3.5 w-3.5 text-white" />
                                   <span className="text-xs font-bold text-white tracking-wide">설치비 견적서</span>
                                 </div>
@@ -271,7 +271,7 @@ function SettledMonthGroup({
                                         <col style={{ width: '140px' }} />
                                       </colgroup>
                                       <thead>
-                                        <tr className="bg-green-50 border-b border-green-200 text-green-900">
+                                        <tr className="bg-olive-50 border-b border-olive-200 text-olive-900">
                                           <th className="text-center py-2 px-2 font-semibold">No.</th>
                                           <th className="text-center py-2 px-2 font-semibold">품목</th>
                                           <th className="text-center py-2 px-2 font-semibold">규격</th>
@@ -287,7 +287,7 @@ function SettledMonthGroup({
                                           const displayName = hasModel ? item.itemName.split('|||')[0] : item.itemName
                                           const displayModel = hasModel ? item.itemName.split('|||')[1] : '-'
                                           return (
-                                            <tr key={item.id || idx} className="border-b border-slate-100 hover:bg-green-50/30">
+                                            <tr key={item.id || idx} className="border-b border-slate-100 hover:bg-olive-50/30">
                                               <td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td>
                                               <td className="py-2 px-2 text-center text-slate-800 font-medium truncate" title={displayName}>{displayName}</td>
                                               <td className="py-2 px-2 text-center text-slate-500 truncate" title={displayModel}>{displayModel}</td>
@@ -303,13 +303,13 @@ function SettledMonthGroup({
                                         {installRounding > 0 && (
                                           <tr className="border-t border-slate-200">
                                             <td colSpan={5} className="py-1.5 px-1.5 text-right text-slate-500">단위절사</td>
-                                            <td className="py-1.5 px-1.5 text-right text-red-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
+                                            <td className="py-1.5 px-1.5 text-right text-brick-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
                                             <td></td>
                                           </tr>
                                         )}
-                                        <tr className="bg-green-50 border-t border-green-200">
-                                          <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-green-800">설치비 소계</td>
-                                          <td className="py-2 px-1.5 text-right font-bold text-green-800">{finalSubtotal.toLocaleString('ko-KR')}</td>
+                                        <tr className="bg-olive-50 border-t border-olive-200">
+                                          <td colSpan={5} className="py-2 px-1.5 text-right font-bold text-olive-800">설치비 소계</td>
+                                          <td className="py-2 px-1.5 text-right font-bold text-olive-800">{finalSubtotal.toLocaleString('ko-KR')}</td>
                                           <td></td>
                                         </tr>
                                       </tfoot>
@@ -674,7 +674,7 @@ export default function S1SettlementPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <Receipt className="h-6 w-6" />
         </div>
         <div className="flex-1">
@@ -693,14 +693,14 @@ export default function S1SettlementPage() {
               <button
                 key={tab.key}
                 className={active
-                  ? "border-b-2 border-blue-500 text-blue-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2"
+                  ? "border-b-2 border-teal-500 text-teal-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2"
                   : "text-slate-500 hover:text-slate-700 pb-3 px-4 text-sm flex items-center gap-2"
                 }
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.icon}
                 {tab.label}
-                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${active ? 'bg-blue-100 text-blue-600' : 'bg-slate-100 text-slate-500'}`}>
+                <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${active ? 'bg-teal-100 text-teal-600' : 'bg-slate-100 text-slate-500'}`}>
                   {tabCounts[tab.key]}
                 </span>
               </button>
@@ -715,10 +715,10 @@ export default function S1SettlementPage() {
           <div className="flex items-center gap-2 text-sm flex-wrap">
             {/* 정산 월 뱃지 (클릭하면 수정 모드) */}
             {isEditingMonth ? (
-              <span className="inline-flex items-center gap-1.5 bg-orange-100 border border-orange-300 rounded-lg px-2 py-1">
-                <Clock className="h-3.5 w-3.5 text-orange-600" />
+              <span className="inline-flex items-center gap-1.5 bg-carrot-100 border border-carrot-300 rounded-lg px-2 py-1">
+                <Clock className="h-3.5 w-3.5 text-carrot-600" />
                 <select
-                  className="bg-transparent text-orange-800 font-bold text-sm focus:outline-none cursor-pointer"
+                  className="bg-transparent text-carrot-800 font-bold text-sm focus:outline-none cursor-pointer"
                   value={settlementYear}
                   onChange={(e) => setSettlementYear(Number(e.target.value))}
                 >
@@ -727,7 +727,7 @@ export default function S1SettlementPage() {
                   ))}
                 </select>
                 <select
-                  className="bg-transparent text-orange-800 font-bold text-sm focus:outline-none cursor-pointer"
+                  className="bg-transparent text-carrot-800 font-bold text-sm focus:outline-none cursor-pointer"
                   value={settlementMonth}
                   onChange={(e) => setSettlementMonth(Number(e.target.value))}
                 >
@@ -735,9 +735,9 @@ export default function S1SettlementPage() {
                     <option key={m} value={m}>{m}월</option>
                   ))}
                 </select>
-                <span className="text-orange-800 font-bold text-sm">정산</span>
+                <span className="text-carrot-800 font-bold text-sm">정산</span>
                 <button
-                  className="ml-1 text-[10px] bg-orange-500 text-white rounded-lg px-1.5 py-0.5 hover:bg-orange-600"
+                  className="ml-1 text-[10px] bg-carrot-500 text-white rounded-lg px-1.5 py-0.5 hover:bg-carrot-600"
                   onClick={() => setIsEditingMonth(false)}
                 >
                   확인
@@ -745,16 +745,16 @@ export default function S1SettlementPage() {
               </span>
             ) : (
               <button
-                className="inline-flex items-center gap-1.5 bg-orange-100 border border-orange-300 text-orange-800 font-bold px-3 py-1 rounded-lg hover:bg-orange-200 transition-colors"
+                className="inline-flex items-center gap-1.5 bg-carrot-100 border border-carrot-300 text-carrot-800 font-bold px-3 py-1 rounded-lg hover:bg-carrot-200 transition-colors"
                 onClick={() => setIsEditingMonth(true)}
                 title="클릭하여 정산 월 변경"
               >
                 <Clock className="h-3.5 w-3.5" />
                 {settlementYear}년 {settlementMonth}월 정산
-                <Pencil className="h-3 w-3 ml-1 text-orange-500" />
+                <Pencil className="h-3 w-3 ml-1 text-carrot-500" />
               </button>
             )}
-            <ArrowRight className="h-4 w-4 text-orange-400" />
+            <ArrowRight className="h-4 w-4 text-carrot-400" />
             <span className="text-slate-600">이번달 정산 예정중인 현장입니다.</span>
           </div>
           <p className="text-xs text-slate-400 ml-1">멜레아에서 정산이 완료되면 정산 완료 페이지로 처리하세요. (정산 월은 현재 날짜 기준 자동 반영, 클릭하여 변경 가능)</p>
@@ -764,11 +764,11 @@ export default function S1SettlementPage() {
           <p className="text-sm text-slate-500 mb-2">{TAB_DESCRIPTIONS[activeTab]}</p>
           {/* 미정산 탭: 일정미정 제외 건수 + 재촉 안내 */}
           {activeTab === 'unsettled' && unscheduledCount > 0 && (
-            <div className="bg-white rounded-xl border border-amber-200 shadow-sm p-4">
-              <p className="text-sm text-amber-700">
+            <div className="bg-white rounded-xl border border-gold-200 shadow-sm p-4">
+              <p className="text-sm text-gold-700">
                 설치일정이 잡히지 않은 <span className="font-bold">{unscheduledCount}건</span>이 제외되었습니다.
               </p>
-              <p className="text-xs text-amber-600 mt-0.5">
+              <p className="text-xs text-gold-600 mt-0.5">
                 설치일정을 확정해주세요.
               </p>
             </div>
@@ -782,7 +782,7 @@ export default function S1SettlementPage() {
           <Button
             onClick={() => handleBatchStatusChange('in-progress')}
             disabled={selectedIds.size === 0 || actionLoading}
-            className="bg-orange-600 hover:bg-orange-700 rounded-lg"
+            className="bg-carrot-600 hover:bg-carrot-700 rounded-lg"
           >
             <ArrowRight className="h-4 w-4 mr-1" />
             정산 진행중으로 이동 ({selectedIds.size}건)
@@ -794,7 +794,7 @@ export default function S1SettlementPage() {
           <Button
             onClick={() => handleBatchStatusChange('settled')}
             disabled={selectedIds.size === 0 || actionLoading}
-            className="bg-green-600 hover:bg-green-700 rounded-lg"
+            className="bg-olive-600 hover:bg-olive-700 rounded-lg"
           >
             <CheckCircle2 className="h-4 w-4 mr-1" />
             정산 완료 처리 ({selectedIds.size}건)
@@ -908,7 +908,7 @@ export default function S1SettlementPage() {
                     <React.Fragment key={order.id}>
                       {/* 현장 행 (클릭하면 아코디언 열림) */}
                       <tr
-                        className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-50/60' : ''}`}
+                        className={`border-b border-slate-100 hover:bg-teal-50/40 transition-colors cursor-pointer ${isExpanded ? 'bg-slate-50/60' : ''}`}
                         onClick={() => handleToggleExpand(order.id)}
                       >
                         {/* 체크박스 */}
@@ -939,13 +939,13 @@ export default function S1SettlementPage() {
                         {/* 설치상태 (도트 + 텍스트) */}
                         <td className="p-3 whitespace-nowrap">
                           {order.installCompleteDate ? (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-                              <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-olive-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-olive-500" />
                               설치완료
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-                              <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700">
+                              <span className="h-2 w-2 shrink-0 rounded-full bg-teal-500" />
                               설치예정
                             </span>
                           )}
@@ -995,7 +995,7 @@ export default function S1SettlementPage() {
                         {/* 진행중 탭: 정산월 */}
                         {activeTab === 'in-progress' && (
                           <td className="p-3 text-center">
-                            <span className="text-xs font-medium text-orange-700">
+                            <span className="text-xs font-medium text-carrot-700">
                               {order.s1SettlementMonth
                                 ? formatYearMonth(order.s1SettlementMonth)
                                 : `${settlementYear}년 ${settlementMonth}월`
@@ -1092,7 +1092,7 @@ export default function S1SettlementPage() {
                                       {installRounding > 0 && (
                                         <tr className="border-t border-slate-200">
                                           <td colSpan={5} className="py-1.5 px-1.5 text-right text-slate-500">단위절사</td>
-                                          <td className="py-1.5 px-1.5 text-right text-red-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
+                                          <td className="py-1.5 px-1.5 text-right text-brick-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</td>
                                           <td></td>
                                         </tr>
                                       )}
@@ -1220,13 +1220,13 @@ export default function S1SettlementPage() {
                     <div className="flex items-center justify-between text-xs text-slate-500">
                       <div className="flex items-center gap-2">
                         {order.installCompleteDate ? (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-green-700">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-green-500" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-olive-700">
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-olive-500" />
                             설치완료
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-blue-700">
-                            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                          <span className="inline-flex items-center gap-1.5 text-xs font-medium text-teal-700">
+                            <span className="h-2 w-2 shrink-0 rounded-full bg-teal-500" />
                             설치예정
                           </span>
                         )}
@@ -1295,7 +1295,7 @@ export default function S1SettlementPage() {
                           {installRounding > 0 && (
                             <div className="flex items-center justify-between px-3 py-2 bg-slate-50">
                               <span className="text-xs text-slate-500">단위절사</span>
-                              <span className="text-sm text-red-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</span>
+                              <span className="text-sm text-brick-500 font-medium">-{installRounding.toLocaleString('ko-KR')}</span>
                             </div>
                           )}
                           {/* 소계 */}

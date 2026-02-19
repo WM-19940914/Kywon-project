@@ -107,12 +107,12 @@ async function openAddressSearch(
  * 같은 SET 모델에 속한 구성품 행들의 좌측에 같은 색상의 세로 막대를 표시
  */
 const SET_GROUP_COLORS = [
-  '#3B82F6', // blue
-  '#8B5CF6', // violet
-  '#10B981', // emerald
-  '#F59E0B', // amber
-  '#EC4899', // pink
-  '#06B6D4', // cyan
+  '#5B8E7D', // teal (정글 틸)
+  '#F3933F', // carrot (당근 오렌지)
+  '#8CB369', // olive (올리브 그린)
+  '#F4E285', // gold (밝은 금색)
+  '#BC4B51', // brick (벽돌 레드)
+  '#487568', // teal-600 (진한 틸)
 ]
 
 /**
@@ -362,8 +362,8 @@ function WarehousePickerDialog({
 
         {/* 인도처 추가 폼 */}
         {showAddForm && (
-          <div className="border border-blue-200 bg-blue-50/50 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-medium text-blue-700">새 인도처 정보 입력</p>
+          <div className="border border-teal-200 bg-teal-50/50 rounded-lg p-3 space-y-2">
+            <p className="text-xs font-medium text-teal-700">새 인도처 정보 입력</p>
             <div className="grid grid-cols-2 gap-2">
               <div>
                 <label className="text-[10px] text-gray-500">창고명 *</label>
@@ -387,7 +387,7 @@ function WarehousePickerDialog({
                 <label className="text-[10px] text-gray-500">주소 * (클릭하여 검색)</label>
                 <div
                   onClick={handleSearchAddress}
-                  className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-xs cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+                  className="flex items-center gap-1.5 h-7 px-2 rounded-md border text-xs cursor-pointer hover:border-teal-400 hover:bg-teal-50/50 transition-colors"
                 >
                   <SearchIcon className="h-3 w-3 text-muted-foreground flex-shrink-0" />
                   <span className={newWarehouse.address ? 'text-foreground truncate' : 'text-muted-foreground truncate'} title={newWarehouse.address || ''}>
@@ -411,7 +411,7 @@ function WarehousePickerDialog({
               </Button>
               <Button
                 size="sm"
-                className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-7"
+                className="bg-teal-600 hover:bg-teal-700 text-white text-xs h-7"
                 disabled={!newWarehouse.name.trim() || !newWarehouse.address.trim()}
                 onClick={handleAddWarehouse}
               >
@@ -437,8 +437,8 @@ function WarehousePickerDialog({
             <button
               key={wh.id}
               type="button"
-              className={`w-full text-left border rounded-lg p-3 transition-all hover:border-blue-400 hover:bg-blue-50/50 ${
-                currentId === wh.id ? 'border-blue-500 bg-blue-50 ring-1 ring-blue-500' : 'border-gray-200'
+              className={`w-full text-left border rounded-lg p-3 transition-all hover:border-teal-400 hover:bg-teal-50/50 ${
+                currentId === wh.id ? 'border-teal-500 bg-teal-50 ring-1 ring-teal-500' : 'border-gray-200'
               }`}
               onClick={() => {
                 onSelect(wh.id)
@@ -492,12 +492,12 @@ function WarehouseNameCell({
       <span className="text-xs font-semibold text-gray-800 truncate" title={`${detail.name}_${detail.managerName}`}>
         {detail.name}_{detail.managerName}
       </span>
-      <Pencil className="h-3 w-3 text-gray-300 group-hover:text-blue-500 shrink-0" />
+      <Pencil className="h-3 w-3 text-gray-300 group-hover:text-teal-500 shrink-0" />
     </button>
   ) : (
     <button
       type="button"
-      className="w-full h-7 border border-dashed border-gray-300 rounded text-xs text-gray-400 hover:border-blue-400 hover:text-blue-500 transition-colors"
+      className="w-full h-7 border border-dashed border-gray-300 rounded text-xs text-gray-400 hover:border-teal-400 hover:text-teal-500 transition-colors"
       onClick={(e) => { e.stopPropagation(); onPickerOpen() }}
     >
       창고 선택
@@ -549,7 +549,7 @@ function StatusBadge({ order, editingItems, currentTab }: { order: Order; editin
   // 배송완료 탭이면 무조건 "배송완료" 표시
   if (currentTab === 'delivered') {
     return (
-      <Badge className="bg-green-100 text-green-800 border-green-300 text-xs">
+      <Badge className="bg-olive-100 text-olive-800 border-olive-300 text-xs">
         ✅ 배송완료
       </Badge>
     )
@@ -609,18 +609,18 @@ function DeliveryProgressSummary({ order }: { order: Order }) {
       return (
         <div className="flex flex-col gap-0.5 max-w-[90px]">
           <div className="flex items-center gap-1">
-            <span className="inline-flex h-[16px] px-1 items-center rounded-full bg-green-100 border border-green-200">
-              <span className="text-[9px] font-bold text-green-700">전체확정</span>
+            <span className="inline-flex h-[16px] px-1 items-center rounded-full bg-olive-100 border border-olive-200">
+              <span className="text-[9px] font-bold text-olive-700">전체확정</span>
             </span>
           </div>
           <div className="flex items-center gap-1">
             <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
               <div
-                className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all"
+                className="h-full bg-gradient-to-r from-olive-400 to-olive-500 rounded-full transition-all"
                 style={{ width: `${Math.round((arrived / progress.total) * 100)}%` }}
               />
             </div>
-            <span className="text-[9px] font-semibold text-sky-600 whitespace-nowrap">{undelivered.futureDate}건 대기</span>
+            <span className="text-[9px] font-semibold text-teal-600 whitespace-nowrap">{undelivered.futureDate}건 대기</span>
           </div>
         </div>
       )
@@ -628,11 +628,11 @@ function DeliveryProgressSummary({ order }: { order: Order }) {
 
     // 전부 도착 완료
     return (
-      <span className="inline-flex h-[18px] px-1.5 items-center rounded-full bg-green-100 border border-green-200">
-        <svg className="h-3 w-3 text-green-600 mr-0.5" viewBox="0 0 20 20" fill="currentColor">
+      <span className="inline-flex h-[18px] px-1.5 items-center rounded-full bg-olive-100 border border-olive-200">
+        <svg className="h-3 w-3 text-olive-600 mr-0.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
         </svg>
-        <span className="text-[10px] font-bold text-green-700">전체확정</span>
+        <span className="text-[10px] font-bold text-olive-700">전체확정</span>
       </span>
     )
   }
@@ -642,14 +642,14 @@ function DeliveryProgressSummary({ order }: { order: Order }) {
   return (
     <div className="flex flex-col gap-0.5 max-w-[90px]">
       <div className="flex items-center justify-between">
-        <span className="text-[9px] font-bold text-blue-700">
+        <span className="text-[9px] font-bold text-teal-700">
           {progress.confirmed}<span className="text-gray-400 font-normal">/{progress.total}</span> 확정
         </span>
         <span className="text-[9px] text-gray-400">{percent}%</span>
       </div>
-      <div className="w-full h-1 bg-blue-50 rounded-full overflow-hidden">
+      <div className="w-full h-1 bg-teal-50 rounded-full overflow-hidden">
         <div
-          className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all"
+          className="h-full bg-gradient-to-r from-teal-400 to-teal-500 rounded-full transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -709,10 +709,10 @@ function DeliverySummaryDisplay({ equipmentItems }: { equipmentItems?: Equipment
     return (
       <div className="flex items-center gap-1.5">
         <span className="relative flex h-2 w-2">
-          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
-          <span className="relative inline-flex rounded-full h-2 w-2 bg-red-500" />
+          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-brick-400 opacity-75" />
+          <span className="relative inline-flex rounded-full h-2 w-2 bg-brick-500" />
         </span>
-        <span className="text-xs font-medium text-red-600">{analysis.delayed}건 지연 +{analysis.maxDelayDays}일</span>
+        <span className="text-xs font-medium text-brick-600">{analysis.delayed}건 지연 +{analysis.maxDelayDays}일</span>
       </div>
     )
   }
@@ -740,10 +740,10 @@ function DeliverySummaryDisplay({ equipmentItems }: { equipmentItems?: Equipment
   // 전체 정상: 초록 체크
   return (
     <div className="flex items-center gap-1.5">
-      <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+      <svg className="h-3.5 w-3.5 text-olive-600" viewBox="0 0 20 20" fill="currentColor">
         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
       </svg>
-      <span className="text-xs font-medium text-green-700">전체 정상</span>
+      <span className="text-xs font-medium text-olive-700">전체 정상</span>
     </div>
   )
 }
@@ -1088,7 +1088,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     {/* 배송현황 요약 */}
                     <td className="p-3">
                       {currentTab === 'delivered' ? (
-                        <span className="text-xs font-medium text-green-700">전체 배송완료</span>
+                        <span className="text-xs font-medium text-olive-700">전체 배송완료</span>
                       ) : status === 'ordered' ? (
                         <DeliveryProgressSummary order={order} />
                       ) : (
@@ -1120,7 +1120,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                           {currentTab === 'pending' && (
                             <Button
                               size="sm"
-                              className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
+                              className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 h-7 rounded-lg shadow-sm"
                               onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
                             >
                               발주완료 →
@@ -1129,7 +1129,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                           {currentTab === 'ordered' && (
                             <Button
                               size="sm"
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
+                              className="bg-olive-600 hover:bg-olive-700 text-white text-xs font-bold px-3 h-7"
                               onClick={() => {
                                 // 배송완료 전환 전 미완료 구성품 검증
                                 const items = editingItems[order.id] || order.equipmentItems || []
@@ -1156,7 +1156,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               {/* 진행중 탭: ← 발주대기 */}
                               {currentTab === 'ordered' && (
                                 <DropdownMenuItem
-                                  className="text-xs text-orange-600 cursor-pointer"
+                                  className="text-xs text-carrot-600 cursor-pointer"
                                   onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
                                 >
                                   ← 발주대기로 되돌리기
@@ -1165,7 +1165,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               {/* 배송완료 탭: ← 진행중 / ← 발주대기 */}
                               {currentTab === 'delivered' && (
                                 <DropdownMenuItem
-                                  className="text-xs text-blue-600 cursor-pointer"
+                                  className="text-xs text-teal-600 cursor-pointer"
                                   onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}
                                 >
                                   ← 진행중으로 되돌리기
@@ -1173,7 +1173,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               )}
                               {currentTab === 'delivered' && (
                                 <DropdownMenuItem
-                                  className="text-xs text-orange-600 cursor-pointer"
+                                  className="text-xs text-carrot-600 cursor-pointer"
                                   onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}
                                 >
                                   ← 발주대기로 되돌리기
@@ -1182,7 +1182,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               {/* 발주대기/진행중 탭: 발주취소 */}
                               {(currentTab === 'pending' || currentTab === 'ordered') && onCancelOrder && (
                                 <DropdownMenuItem
-                                  className="text-xs text-red-500 cursor-pointer"
+                                  className="text-xs text-brick-500 cursor-pointer"
                                   onClick={() => setCancelTarget({ orderId: order.id, businessName: order.businessName })}
                                 >
                                   발주취소
@@ -1201,13 +1201,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       <td colSpan={10} className="p-0">
                         <div className="border-t border-gray-200 bg-gray-50/60 px-4 py-4">
                           {/* 옵티명/옵티번호/계약번호 입력 바 */}
-                          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
+                          <div className="bg-teal-50 border border-teal-200 rounded-lg px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">옵티명</label>
+                              <label className="text-xs font-medium text-teal-700 whitespace-nowrap">옵티명</label>
                               <Input
                                 defaultValue={order.optiName || ''}
                                 placeholder="옵티명 입력"
-                                className="h-7 text-xs w-[500px] bg-white border-blue-200 focus:border-blue-400"
+                                className="h-7 text-xs w-[500px] bg-white border-teal-200 focus:border-teal-400"
                                 readOnly={readOnly}
                                 onBlur={(e) => {
                                   const val = e.target.value.trim()
@@ -1218,11 +1218,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">옵티번호</label>
+                              <label className="text-xs font-medium text-teal-700 whitespace-nowrap">옵티번호</label>
                               <Input
                                 defaultValue={order.optiNumber || ''}
                                 placeholder="옵티번호 입력"
-                                className="h-7 text-xs w-[160px] bg-white border-blue-200 focus:border-blue-400"
+                                className="h-7 text-xs w-[160px] bg-white border-teal-200 focus:border-teal-400"
                                 readOnly={readOnly}
                                 onBlur={(e) => {
                                   const val = e.target.value.trim()
@@ -1233,11 +1233,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                               />
                             </div>
                             <div className="flex items-center gap-1.5">
-                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">계약번호</label>
+                              <label className="text-xs font-medium text-teal-700 whitespace-nowrap">계약번호</label>
                               <Input
                                 defaultValue={order.contractNumber || ''}
                                 placeholder="계약번호 입력"
-                                className="h-7 text-xs w-[160px] bg-white border-blue-200 focus:border-blue-400"
+                                className="h-7 text-xs w-[160px] bg-white border-teal-200 focus:border-teal-400"
                                 readOnly={readOnly}
                                 onBlur={(e) => {
                                   const val = e.target.value.trim()
@@ -1283,7 +1283,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                       <td className="px-1 py-1.5 text-center">
                                         {!readOnly && (
                                           <button
-                                            className="text-gray-300 hover:text-red-500 transition-colors p-0.5"
+                                            className="text-gray-300 hover:text-brick-500 transition-colors p-0.5"
                                             onClick={(e) => {
                                               e.stopPropagation()
                                               handleRemoveRow(order.id, idx)
@@ -1402,7 +1402,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                             <button
                                               type="button"
                                               title="단가표에서 선택"
-                                              className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                              className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50 transition-colors"
                                               onClick={(e) => {
                                                 e.stopPropagation()
                                                 setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
@@ -1613,13 +1613,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                       {/* 메인 버튼 */}
                       {currentTab === 'pending' && (
-                        <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold px-3 h-7"
+                        <Button size="sm" className="bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold px-3 h-7"
                           onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
                           발주완료 →
                         </Button>
                       )}
                       {currentTab === 'ordered' && (
-                        <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
+                        <Button size="sm" className="bg-olive-600 hover:bg-olive-700 text-white text-xs font-bold px-3 h-7"
                           onClick={() => {
                             // 배송완료 전환 전 미완료 구성품 검증
                             const items = editingItems[order.id] || order.equipmentItems || []
@@ -1643,25 +1643,25 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="min-w-[140px]">
                           {currentTab === 'ordered' && (
-                            <DropdownMenuItem className="text-xs text-orange-600 cursor-pointer"
+                            <DropdownMenuItem className="text-xs text-carrot-600 cursor-pointer"
                               onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
                               ← 발주대기로 되돌리기
                             </DropdownMenuItem>
                           )}
                           {currentTab === 'delivered' && (
-                            <DropdownMenuItem className="text-xs text-blue-600 cursor-pointer"
+                            <DropdownMenuItem className="text-xs text-teal-600 cursor-pointer"
                               onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'ordered' })}>
                               ← 진행중으로 되돌리기
                             </DropdownMenuItem>
                           )}
                           {currentTab === 'delivered' && (
-                            <DropdownMenuItem className="text-xs text-orange-600 cursor-pointer"
+                            <DropdownMenuItem className="text-xs text-carrot-600 cursor-pointer"
                               onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'pending' })}>
                               ← 발주대기로 되돌리기
                             </DropdownMenuItem>
                           )}
                           {(currentTab === 'pending' || currentTab === 'ordered') && onCancelOrder && (
-                            <DropdownMenuItem className="text-xs text-red-500 cursor-pointer"
+                            <DropdownMenuItem className="text-xs text-brick-500 cursor-pointer"
                               onClick={() => setCancelTarget({ orderId: order.id, businessName: order.businessName })}>
                               발주취소
                             </DropdownMenuItem>
@@ -1676,13 +1676,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               {isExpanded && (
                 <div className="bg-gray-50 border-t px-4 py-3">
                   {/* 옵티명/옵티번호/계약번호 입력 바 (모바일) */}
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 space-y-2">
+                  <div className="bg-teal-50 border border-teal-200 rounded-lg px-3 py-2.5 mb-3 space-y-2">
                     <div className="flex items-center gap-1.5">
-                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">옵티명</label>
+                      <label className="text-xs font-medium text-teal-700 whitespace-nowrap w-[52px]">옵티명</label>
                       <Input
                         defaultValue={order.optiName || ''}
                         placeholder="옵티명 입력"
-                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        className="h-7 text-xs bg-white border-teal-200 flex-1"
                         readOnly={readOnly}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
@@ -1693,11 +1693,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">옵티번호</label>
+                      <label className="text-xs font-medium text-teal-700 whitespace-nowrap w-[52px]">옵티번호</label>
                       <Input
                         defaultValue={order.optiNumber || ''}
                         placeholder="옵티번호 입력"
-                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        className="h-7 text-xs bg-white border-teal-200 flex-1"
                         readOnly={readOnly}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
@@ -1708,11 +1708,11 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       />
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">계약번호</label>
+                      <label className="text-xs font-medium text-teal-700 whitespace-nowrap w-[52px]">계약번호</label>
                       <Input
                         defaultValue={order.contractNumber || ''}
                         placeholder="계약번호 입력"
-                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        className="h-7 text-xs bg-white border-teal-200 flex-1"
                         readOnly={readOnly}
                         onBlur={(e) => {
                           const val = e.target.value.trim()
@@ -1753,7 +1753,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                             </div>
                             {!readOnly && (
                               <button
-                                className="text-gray-300 hover:text-red-500 transition-colors"
+                                className="text-gray-300 hover:text-brick-500 transition-colors"
                                 onClick={(e) => {
                                   e.stopPropagation()
                                   handleRemoveRow(order.id, idx)
@@ -1772,7 +1772,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                   <button
                                     type="button"
                                     title="단가표에서 선택"
-                                    className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-blue-600 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                                    className="shrink-0 h-7 w-7 inline-flex items-center justify-center rounded border border-gray-200 text-gray-400 hover:text-teal-600 hover:border-teal-300 hover:bg-teal-50 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation()
                                       setPriceSheetTarget({ orderId: order.id, itemIdx: idx })
@@ -1968,16 +1968,16 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 {/* 배송완료 전환 + 미완료 구성품 있을 때 경고 */}
                 {statusChangeTarget?.newStatus === 'delivered' && statusChangeTarget?.warning ? (
                   <div className="space-y-2">
-                    <p className="font-medium text-amber-700">
+                    <p className="font-medium text-gold-700">
                       아직 배송이 완료되지 않은 구성품이 있습니다.
                     </p>
-                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs space-y-1">
+                    <div className="bg-gold-50 border border-gold-200 rounded-md p-3 text-xs space-y-1">
                       <p>전체 구성품: <span className="font-bold">{statusChangeTarget.warning.itemCount}개</span></p>
                       {statusChangeTarget.warning.noDate > 0 && (
-                        <p className="text-red-600">배송확정일 미입력: <span className="font-bold">{statusChangeTarget.warning.noDate}개</span></p>
+                        <p className="text-brick-600">배송확정일 미입력: <span className="font-bold">{statusChangeTarget.warning.noDate}개</span></p>
                       )}
                       {statusChangeTarget.warning.futureDate > 0 && (
-                        <p className="text-amber-700">도착 예정(미래 날짜): <span className="font-bold">{statusChangeTarget.warning.futureDate}개</span></p>
+                        <p className="text-gold-700">도착 예정(미래 날짜): <span className="font-bold">{statusChangeTarget.warning.futureDate}개</span></p>
                       )}
                     </div>
                     <p className="text-xs text-gray-500">
@@ -2001,12 +2001,12 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
             <AlertDialogAction
               className={
                 statusChangeTarget?.warning
-                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                  ? 'bg-gold-500 hover:bg-gold-600 text-white'
                   : statusChangeTarget?.newStatus === 'delivered'
-                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    ? 'bg-olive-600 hover:bg-olive-700 text-white'
                     : statusChangeTarget?.newStatus === 'ordered'
-                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                      : 'bg-orange-500 hover:bg-orange-600 text-white'
+                      ? 'bg-teal-600 hover:bg-teal-700 text-white'
+                      : 'bg-carrot-500 hover:bg-carrot-600 text-white'
               }
               onClick={() => {
                 if (statusChangeTarget && onChangeStatus) {
@@ -2033,7 +2033,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="취소 사유를 입력해주세요"
-                  className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300"
+                  className="w-full border rounded-md px-3 py-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-brick-300"
                 />
                 <p className="text-xs text-gray-400">취소된 발주는 과거내역에서 확인할 수 있습니다.</p>
               </div>
@@ -2042,7 +2042,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
           <AlertDialogFooter>
             <AlertDialogCancel>닫기</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-brick-600 hover:bg-brick-700 text-white"
               disabled={!cancelReason.trim()}
               onClick={() => {
                 if (cancelTarget && onCancelOrder && cancelReason.trim()) {

@@ -335,7 +335,7 @@ export default function ASPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <Wrench className="h-6 w-6" />
         </div>
         <div>
@@ -355,7 +355,7 @@ export default function ASPage() {
               key={tab.key}
               className={`pb-3 px-4 text-sm font-medium transition-colors whitespace-nowrap
                 ${activeTab === tab.key
-                  ? 'border-b-2 border-blue-500 text-blue-600 font-semibold'
+                  ? 'border-b-2 border-teal-500 text-teal-600 font-semibold'
                   : 'text-slate-500 hover:text-slate-700'
                 }`}
               onClick={() => handleTabChange(tab.key)}
@@ -363,7 +363,7 @@ export default function ASPage() {
               {tab.label}
               <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${
                 activeTab === tab.key
-                  ? 'bg-blue-100 text-blue-600'
+                  ? 'bg-teal-100 text-teal-600'
                   : 'bg-slate-100 text-slate-500'
               }`}>
                 {tabCounts[tab.key]}
@@ -384,7 +384,7 @@ export default function ASPage() {
                   key={opt.value}
                   className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
                     selectedSettlementMonth === opt.value
-                      ? 'bg-blue-600 text-white'
+                      ? 'bg-teal-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                   onClick={() => setSelectedSettlementMonth(opt.value)}
@@ -404,7 +404,7 @@ export default function ASPage() {
               >
                 <ChevronLeft className="h-4 w-4 text-slate-600" />
               </button>
-              <span className="px-3 py-1.5 text-sm font-semibold text-emerald-700 min-w-[100px] text-center">
+              <span className="px-3 py-1.5 text-sm font-semibold text-olive-700 min-w-[100px] text-center">
                 {settledMonthLabel}
               </span>
               <button
@@ -440,7 +440,7 @@ export default function ASPage() {
 
           {/* 정산완료 일괄 처리 */}
           {activeTab === 'completed' && selectedIds.size > 0 && (
-            <Button onClick={handleBatchSettle} disabled={actionLoading} className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg">
+            <Button onClick={handleBatchSettle} disabled={actionLoading} className="bg-olive-600 hover:bg-olive-700 text-white rounded-lg">
               <CheckCircle2 className="h-4 w-4 mr-1" />
               정산완료 처리 ({selectedIds.size}건)
             </Button>
@@ -459,12 +459,12 @@ export default function ASPage() {
       {/* 통계 카드 */}
       {(activeTab === 'completed' || activeTab === 'settled') && settlementStats && (
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
-          <div className={`bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow ${activeTab === 'settled' ? 'border-emerald-200' : 'border-blue-200'}`}>
+          <div className={`bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow ${activeTab === 'settled' ? 'border-olive-200' : 'border-teal-200'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <FileText className={`h-4 w-4 ${activeTab === 'settled' ? 'text-emerald-500' : 'text-blue-500'}`} />
+              <FileText className={`h-4 w-4 ${activeTab === 'settled' ? 'text-olive-500' : 'text-teal-500'}`} />
               <span className="text-xs text-slate-500">총 건수</span>
             </div>
-            <p className={`text-2xl font-bold ${activeTab === 'settled' ? 'text-emerald-700' : 'text-blue-700'}`}>
+            <p className={`text-2xl font-bold ${activeTab === 'settled' ? 'text-olive-700' : 'text-teal-700'}`}>
               {settlementStats.totalCount}<span className="text-sm font-medium ml-0.5">건</span>
             </p>
           </div>
@@ -486,25 +486,25 @@ export default function ASPage() {
               {settlementStats.totalReceptionFee.toLocaleString('ko-KR')}<span className="text-xs font-medium ml-0.5">원</span>
             </p>
           </div>
-          <div className={`bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow ${activeTab === 'settled' ? 'border-emerald-200' : 'border-blue-200'}`}>
+          <div className={`bg-white rounded-xl border shadow-sm p-5 hover:shadow-md transition-shadow ${activeTab === 'settled' ? 'border-olive-200' : 'border-teal-200'}`}>
             <div className="flex items-center gap-2 mb-2">
-              <Coins className={`h-4 w-4 ${activeTab === 'settled' ? 'text-emerald-500' : 'text-blue-500'}`} />
+              <Coins className={`h-4 w-4 ${activeTab === 'settled' ? 'text-olive-500' : 'text-teal-500'}`} />
               <span className="text-xs text-slate-500">합계</span>
               {settlementStats.truncationDiff > 0 && (
-                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-red-50 text-[10px] text-red-400">
+                <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-brick-50 text-[10px] text-brick-400">
                   절사 -{settlementStats.truncationDiff.toLocaleString('ko-KR')}
                 </span>
               )}
             </div>
             <div className="flex items-baseline gap-1.5">
-              <p className={`text-2xl font-bold ${activeTab === 'settled' ? 'text-emerald-700' : 'text-blue-700'}`}>
+              <p className={`text-2xl font-bold ${activeTab === 'settled' ? 'text-olive-700' : 'text-teal-700'}`}>
                 {settlementStats.truncatedTotal.toLocaleString('ko-KR')}
               </p>
-              <span className={`text-sm font-medium ${activeTab === 'settled' ? 'text-emerald-600' : 'text-blue-600'}`}>원</span>
+              <span className={`text-sm font-medium ${activeTab === 'settled' ? 'text-olive-600' : 'text-teal-600'}`}>원</span>
               <span className="px-1.5 py-0.5 rounded bg-slate-50 text-[10px] text-slate-400 border border-slate-200">VAT별도</span>
             </div>
             <div className="flex items-baseline gap-1.5 mt-1">
-              <p className={`text-base font-semibold ${activeTab === 'settled' ? 'text-emerald-600/70' : 'text-blue-600/70'}`}>
+              <p className={`text-base font-semibold ${activeTab === 'settled' ? 'text-olive-600/70' : 'text-teal-600/70'}`}>
                 {Math.round(settlementStats.truncatedTotal * 1.1).toLocaleString('ko-KR')}
               </p>
               <span className="text-xs text-slate-400">원</span>
@@ -541,14 +541,14 @@ export default function ASPage() {
                         합계 <span className="font-semibold text-slate-700">{rawTotal.toLocaleString('ko-KR')}</span>
                       </span>
                       {diff > 0 && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-red-50 text-[11px] text-red-400">
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded bg-brick-50 text-[11px] text-brick-400">
                           절사 <span className="font-medium">-{diff.toLocaleString('ko-KR')}</span>
                         </span>
                       )}
                       <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-bold ${
                         activeTab === 'settled'
-                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                          : 'bg-blue-50 text-blue-700 border border-blue-200'
+                          ? 'bg-olive-50 text-olive-700 border border-olive-200'
+                          : 'bg-teal-50 text-teal-700 border border-teal-200'
                       }`}>
                         소계 {truncated.toLocaleString('ko-KR')}원
                       </span>

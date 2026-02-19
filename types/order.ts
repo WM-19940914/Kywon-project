@@ -38,9 +38,9 @@ export const DELIVERY_STATUS_LABELS: Record<DeliveryStatus, string> = {
 
 /** 배송상태별 색상 (Order 레벨 배지용) */
 export const DELIVERY_STATUS_COLORS: Record<DeliveryStatus, string> = {
-  'pending': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'ordered': 'bg-blue-50 text-blue-700 border-blue-200',
-  'delivered': 'bg-green-50 text-green-700 border-green-200'
+  'pending': 'bg-gold-50 text-gold-700 border-gold-200',
+  'ordered': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'delivered': 'bg-olive-50 text-olive-700 border-olive-200'
 }
 
 /**
@@ -63,9 +63,9 @@ export const ITEM_DELIVERY_STATUS_LABELS: Record<ItemDeliveryStatus, string> = {
 /** 구성품별 배송상태 색상 (배지용) */
 export const ITEM_DELIVERY_STATUS_COLORS: Record<ItemDeliveryStatus, string> = {
   'none': '',
-  'ordered': 'bg-blue-50 text-blue-700 border-blue-200',
-  'scheduled': 'bg-purple-50 text-purple-700 border-purple-200',
-  'confirmed': 'bg-green-50 text-green-700 border-green-200'
+  'ordered': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'scheduled': 'bg-teal-50 text-teal-700 border-teal-200',
+  'confirmed': 'bg-olive-50 text-olive-700 border-olive-200'
 }
 
 /**
@@ -182,11 +182,11 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
  * 노란색 → 파란색 → 보라색 → 초록색 순서
  */
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  'received': 'bg-amber-100 text-amber-800 border border-amber-200',        // 앰버 (시작)
-  'in-progress': 'bg-blue-100 text-blue-800 border border-blue-200',        // 블루 (진행)
-  'completed': 'bg-violet-100 text-violet-800 border border-violet-200',    // 바이올렛 (완료)
-  'settled': 'bg-emerald-100 text-emerald-800 border border-emerald-200',   // 에메랄드 (정산완료)
-  'cancelled': 'bg-red-100 text-red-800 border border-red-200',             // 빨강 (취소)
+  'received': 'bg-gold-100 text-gold-700 border border-gold-200',           // 금색 (접수)
+  'in-progress': 'bg-carrot-100 text-carrot-700 border border-carrot-200',  // 당근 (진행)
+  'completed': 'bg-teal-100 text-teal-700 border border-teal-200',          // 틸 (완료)
+  'settled': 'bg-olive-100 text-olive-700 border border-olive-200',         // 올리브 (정산완료)
+  'cancelled': 'bg-brick-100 text-brick-700 border border-brick-200',       // 벽돌 (취소)
 }
 
 /**
@@ -228,11 +228,11 @@ export function sortWorkTypes(types: string[]): string[] {
  * - 신규설치만 파란 강조, 나머지 회색
  */
 export const WORK_TYPE_BADGE_STYLES: Record<string, { badge: string; icon: string }> = {
-  '신규설치': { badge: 'text-blue-700 bg-blue-50 border-blue-200', icon: 'text-blue-500' },
+  '신규설치': { badge: 'text-teal-700 bg-teal-50 border-teal-200', icon: 'text-teal-500' },
   '이전설치': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
   '철거보관': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
   '철거폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
-  '재고설치': { badge: 'text-red-700 bg-red-50 border-red-200', icon: 'text-red-500' },
+  '재고설치': { badge: 'text-brick-700 bg-brick-50 border-brick-200', icon: 'text-brick-500' },
   '반납폐기': { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' },
 }
 const DEFAULT_BADGE_STYLE = { badge: 'text-gray-600 bg-gray-50 border-gray-200', icon: 'text-gray-400' }
@@ -242,7 +242,7 @@ export function getWorkTypeBadgeStyle(type: string) {
 
 /** @deprecated WORK_TYPE_BADGE_STYLES 사용 권장 */
 export const WORK_TYPE_COLORS: Record<string, string> = {
-  '신규설치': 'bg-blue-50 text-blue-700 border-blue-200',
+  '신규설치': 'bg-teal-50 text-teal-700 border-teal-200',
   '이전설치': 'bg-gray-100 text-gray-700 border-gray-200',
   '철거보관': 'bg-gray-100 text-gray-700 border-gray-200',
   '철거폐기': 'bg-gray-100 text-gray-700 border-gray-200',
@@ -432,8 +432,8 @@ export const S1_SETTLEMENT_STATUS_LABELS: Record<S1SettlementStatus, string> = {
 /** 에스원 정산 상태 색상 (뱃지용) */
 export const S1_SETTLEMENT_STATUS_COLORS: Record<S1SettlementStatus, string> = {
   'unsettled': 'bg-gray-100 text-gray-500 border-gray-200',
-  'in-progress': 'bg-orange-50 text-orange-700 border-orange-200',
-  'settled': 'bg-green-50 text-green-700 border-green-200'
+  'in-progress': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'settled': 'bg-olive-50 text-olive-700 border-olive-200'
 }
 
 // ============================================================
@@ -484,11 +484,11 @@ export const INVENTORY_EVENT_TYPE_LABELS: Record<InventoryEventType, string> = {
 
 /** 재고 이벤트 종류별 색상 */
 export const INVENTORY_EVENT_TYPE_COLORS: Record<InventoryEventType, string> = {
-  'prepaid': 'bg-purple-50 text-purple-700 border-purple-200',
-  'cancelled': 'bg-red-50 text-red-700 border-red-200',
-  'substitution': 'bg-blue-50 text-blue-700 border-blue-200',
-  'transfer_out': 'bg-orange-50 text-orange-700 border-orange-200',
-  'transfer_return': 'bg-orange-50 text-orange-700 border-orange-200',
+  'prepaid': 'bg-teal-50 text-teal-700 border-teal-200',
+  'cancelled': 'bg-brick-50 text-brick-700 border-brick-200',
+  'substitution': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'transfer_out': 'bg-gold-100 text-gold-700 border-gold-200',
+  'transfer_return': 'bg-gold-100 text-gold-700 border-gold-200',
 }
 
 /** 재고 이벤트 상태별 한글 라벨 */
@@ -499,8 +499,8 @@ export const INVENTORY_EVENT_STATUS_LABELS: Record<InventoryEventStatus, string>
 
 /** 재고 이벤트 상태별 색상 */
 export const INVENTORY_EVENT_STATUS_COLORS: Record<InventoryEventStatus, string> = {
-  'active': 'bg-yellow-50 text-yellow-700 border-yellow-200',
-  'resolved': 'bg-green-50 text-green-700 border-green-200',
+  'active': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'resolved': 'bg-olive-50 text-olive-700 border-olive-200',
 }
 
 /**
@@ -518,8 +518,8 @@ export const WAREHOUSE_STOCK_STATUS_LABELS: Record<WarehouseStockStatus, string>
 }
 
 export const WAREHOUSE_STOCK_STATUS_COLORS: Record<WarehouseStockStatus, string> = {
-  'idle': 'bg-red-50 text-red-700 border-red-200',
-  'in_stock': 'bg-green-50 text-green-700 border-green-200',
+  'idle': 'bg-brick-50 text-brick-700 border-brick-200',
+  'in_stock': 'bg-olive-50 text-olive-700 border-olive-200',
   'install_done': 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
@@ -573,9 +573,9 @@ export const EQUIPMENT_UNIT_TYPE_LABELS: Record<EquipmentUnitType, string> = {
 
 /** 장비 유형 색상 (뱃지용) */
 export const EQUIPMENT_UNIT_TYPE_COLORS: Record<EquipmentUnitType, string> = {
-  'set': 'bg-indigo-50 text-indigo-700 border-indigo-200',
-  'indoor': 'bg-sky-50 text-sky-700 border-sky-200',
-  'outdoor': 'bg-amber-50 text-amber-700 border-amber-200',
+  'set': 'bg-teal-50 text-teal-700 border-teal-200',
+  'indoor': 'bg-carrot-50 text-carrot-700 border-carrot-200',
+  'outdoor': 'bg-gold-100 text-gold-700 border-gold-200',
   'etc': 'bg-gray-50 text-gray-500 border-gray-200',
 }
 
@@ -678,7 +678,7 @@ export const STORED_EQUIPMENT_STATUS_LABELS: Record<StoredEquipmentStatus, strin
 
 /** 보관 상태 색상 */
 export const STORED_EQUIPMENT_STATUS_COLORS: Record<StoredEquipmentStatus, string> = {
-  'stored': 'bg-blue-50 text-blue-700 border-blue-200',
+  'stored': 'bg-teal-50 text-teal-700 border-teal-200',
   'released': 'bg-gray-100 text-gray-500 border-gray-200',
 }
 
@@ -690,8 +690,8 @@ export const RELEASE_TYPE_LABELS: Record<ReleaseType, string> = {
 
 /** 출고 유형 색상 */
 export const RELEASE_TYPE_COLORS: Record<ReleaseType, string> = {
-  'reinstall': 'bg-green-50 text-green-700 border-green-200',
-  'dispose': 'bg-red-50 text-red-700 border-red-200',
+  'reinstall': 'bg-olive-50 text-olive-700 border-olive-200',
+  'dispose': 'bg-brick-50 text-brick-700 border-brick-200',
 }
 
 /**

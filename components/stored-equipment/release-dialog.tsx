@@ -132,8 +132,8 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
                       className={`flex-1 px-3 py-2 rounded-md text-sm font-medium border transition-all ${
                         releaseType === type
                           ? type === 'reinstall'
-                            ? 'bg-green-50 text-green-700 border-green-300 ring-1 ring-green-300'
-                            : 'bg-red-50 text-red-700 border-red-300 ring-1 ring-red-300'
+                            ? 'bg-olive-50 text-olive-700 border-olive-300 ring-1 ring-olive-300'
+                            : 'bg-brick-50 text-brick-700 border-brick-300 ring-1 ring-brick-300'
                           : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
                       }`}
                       onClick={() => setReleaseType(type)}
@@ -163,14 +163,14 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
                   {/* 재고설치 발주 매칭 목록 */}
                   {reinstallOrders.length > 0 && (
                     <div className="space-y-1">
-                      <p className="text-xs text-blue-600 font-medium">재고설치 발주 (일정미정)</p>
-                      <div className="max-h-[140px] overflow-y-auto space-y-1 border rounded-md p-1.5 bg-blue-50/30">
+                      <p className="text-xs text-teal-600 font-medium">재고설치 발주 (일정미정)</p>
+                      <div className="max-h-[140px] overflow-y-auto space-y-1 border rounded-md p-1.5 bg-teal-50/30">
                         {reinstallOrders.map(order => (
                           <button
                             key={order.id}
                             type="button"
                             onClick={() => handleOrderSelect(order)}
-                            className="w-full text-left px-2.5 py-2 rounded text-sm bg-white border border-transparent hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                            className="w-full text-left px-2.5 py-2 rounded text-sm bg-white border border-transparent hover:border-teal-300 hover:bg-teal-50 transition-colors"
                           >
                             <div className="flex items-center justify-between">
                               <span className="font-medium text-gray-800">{order.businessName}</span>
@@ -214,7 +214,7 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
                   value={releaseNotes}
                   onChange={(e) => setReleaseNotes(e.target.value)}
                   placeholder="출고 관련 메모를 입력하세요"
-                  className="w-full border rounded-md p-2 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-blue-300 placeholder:text-gray-300"
+                  className="w-full border rounded-md p-2 text-sm min-h-[60px] resize-none focus:outline-none focus:ring-1 focus:ring-teal-300 placeholder:text-gray-300"
                 />
               </div>
             </div>
@@ -224,8 +224,8 @@ export function ReleaseDialog({ equipment, open, onOpenChange, onRelease, defaul
           <AlertDialogCancel>취소</AlertDialogCancel>
           <AlertDialogAction
             className={`text-white ${
-              releaseType === 'reinstall' ? 'bg-green-600 hover:bg-green-700'
-                : 'bg-red-600 hover:bg-red-700'
+              releaseType === 'reinstall' ? 'bg-olive-600 hover:bg-olive-700'
+                : 'bg-brick-600 hover:bg-brick-700'
             }`}
             disabled={!releaseDate}
             onClick={handleConfirm}

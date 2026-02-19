@@ -152,7 +152,7 @@ export function OrderDetailDialog({
                 {ORDER_STATUS_LABELS[kanbanStatus]}
               </Badge>
               {order.isPreliminaryQuote && (
-                <Badge className="bg-red-50 text-red-600 border-red-200">
+                <Badge className="bg-brick-50 text-brick-600 border-brick-200">
                   사전견적건
                 </Badge>
               )}
@@ -263,9 +263,9 @@ export function OrderDetailDialog({
                             variant="outline"
                             className={`font-normal ${
                               item.workType === '신규설치'
-                                ? 'bg-blue-100 text-blue-700 border-blue-300 font-semibold'
+                                ? 'bg-teal-100 text-teal-700 border-teal-300 font-semibold'
                                 : item.workType === '재고설치'
-                                  ? 'bg-purple-100 text-purple-700 border-purple-300 font-semibold'
+                                  ? 'bg-teal-100 text-teal-700 border-teal-300 font-semibold'
                                   : ''
                             }`}
                           >
@@ -275,7 +275,7 @@ export function OrderDetailDialog({
                           <span className="font-medium">{item.category}</span>
                         </div>
                         {/* 수량 */}
-                        <span className="text-lg font-bold text-blue-600">
+                        <span className="text-lg font-bold text-teal-600">
                           {item.quantity}대
                         </span>
                       </div>
@@ -284,11 +284,11 @@ export function OrderDetailDialog({
                       </div>
                       {/* 재고설치: 철거 현장 + 제조 정보 */}
                       {linkedEquip && (
-                        <div className="mt-2 text-xs bg-blue-50 border border-blue-200 rounded-md px-3 py-2 space-y-0.5">
-                          <p className="font-semibold text-blue-800">
+                        <div className="mt-2 text-xs bg-teal-50 border border-teal-200 rounded-md px-3 py-2 space-y-0.5">
+                          <p className="font-semibold text-teal-800">
                             {linkedEquip.affiliate && !linkedEquip.siteName.startsWith(linkedEquip.affiliate) ? `${linkedEquip.affiliate} · ` : ''}{linkedEquip.siteName} 철거 장비
                           </p>
-                          <div className="flex gap-3 text-blue-500 flex-wrap">
+                          <div className="flex gap-3 text-teal-500 flex-wrap">
                             {linkedEquip.removalDate && <span>철거일: {linkedEquip.removalDate.replace(/-/g, '.')}</span>}
                             {linkedEquip.manufacturer && <span>제조사: {linkedEquip.manufacturer}</span>}
                             {linkedEquip.manufacturingDate && <span>{linkedEquip.manufacturingDate}년식</span>}
@@ -372,7 +372,7 @@ export function OrderDetailDialog({
               order.customerQuote?.items?.length ? (
                 <Button
                   variant="outline"
-                  className="gap-1 text-blue-600 border-blue-300 hover:bg-blue-50"
+                  className="gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
                   onClick={() => { onQuoteView(order); onOpenChange(false) }}
                 >
                   <FileText className="h-4 w-4" />
@@ -406,10 +406,10 @@ export function OrderDetailDialog({
           <div className="space-y-2 py-2">
             {onCancelOrder && (
               <button
-                className="w-full text-left border rounded-lg p-3 hover:bg-orange-50 hover:border-orange-300 transition-colors"
+                className="w-full text-left border rounded-lg p-3 hover:bg-carrot-50 hover:border-carrot-300 transition-colors"
                 onClick={handleCancelChoice}
               >
-                <div className="flex items-center gap-2 font-medium text-sm text-orange-700">
+                <div className="flex items-center gap-2 font-medium text-sm text-carrot-700">
                   <XCircle className="h-4 w-4" />
                   발주취소 (기록 보관)
                 </div>
@@ -420,10 +420,10 @@ export function OrderDetailDialog({
             )}
             {onDelete && (
               <button
-                className="w-full text-left border rounded-lg p-3 hover:bg-red-50 hover:border-red-300 transition-colors"
+                className="w-full text-left border rounded-lg p-3 hover:bg-brick-50 hover:border-brick-300 transition-colors"
                 onClick={handlePermanentDelete}
               >
-                <div className="flex items-center gap-2 font-medium text-sm text-red-700">
+                <div className="flex items-center gap-2 font-medium text-sm text-brick-700">
                   <Trash2 className="h-4 w-4" />
                   완전 삭제 (복구 불가)
                 </div>
@@ -431,9 +431,9 @@ export function OrderDetailDialog({
                   DB에서 완전히 삭제됩니다. 되돌릴 수 없습니다.
                 </p>
                 {inventoryEventCount > 0 && (
-                  <div className="flex items-start gap-1.5 mt-2 ml-6 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                    <AlertTriangle className="h-3.5 w-3.5 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-700">
+                  <div className="flex items-start gap-1.5 mt-2 ml-6 p-2 bg-gold-50 border border-gold-200 rounded-md">
+                    <AlertTriangle className="h-3.5 w-3.5 text-gold-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gold-700">
                       이 발주에 연결된 <span className="font-bold">유휴재고 이벤트 {inventoryEventCount}건</span>이 있습니다.
                       완전 삭제 시 유휴재고 기록도 함께 삭제됩니다.
                     </p>
@@ -460,7 +460,7 @@ export function OrderDetailDialog({
                   value={cancelReason}
                   onChange={(e) => setCancelReason(e.target.value)}
                   placeholder="취소 사유를 입력해주세요"
-                  className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400"
+                  className="w-full border rounded-md p-2 text-sm min-h-[80px] resize-none focus:outline-none focus:ring-2 focus:ring-brick-300 focus:border-brick-400"
                 />
                 <p className="text-xs text-gray-500">
                   취소된 발주는 과거내역에서 확인할 수 있습니다.
@@ -471,7 +471,7 @@ export function OrderDetailDialog({
           <AlertDialogFooter>
             <AlertDialogCancel>돌아가기</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-red-600 hover:bg-red-700 text-white"
+              className="bg-brick-600 hover:bg-brick-700 text-white"
               disabled={!cancelReason.trim()}
               onClick={handleCancelConfirm}
             >

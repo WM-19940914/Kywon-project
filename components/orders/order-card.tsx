@@ -55,7 +55,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
 
   return (
     <Card
-      className="hover:shadow-md hover:border-blue-300 transition-all duration-200 cursor-pointer"
+      className="hover:shadow-md hover:border-teal-300 transition-all duration-200 cursor-pointer"
       onClick={() => onClick?.(order)}
     >
       <CardContent className="px-3 py-2.5 space-y-1">
@@ -66,7 +66,7 @@ export function OrderCard({ order, onClick }: OrderCardProps) {
             <span>발주일: {formatDate(order.orderDate)}</span>
           </div>
           {order.isPreliminaryQuote && (
-            <Badge className="bg-red-50 text-red-600 border-red-200 font-semibold text-[9px] px-1 py-0 leading-tight">
+            <Badge className="bg-brick-50 text-brick-600 border-brick-200 font-semibold text-[9px] px-1 py-0 leading-tight">
               사전견적
             </Badge>
           )}

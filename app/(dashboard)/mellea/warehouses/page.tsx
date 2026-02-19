@@ -152,7 +152,7 @@ function WarehouseCard({
       onClick={() => !isEditing && onSelect(warehouse.id)}
       className={`rounded-xl border bg-white p-3 transition-all duration-200 cursor-pointer ${
         isSelected
-          ? 'ring-2 ring-blue-500 shadow-md bg-blue-50/30 border-blue-300'
+          ? 'ring-2 ring-teal-500 shadow-md bg-teal-50/30 border-teal-300'
           : 'border-slate-200 hover:shadow-sm hover:border-slate-300'
       }`}
     >
@@ -166,7 +166,7 @@ function WarehouseCard({
           />
           <div
             onClick={handleSearchAddress}
-            className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+            className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-teal-400 hover:bg-teal-50/50 transition-colors"
           >
             <Search className="h-3 w-3 text-slate-400 flex-shrink-0" />
             <span className={editData.address ? 'text-foreground truncate' : 'text-slate-400 truncate'}>
@@ -210,7 +210,7 @@ function WarehouseCard({
               <Button
                 size="sm" variant="ghost"
                 onClick={(e) => { e.stopPropagation(); handleEdit() }}
-                className="h-6 w-6 p-0 text-gray-400 hover:text-blue-600 rounded-lg"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-teal-600 rounded-lg"
               >
                 <Pencil className="h-3 w-3" />
               </Button>
@@ -223,7 +223,7 @@ function WarehouseCard({
                     onDelete(warehouse.id)
                   }
                 }}
-                className="h-6 w-6 p-0 text-gray-400 hover:text-red-600 rounded-lg"
+                className="h-6 w-6 p-0 text-gray-400 hover:text-brick-600 rounded-lg"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -308,7 +308,7 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
     return (
       <button
         onClick={() => setIsAdding(true)}
-        className="w-full rounded-xl border-2 border-dashed border-slate-200 p-3 flex items-center justify-center gap-2 text-sm text-slate-500 hover:border-blue-400 hover:text-blue-600 hover:bg-blue-50/30 transition-colors"
+        className="w-full rounded-xl border-2 border-dashed border-slate-200 p-3 flex items-center justify-center gap-2 text-sm text-slate-500 hover:border-teal-400 hover:text-teal-600 hover:bg-teal-50/30 transition-colors"
       >
         <Plus className="h-4 w-4" />
         창고 추가
@@ -317,7 +317,7 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
   }
 
   return (
-    <div className="rounded-xl border-2 border-blue-400 bg-blue-50/20 p-3">
+    <div className="rounded-xl border-2 border-teal-400 bg-teal-50/20 p-3">
       <div className="space-y-2">
         <Input
           value={formData.name}
@@ -327,7 +327,7 @@ function AddWarehouseCard({ onAdd }: { onAdd: (wh: Warehouse) => void }) {
         />
         <div
           onClick={handleSearchAddress}
-          className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+          className="flex items-center gap-1.5 h-7 px-2 rounded-lg border border-slate-200 text-sm cursor-pointer hover:border-teal-400 hover:bg-teal-50/50 transition-colors"
         >
           <Search className="h-3 w-3 text-slate-400 flex-shrink-0" />
           <span className={formData.address ? 'text-foreground truncate' : 'text-slate-400 truncate'}>
@@ -480,7 +480,7 @@ export default function WarehousesPage() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-4">
-            <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+            <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
               <WarehouseIcon className="h-6 w-6" />
             </div>
             <div>

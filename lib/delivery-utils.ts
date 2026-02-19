@@ -213,9 +213,9 @@ export function getWarehouseDetail(warehouseId?: string) {
  * 알림 유형별 스타일 정보
  */
 export const ALERT_STYLES: Record<AlertType, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  'delayed': { label: '배송지연', color: 'text-red-700', bgColor: 'bg-red-50', borderColor: 'border-red-200' },
-  'today': { label: '오늘입고', color: 'text-orange-700', bgColor: 'bg-orange-50', borderColor: 'border-orange-200' },
-  'tomorrow': { label: '내일입고', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+  'delayed': { label: '배송지연', color: 'text-brick-700', bgColor: 'bg-brick-50', borderColor: 'border-brick-200' },
+  'today': { label: '오늘입고', color: 'text-carrot-700', bgColor: 'bg-carrot-50', borderColor: 'border-carrot-200' },
+  'tomorrow': { label: '내일입고', color: 'text-teal-700', bgColor: 'bg-teal-50', borderColor: 'border-teal-200' },
   'this-week': { label: '이번주', color: 'text-gray-700', bgColor: 'bg-gray-50', borderColor: 'border-gray-200' },
   'none': { label: '', color: '', bgColor: '', borderColor: '' }
 }
@@ -444,9 +444,9 @@ export function countUndeliveredItems(items: EquipmentItem[]): { noDate: number;
  * 발주완료 탭 문서상태별 뱃지 스타일
  */
 export const ORDERED_DOC_STATUS_STYLES: Record<OrderedDocStatus, { label: string; color: string; bgColor: string; borderColor: string }> = {
-  'in-progress': { label: '🚚 배송 진행중', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
-  'arriving': { label: '📦 입고 대기중', color: 'text-sky-700', bgColor: 'bg-sky-50', borderColor: 'border-sky-200' },
-  'completed': { label: '✅ 배송완료', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
+  'in-progress': { label: '🚚 배송 진행중', color: 'text-carrot-700', bgColor: 'bg-carrot-50', borderColor: 'border-carrot-200' },
+  'arriving': { label: '📦 입고 대기중', color: 'text-teal-700', bgColor: 'bg-teal-50', borderColor: 'border-teal-200' },
+  'completed': { label: '✅ 배송완료', color: 'text-olive-700', bgColor: 'bg-olive-50', borderColor: 'border-olive-200' },
 }
 
 /**

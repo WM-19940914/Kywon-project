@@ -42,8 +42,8 @@ const AlertContext = createContext<AlertContextType | null>(null)
 // ─── 아이콘 컴포넌트 (SVG) ───
 function SuccessIcon() {
   return (
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-emerald-100">
-      <svg className="h-7 w-7 text-emerald-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-olive-100">
+      <svg className="h-7 w-7 text-olive-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
       </svg>
     </div>
@@ -52,8 +52,8 @@ function SuccessIcon() {
 
 function ErrorIcon() {
   return (
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-red-100">
-      <svg className="h-7 w-7 text-red-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-brick-100">
+      <svg className="h-7 w-7 text-brick-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
       </svg>
     </div>
@@ -62,8 +62,8 @@ function ErrorIcon() {
 
 function WarningIcon() {
   return (
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-amber-100">
-      <svg className="h-7 w-7 text-amber-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-gold-100">
+      <svg className="h-7 w-7 text-gold-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z" />
       </svg>
     </div>
@@ -72,8 +72,8 @@ function WarningIcon() {
 
 function InfoIcon() {
   return (
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
-      <svg className="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-100">
+      <svg className="h-7 w-7 text-teal-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" />
       </svg>
     </div>
@@ -82,8 +82,8 @@ function InfoIcon() {
 
 function ConfirmIcon() {
   return (
-    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-blue-100">
-      <svg className="h-7 w-7 text-blue-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
+    <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-teal-100">
+      <svg className="h-7 w-7 text-teal-600" fill="none" viewBox="0 0 24 24" strokeWidth={2.5} stroke="currentColor">
         <path strokeLinecap="round" strokeLinejoin="round" d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9 5.25h.008v.008H12v-.008z" />
       </svg>
     </div>
@@ -100,10 +100,10 @@ const iconMap: Record<AlertType, () => React.ReactElement> = {
 
 // ─── 타입별 버튼 색상 ───
 const buttonColorMap: Record<AlertType, string> = {
-  success: "bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500",
-  error: "bg-red-600 hover:bg-red-700 focus:ring-red-500",
-  warning: "bg-amber-600 hover:bg-amber-700 focus:ring-amber-500",
-  info: "bg-blue-600 hover:bg-blue-700 focus:ring-blue-500",
+  success: "bg-olive-600 hover:bg-olive-700 focus:ring-olive-500",
+  error: "bg-brick-600 hover:bg-brick-700 focus:ring-brick-500",
+  warning: "bg-gold-500 hover:bg-gold-600 focus:ring-gold-400",
+  info: "bg-teal-600 hover:bg-teal-700 focus:ring-teal-500",
 }
 
 // ─── 타입별 제목 ───
@@ -241,7 +241,7 @@ export function AlertProvider({ children }: { children: React.ReactNode }) {
                   </button>
                   <button
                     onClick={() => handleConfirm(true)}
-                    className="flex-1 rounded-xl bg-blue-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                    className="flex-1 rounded-xl bg-teal-600 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
                     autoFocus
                   >
                     확인

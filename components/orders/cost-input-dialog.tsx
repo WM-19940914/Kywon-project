@@ -109,9 +109,9 @@ export function CostInputDialog({
    * 10% 미만: 빨간색 (주의)
    */
   const getMarginColor = (marginRate: number) => {
-    if (marginRate >= 20) return 'text-green-600'
+    if (marginRate >= 20) return 'text-olive-600'
     if (marginRate >= 10) return 'text-yellow-600'
-    return 'text-red-600'
+    return 'text-brick-600'
   }
 
   /**
@@ -178,9 +178,9 @@ export function CostInputDialog({
         <div className="space-y-8 py-4">
           {/* 마진 분석 카드 (견적서가 있을 때만 표시) */}
           {marginAnalysis && (
-            <div className="p-4 bg-gradient-to-r from-blue-50 to-cyan-50 border border-blue-200 rounded-lg">
+            <div className="p-4 bg-gradient-to-r from-teal-50 to-teal-50 border border-teal-200 rounded-lg">
               <div className="flex items-center gap-2 mb-3">
-                <TrendingUp className="h-5 w-5 text-blue-600" />
+                <TrendingUp className="h-5 w-5 text-teal-600" />
                 <h3 className="font-bold text-lg">수익성 분석</h3>
               </div>
 
@@ -199,7 +199,7 @@ export function CostInputDialog({
                 </div>
                 <div>
                   <span className="text-gray-600">예상 이익:</span>
-                  <p className={`font-semibold text-lg ${marginAnalysis.profit >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <p className={`font-semibold text-lg ${marginAnalysis.profit >= 0 ? 'text-olive-600' : 'text-brick-600'}`}>
                     {marginAnalysis.profit.toLocaleString('ko-KR')} 원
                   </p>
                 </div>
@@ -226,10 +226,10 @@ export function CostInputDialog({
 
           {/* 견적서 미작성 안내 */}
           {!order.customerQuote && (
-            <div className="p-4 bg-amber-50 border border-amber-200 rounded-lg">
+            <div className="p-4 bg-gold-50 border border-gold-200 rounded-lg">
               <div className="flex items-start gap-2">
-                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-amber-800">
+                <AlertTriangle className="h-5 w-5 text-gold-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-gold-800">
                   <p className="font-semibold">소비자 견적서가 아직 작성되지 않았습니다</p>
                   <p>견적서를 먼저 작성하면 마진률을 자동으로 계산해드립니다.</p>
                 </div>
@@ -265,8 +265,8 @@ export function CostInputDialog({
           {/* 설치비 입력 섹션 */}
           <div className="space-y-4">
             <div className="flex items-center gap-2">
-              <div className="p-2 bg-blue-100 rounded-lg">
-                <Wrench className="h-5 w-5 text-blue-700" />
+              <div className="p-2 bg-teal-100 rounded-lg">
+                <Wrench className="h-5 w-5 text-teal-700" />
               </div>
               <div>
                 <h3 className="font-bold text-lg">설치비 원가</h3>

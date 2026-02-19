@@ -148,14 +148,14 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto p-0">
         {/* 헤더 — 파란 배경 */}
-        <div className="bg-blue-600 text-white px-6 py-4 rounded-t-lg">
+        <div className="bg-teal-600 text-white px-6 py-4 rounded-t-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white text-lg">
               <ClipboardPlus className="h-5 w-5" />
               AS 접수
             </DialogTitle>
           </DialogHeader>
-          <p className="text-blue-100 text-xs mt-1">교원그룹 AS 요청 정보를 입력해주세요</p>
+          <p className="text-teal-100 text-xs mt-1">교원그룹 AS 요청 정보를 입력해주세요</p>
         </div>
 
         <div className="px-6 pb-6 pt-2 space-y-5">
@@ -174,7 +174,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="as-affiliate" className="text-xs text-gray-500 font-medium">
-                계열사 <span className="text-red-500">*</span>
+                계열사 <span className="text-brick-500">*</span>
               </Label>
               <Select value={affiliate} onValueChange={setAffiliate}>
                 <SelectTrigger id="as-affiliate" className="h-9">
@@ -199,7 +199,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             </h4>
             <div className="space-y-1.5">
               <Label htmlFor="as-business" className="text-xs text-gray-500 font-medium">
-                사업자명 <span className="text-red-500">*</span>
+                사업자명 <span className="text-brick-500">*</span>
               </Label>
               <Input
                 id="as-business"
@@ -211,7 +211,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> 현장주소 <span className="text-red-500">*</span>
+                <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
               </Label>
               <div className="flex gap-2">
                 <Input
@@ -355,7 +355,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             <Button
               onClick={handleSubmit}
               disabled={!isValid || isSubmitting}
-              className="bg-blue-600 hover:bg-blue-700 px-6"
+              className="bg-teal-600 hover:bg-teal-700 px-6"
             >
               {isSubmitting ? '등록 중...' : 'AS 접수하기'}
             </Button>

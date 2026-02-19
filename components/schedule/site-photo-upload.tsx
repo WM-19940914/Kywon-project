@@ -149,7 +149,7 @@ export function SitePhotoUpload({ photos = [], onChange, businessName, orderId }
             type="button"
             className={`inline-flex flex-col items-center gap-0.5 px-2 py-1 rounded-md text-xs transition-colors border ${
               photoCount > 0
-                ? 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100'
+                ? 'bg-teal-50 border-teal-200 text-teal-700 hover:bg-teal-100'
                 : 'bg-gray-50 border-gray-300 border-dashed text-gray-400 hover:bg-gray-100'
             }`}
             onClick={(e) => e.stopPropagation()}
@@ -178,7 +178,7 @@ export function SitePhotoUpload({ photos = [], onChange, businessName, orderId }
             <div
               className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
                 isDragging
-                  ? 'border-blue-500 bg-blue-50'
+                  ? 'border-teal-500 bg-teal-50'
                   : 'border-gray-300 bg-gray-50 hover:border-gray-400'
               }`}
               onDragOver={handleDragOver}
@@ -187,8 +187,8 @@ export function SitePhotoUpload({ photos = [], onChange, businessName, orderId }
             >
               {isUploading ? (
                 <>
-                  <Loader2 className="h-12 w-12 mx-auto mb-3 text-blue-500 animate-spin" />
-                  <p className="text-sm text-blue-600 font-medium">
+                  <Loader2 className="h-12 w-12 mx-auto mb-3 text-teal-500 animate-spin" />
+                  <p className="text-sm text-teal-600 font-medium">
                     업로드 중...
                   </p>
                 </>
@@ -240,7 +240,7 @@ export function SitePhotoUpload({ photos = [], onChange, businessName, orderId }
                       {/* 삭제 버튼 (호버 시 표시) */}
                       <button
                         type="button"
-                        className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="absolute top-1 right-1 p-1 bg-brick-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
                         onClick={() => handleDelete(index)}
                       >
                         <X className="h-3 w-3" />

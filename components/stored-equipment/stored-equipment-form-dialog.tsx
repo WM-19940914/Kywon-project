@@ -341,20 +341,20 @@ export function StoredEquipmentFormDialog({
         <div className="space-y-5 py-2">
           {/* ═══ 빠른 입력: 최근 철거보관 발주 조회 ═══ */}
           {!equipment && removalOrders.length > 0 && (
-            <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border-2 border-blue-200 rounded-lg p-4">
+            <div className="bg-gradient-to-r from-teal-50 to-teal-50 border-2 border-teal-200 rounded-lg p-4">
               <div className="flex items-start gap-2">
-                <div className="bg-blue-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
+                <div className="bg-teal-600 text-white rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold mt-0.5">
                   !
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-sm font-bold text-blue-900 mb-1">
+                  <h3 className="text-sm font-bold text-teal-900 mb-1">
                     빠른 입력: 최근 철거보관 발주 조회
                   </h3>
-                  <p className="text-xs text-blue-700 mb-3">
+                  <p className="text-xs text-teal-700 mb-3">
                     발주를 선택하면 현장 정보(계열사/사업자명/주소)가 자동으로 채워집니다.
                   </p>
                   <Select value={selectedOrderId || 'none'} onValueChange={handleOrderSelect}>
-                    <SelectTrigger className="bg-white border-blue-300">
+                    <SelectTrigger className="bg-white border-teal-300">
                       <SelectValue placeholder="발주 선택 (또는 아래에서 직접 입력)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -398,7 +398,7 @@ export function StoredEquipmentFormDialog({
             {/* 사업자명 */}
             <div>
               <Label className="text-sm font-semibold text-gray-700">
-                사업자명 <span className="text-red-500">*</span>
+                사업자명 <span className="text-brick-500">*</span>
               </Label>
               <Input
                 value={siteName}
@@ -442,14 +442,14 @@ export function StoredEquipmentFormDialog({
                 {equipmentRows.length > 1 && (
                   <span className="text-xs text-gray-400">{equipmentRows.length}대</span>
                 )}
-                <span className="text-xs font-bold text-red-500 ml-2">! 꼭 실내기·실외기 분리해서 적어주세요</span>
+                <span className="text-xs font-bold text-brick-500 ml-2">! 꼭 실내기·실외기 분리해서 적어주세요</span>
               </div>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
                 onClick={() => setPriceSheetOpen(true)}
-                className="gap-1.5 text-blue-600 border-blue-200 hover:bg-blue-50"
+                className="gap-1.5 text-teal-600 border-teal-200 hover:bg-teal-50"
               >
                 <BookOpen className="h-3.5 w-3.5" />
                 단가표로 입력하기
@@ -510,7 +510,7 @@ export function StoredEquipmentFormDialog({
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label className="text-sm font-semibold text-gray-700">
-                  보관 창고 <span className="text-red-500">*</span>
+                  보관 창고 <span className="text-brick-500">*</span>
                 </Label>
                 <Select value={warehouseId} onValueChange={setWarehouseId}>
                   <SelectTrigger className="mt-1.5">
@@ -580,7 +580,7 @@ export function StoredEquipmentFormDialog({
           <Button
             onClick={handleSave}
             disabled={!isValid}
-            className="flex-1 bg-blue-600 hover:bg-blue-700"
+            className="flex-1 bg-teal-600 hover:bg-teal-700"
           >
             {equipment
               ? '수정 완료'
@@ -620,7 +620,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         <select
           value={row.category}
           onChange={(e) => onUpdate(row.id, 'category', e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+          className="w-full text-xs border border-gray-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:border-teal-400"
         >
           {CATEGORY_OPTIONS.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
@@ -633,7 +633,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         <select
           value={row.equipmentUnitType}
           onChange={(e) => onUpdate(row.id, 'equipmentUnitType', e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-teal-400"
         >
           <option value="">선택</option>
           {EQUIPMENT_UNIT_TYPE_OPTIONS.map(opt => (
@@ -650,14 +650,14 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
           value={row.model}
           onChange={(e) => onUpdate(row.id, 'model', e.target.value)}
           placeholder="모델명"
-          className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-blue-400 font-mono"
+          className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-teal-400 font-mono"
         />
         {/* SET 모델일 때 구성품 표시 */}
         {row.components && row.components.length > 0 && (
           <div className="flex gap-1.5 mt-1 ml-0.5">
             {row.components.map((comp, i) => (
               <span key={i} className="text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
-                <span className="font-semibold text-blue-600">{comp.type}</span> {comp.model}
+                <span className="font-semibold text-teal-600">{comp.type}</span> {comp.model}
               </span>
             ))}
           </div>
@@ -669,7 +669,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         <select
           value={row.size}
           onChange={(e) => onUpdate(row.id, 'size', e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-teal-400"
         >
           <option value="">선택</option>
           {SIZE_OPTIONS.map(opt => (
@@ -683,7 +683,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
         <select
           value={row.manufacturer}
           onChange={(e) => onUpdate(row.id, 'manufacturer', e.target.value)}
-          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+          className="w-full text-xs border border-gray-200 rounded px-1 py-1.5 bg-white focus:outline-none focus:border-teal-400"
         >
           {MANUFACTURER_OPTIONS.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
@@ -698,7 +698,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
             value={row.manufacturingDate}
             onChange={(e) => onUpdate(row.id, 'manufacturingDate', e.target.value)}
             placeholder="2024-01"
-            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:border-blue-400"
+            className="w-full text-xs border border-gray-200 rounded px-1.5 py-1.5 bg-white focus:outline-none focus:border-teal-400"
           />
           <button
             type="button"
@@ -724,7 +724,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
           min={1}
           value={row.quantity}
           onChange={(e) => onUpdate(row.id, 'quantity', Math.max(1, parseInt(e.target.value) || 1))}
-          className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-blue-400 text-center"
+          className="w-full text-xs border border-gray-200 rounded px-2 py-1.5 bg-white focus:outline-none focus:border-teal-400 text-center"
         />
       </td>
 
@@ -734,7 +734,7 @@ function EquipmentTableRow({ row, onUpdate, onRemove, canRemove }: EquipmentTabl
           type="button"
           onClick={() => onRemove(row.id)}
           disabled={!canRemove}
-          className="text-gray-300 hover:text-red-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+          className="text-gray-300 hover:text-brick-500 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
         >
           <Trash2 className="h-3.5 w-3.5" />
         </button>

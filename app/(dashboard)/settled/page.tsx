@@ -103,7 +103,7 @@ export default function SettledPage() {
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
-        <div className="bg-blue-50 text-blue-600 p-2.5 rounded-xl">
+        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
           <FileCheck className="h-6 w-6" />
         </div>
         <div>
@@ -114,12 +114,12 @@ export default function SettledPage() {
 
       {/* 통계 카드 */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-        <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-5 hover:shadow-md transition-shadow">
+        <div className="bg-white rounded-xl border border-olive-200 shadow-sm p-5 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-2 mb-2">
-            <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            <CheckCircle2 className="h-4 w-4 text-olive-500" />
             <span className="text-xs text-slate-500">전체 정산완료</span>
           </div>
-          <p className="text-2xl font-bold text-emerald-700">
+          <p className="text-2xl font-bold text-olive-700">
             {orders.filter(o => o.status === 'settled').length}<span className="text-sm font-medium ml-0.5">건</span>
           </p>
         </div>

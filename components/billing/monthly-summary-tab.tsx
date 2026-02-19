@@ -275,7 +275,7 @@ export function MonthlySummaryTab({ orders, selectedYear, selectedMonth }: Month
   if (isGenerating) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-12 text-center">
-        <Loader2 className="h-10 w-10 mx-auto mb-4 text-orange-500 animate-spin" />
+        <Loader2 className="h-10 w-10 mx-auto mb-4 text-carrot-500 animate-spin" />
         <p className="text-lg font-semibold text-slate-700">
           {selectedYear}년 {selectedMonth}월 정산관리 생성 중...
         </p>
@@ -288,8 +288,8 @@ export function MonthlySummaryTab({ orders, selectedYear, selectedMonth }: Month
   if (showConfirm) {
     return (
       <div className="flex justify-center py-12">
-        <div className="bg-white rounded-xl border-2 border-orange-300 shadow-lg p-8 text-center max-w-lg">
-          <CircleDollarSign className="h-12 w-12 mx-auto mb-4 text-orange-500" />
+        <div className="bg-white rounded-xl border-2 border-carrot-300 shadow-lg p-8 text-center max-w-lg">
+          <CircleDollarSign className="h-12 w-12 mx-auto mb-4 text-carrot-500" />
           <h3 className="text-lg font-bold text-slate-900 mb-2">
             {selectedYear}년 {selectedMonth}월 정산관리 생성
           </h3>
@@ -299,7 +299,7 @@ export function MonthlySummaryTab({ orders, selectedYear, selectedMonth }: Month
           </p>
           <div className="flex gap-3 justify-center">
             <Button variant="outline" onClick={() => setShowConfirm(false)}>취소</Button>
-            <Button className="bg-orange-500 hover:bg-orange-600 text-white" onClick={handleGenerate}>
+            <Button className="bg-carrot-500 hover:bg-carrot-600 text-white" onClick={handleGenerate}>
               생성하기
             </Button>
           </div>
@@ -316,7 +316,7 @@ export function MonthlySummaryTab({ orders, selectedYear, selectedMonth }: Month
         <p className="text-slate-400 text-sm mb-6">아직 이 달의 정산관리가 작성되지 않았습니다.</p>
         <Button
           size="lg"
-          className="bg-orange-500 hover:bg-orange-600 text-white gap-2 px-8 py-6 text-base"
+          className="bg-carrot-500 hover:bg-carrot-600 text-white gap-2 px-8 py-6 text-base"
           onClick={() => setShowConfirm(true)}
         >
           <Plus className="h-5 w-5" />
@@ -388,7 +388,7 @@ function SettlementReportView({ report, onRegenerate }: { report: SettlementRepo
         <Button
           variant="outline"
           size="sm"
-          className="gap-1.5 text-orange-600 border-orange-200 hover:bg-orange-50"
+          className="gap-1.5 text-carrot-600 border-carrot-200 hover:bg-carrot-50"
           onClick={onRegenerate}
         >
           <RefreshCw className="h-3.5 w-3.5" />
@@ -399,7 +399,7 @@ function SettlementReportView({ report, onRegenerate }: { report: SettlementRepo
       {/* ── 설치정산 섹션 ── */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
-          <Receipt className="h-5 w-5 text-blue-600" />
+          <Receipt className="h-5 w-5 text-teal-600" />
           <h3 className="text-base font-bold text-slate-800">설치정산</h3>
           <span className="text-sm text-slate-500">({report.installCount}건)</span>
         </div>
@@ -413,7 +413,7 @@ function SettlementReportView({ report, onRegenerate }: { report: SettlementRepo
       {hasASItems && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <Wrench className="h-5 w-5 text-orange-600" />
+            <Wrench className="h-5 w-5 text-carrot-600" />
             <h3 className="text-base font-bold text-slate-800">AS정산</h3>
             <span className="text-sm text-slate-500">({report.asCount}건)</span>
           </div>
@@ -452,11 +452,11 @@ function InstallAffiliateGroup({ affiliateName, items }: { affiliateName: string
   }), { subtotal: 0, vat: 0, total: 0 })
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && items.length > 0 ? 'ring-1 ring-blue-200 shadow-md' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && items.length > 0 ? 'ring-1 ring-teal-200 shadow-md' : ''}`}>
       {/* 헤더 */}
       <button
         className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
-          items.length > 0 ? (isOpen ? 'bg-blue-50/60' : 'hover:bg-slate-50') : ''
+          items.length > 0 ? (isOpen ? 'bg-teal-50/60' : 'hover:bg-slate-50') : ''
         }`}
         onClick={() => items.length > 0 && setIsOpen(prev => !prev)}
         disabled={items.length === 0}
@@ -477,7 +477,7 @@ function InstallAffiliateGroup({ affiliateName, items }: { affiliateName: string
               <p className="text-sm font-bold tabular-nums text-slate-500">{totals.vat.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-5">
-              <p className="text-[10px] text-blue-500 leading-tight">부가세포함</p>
+              <p className="text-[10px] text-teal-500 leading-tight">부가세포함</p>
               <p className="text-base font-extrabold tabular-nums text-slate-900">{totals.total.toLocaleString('ko-KR')}</p>
             </div>
           </div>
@@ -517,7 +517,7 @@ function InstallAffiliateGroup({ affiliateName, items }: { affiliateName: string
                   return (
                     <React.Fragment key={itemId}>
                       <tr
-                        className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors cursor-pointer"
+                        className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors cursor-pointer"
                         onClick={() => handleToggleExpand(itemId)}
                       >
                         {/* 작업종류 뱃지 */}
@@ -580,7 +580,7 @@ function InstallAffiliateGroup({ affiliateName, items }: { affiliateName: string
               const itemId = item.id || item.orderId
 
               return (
-                <div key={itemId} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(itemId) ? 'ring-1 ring-blue-300' : ''}`} onClick={() => handleToggleExpand(itemId)}>
+                <div key={itemId} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(itemId) ? 'ring-1 ring-teal-300' : ''}`} onClick={() => handleToggleExpand(itemId)}>
                   <div className="p-4 space-y-3">
                     <div className="flex flex-wrap gap-1">
                       {workTypes.map(type => {
@@ -628,12 +628,12 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
 
   return (
     <div className="mx-4 my-3">
-      <div className="border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
+      <div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
         {/* 견적서 헤더 */}
-        <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-600">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
           <Receipt className="h-4 w-4 text-white" />
           <span className="text-sm font-bold text-white tracking-wide">견적서</span>
-          <span className="text-xs text-blue-200 ml-2">— {businessName}</span>
+          <span className="text-xs text-teal-200 ml-2">— {businessName}</span>
         </div>
 
         <table className="w-full text-sm">
@@ -665,7 +665,7 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
             {equipItems.length > 0 ? equipItems.map((item: QuoteSnapshotItem, idx: number) => {
               const { product, model } = splitItemName(item.itemName)
               return (
-                <tr key={`eq-${idx}`} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                <tr key={`eq-${idx}`} className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors">
                   <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{idx + 1}</td>
                   <td className="py-2 px-2 text-center text-slate-800 font-medium truncate">{product}</td>
                   <td className="py-2 px-2 text-center text-slate-500 truncate">{model || '-'}</td>
@@ -681,7 +681,7 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
             {snapshot.equipRounding > 0 && (
               <tr className="border-t border-dashed border-slate-300">
                 <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td>
-                <td className="py-1.5 px-2 text-right text-red-500 font-medium text-xs tabular-nums">-{snapshot.equipRounding?.toLocaleString('ko-KR')}</td>
+                <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs tabular-nums">-{snapshot.equipRounding?.toLocaleString('ko-KR')}</td>
                 <td></td>
               </tr>
             )}
@@ -698,7 +698,7 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
             {installItems.length > 0 ? installItems.map((item: QuoteSnapshotItem, idx: number) => {
               const { product, model } = splitItemName(item.itemName)
               return (
-                <tr key={`in-${idx}`} className="border-b border-slate-100 hover:bg-blue-50/40 transition-colors">
+                <tr key={`in-${idx}`} className="border-b border-slate-100 hover:bg-teal-50/40 transition-colors">
                   <td className="py-2 px-2 text-center text-slate-400 tabular-nums">{idx + 1}</td>
                   <td className="py-2 px-2 text-center text-slate-800 font-medium truncate">{product}</td>
                   <td className="py-2 px-2 text-center text-slate-500 truncate">{model || '-'}</td>
@@ -714,7 +714,7 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
             {snapshot.installRounding > 0 && (
               <tr className="border-t border-dashed border-slate-300">
                 <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td>
-                <td className="py-1.5 px-2 text-right text-red-500 font-medium text-xs tabular-nums">-{snapshot.installRounding?.toLocaleString('ko-KR')}</td>
+                <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs tabular-nums">-{snapshot.installRounding?.toLocaleString('ko-KR')}</td>
                 <td></td>
               </tr>
             )}
@@ -736,8 +736,8 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
                       <span className="text-sm font-semibold text-slate-700 tabular-nums">{snapshot.supplyAmount?.toLocaleString('ko-KR')}</span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-100 bg-slate-50/50">
-                      <span className="text-xs text-amber-600">기업이윤(설치비 3%)</span>
-                      <span className="text-sm font-semibold text-amber-700 tabular-nums">+{snapshot.adjustedProfit?.toLocaleString('ko-KR')}</span>
+                      <span className="text-xs text-gold-600">기업이윤(설치비 3%)</span>
+                      <span className="text-sm font-semibold text-gold-700 tabular-nums">+{snapshot.adjustedProfit?.toLocaleString('ko-KR')}</span>
                     </div>
                     <div className="flex items-center justify-between px-4 py-2.5 border-b border-slate-200 bg-white">
                       <span className="text-xs font-bold text-slate-600">소계</span>
@@ -747,7 +747,7 @@ function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: QuoteSnapsh
                       <span className="text-xs text-slate-500">VAT(10%)</span>
                       <span className="text-sm font-semibold text-slate-600 tabular-nums">+{snapshot.vat?.toLocaleString('ko-KR')}</span>
                     </div>
-                    <div className="flex items-center justify-between px-4 py-3 bg-blue-600 text-white rounded-b-xl">
+                    <div className="flex items-center justify-between px-4 py-3 bg-teal-600 text-white rounded-b-xl">
                       <span className="text-sm font-bold">최종금액</span>
                       <span className="text-lg font-black tabular-nums">{snapshot.grandTotal?.toLocaleString('ko-KR')}<span className="text-sm font-medium ml-0.5">원</span></span>
                     </div>
@@ -771,11 +771,11 @@ function QuoteSnapshotDetailMobile({ snapshot, businessName }: { snapshot: Quote
   const installItems = snapshot.installItems || []
 
   return (
-    <div className="mx-3 mb-3 border-2 border-blue-300 rounded-xl overflow-hidden bg-white shadow-md">
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-blue-700 to-blue-600">
+    <div className="mx-3 mb-3 border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
+      <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
         <Receipt className="h-4 w-4 text-white" />
         <span className="text-sm font-bold text-white tracking-wide">견적서</span>
-        <span className="text-xs text-blue-200 ml-1 truncate">— {businessName}</span>
+        <span className="text-xs text-teal-200 ml-1 truncate">— {businessName}</span>
       </div>
       <div className="divide-y divide-slate-100">
         <div className="px-3 py-1.5 bg-slate-100 text-xs font-bold text-slate-600 tracking-widest uppercase">[ 장비 ]</div>
@@ -797,7 +797,7 @@ function QuoteSnapshotDetailMobile({ snapshot, businessName }: { snapshot: Quote
         {snapshot.equipRounding > 0 && (
           <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-dashed border-slate-300">
             <span className="text-xs text-slate-500">단위절사</span>
-            <span className="text-sm text-red-500 font-medium tabular-nums">-{snapshot.equipRounding?.toLocaleString('ko-KR')}</span>
+            <span className="text-sm text-brick-500 font-medium tabular-nums">-{snapshot.equipRounding?.toLocaleString('ko-KR')}</span>
           </div>
         )}
         <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b-2 border-b-slate-300">
@@ -824,7 +824,7 @@ function QuoteSnapshotDetailMobile({ snapshot, businessName }: { snapshot: Quote
         {snapshot.installRounding > 0 && (
           <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-t border-dashed border-slate-300">
             <span className="text-xs text-slate-500">단위절사</span>
-            <span className="text-sm text-red-500 font-medium tabular-nums">-{snapshot.installRounding?.toLocaleString('ko-KR')}</span>
+            <span className="text-sm text-brick-500 font-medium tabular-nums">-{snapshot.installRounding?.toLocaleString('ko-KR')}</span>
           </div>
         )}
         <div className="flex items-center justify-between px-3 py-2 bg-slate-50 border-b-2 border-b-slate-300">
@@ -839,8 +839,8 @@ function QuoteSnapshotDetailMobile({ snapshot, businessName }: { snapshot: Quote
             <span className="text-xs font-semibold text-slate-700 tabular-nums">{snapshot.supplyAmount?.toLocaleString('ko-KR')}</span>
           </div>
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-100 bg-slate-50/50">
-            <span className="text-[11px] text-amber-600">기업이윤(설치비 3%)</span>
-            <span className="text-xs font-semibold text-amber-700 tabular-nums">+{snapshot.adjustedProfit?.toLocaleString('ko-KR')}</span>
+            <span className="text-[11px] text-gold-600">기업이윤(설치비 3%)</span>
+            <span className="text-xs font-semibold text-gold-700 tabular-nums">+{snapshot.adjustedProfit?.toLocaleString('ko-KR')}</span>
           </div>
           <div className="flex items-center justify-between px-3 py-2 border-b border-slate-200 bg-white">
             <span className="text-[11px] font-bold text-slate-600">소계</span>
@@ -850,7 +850,7 @@ function QuoteSnapshotDetailMobile({ snapshot, businessName }: { snapshot: Quote
             <span className="text-[11px] text-slate-500">VAT(10%)</span>
             <span className="text-xs font-semibold text-slate-600 tabular-nums">+{snapshot.vat?.toLocaleString('ko-KR')}</span>
           </div>
-          <div className="flex items-center justify-between px-3 py-2.5 bg-blue-600 text-white rounded-b-xl">
+          <div className="flex items-center justify-between px-3 py-2.5 bg-teal-600 text-white rounded-b-xl">
             <span className="text-xs font-bold">최종금액</span>
             <span className="text-sm font-black tabular-nums">{snapshot.grandTotal?.toLocaleString('ko-KR')}<span className="text-[11px] font-medium ml-0.5">원</span></span>
           </div>
@@ -875,17 +875,17 @@ function ASAffiliateGroup({ affiliateName, items }: { affiliateName: string; ite
   const totalWithVat = subtotal + vat
 
   return (
-    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && items.length > 0 ? 'ring-1 ring-orange-200 shadow-md' : ''}`}>
+    <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && items.length > 0 ? 'ring-1 ring-carrot-200 shadow-md' : ''}`}>
       <button
         className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
-          items.length > 0 ? (isOpen ? 'bg-orange-50/60' : 'hover:bg-slate-50') : ''
+          items.length > 0 ? (isOpen ? 'bg-carrot-50/60' : 'hover:bg-slate-50') : ''
         }`}
         onClick={() => items.length > 0 && setIsOpen(prev => !prev)}
         disabled={items.length === 0}
       >
         <div className="flex items-center gap-3">
           <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${items.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')}`} />
-          <Wrench className="h-4 w-4 text-orange-500" />
+          <Wrench className="h-4 w-4 text-carrot-500" />
           <h3 className="text-lg font-bold text-slate-800">{affiliateName} AS</h3>
           <span className="text-sm text-slate-500">({items.length}건)</span>
         </div>
@@ -897,7 +897,7 @@ function ASAffiliateGroup({ affiliateName, items }: { affiliateName: string; ite
             </div>
             <div className="border-l border-slate-200 pl-3">
               <p className="text-[10px] text-slate-400 leading-tight">단위절사</p>
-              <p className="text-sm font-bold tabular-nums text-red-500">-{truncationAmount.toLocaleString('ko-KR')}</p>
+              <p className="text-sm font-bold tabular-nums text-brick-500">-{truncationAmount.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-3">
               <p className="text-[10px] text-slate-400 leading-tight">소계</p>
@@ -908,7 +908,7 @@ function ASAffiliateGroup({ affiliateName, items }: { affiliateName: string; ite
               <p className="text-sm font-bold tabular-nums text-slate-500">{vat.toLocaleString('ko-KR')}</p>
             </div>
             <div className="border-l border-slate-200 pl-3">
-              <p className="text-[10px] text-orange-500 leading-tight">부가세포함</p>
+              <p className="text-[10px] text-carrot-500 leading-tight">부가세포함</p>
               <p className="text-base font-extrabold tabular-nums text-slate-900">{totalWithVat.toLocaleString('ko-KR')}원</p>
             </div>
           </div>
@@ -943,7 +943,7 @@ function ASAffiliateGroup({ affiliateName, items }: { affiliateName: string; ite
                 {items.map((req, idx) => (
                   <tr
                     key={req.id || idx}
-                    className={`border-b border-slate-100 hover:bg-blue-50/40 transition-colors ${idx === items.length - 1 ? 'border-b-2 border-b-slate-400' : ''}`}
+                    className={`border-b border-slate-100 hover:bg-teal-50/40 transition-colors ${idx === items.length - 1 ? 'border-b-2 border-b-slate-400' : ''}`}
                   >
                     <td className="p-2.5 text-xs tabular-nums whitespace-nowrap">{req.receptionDate || '-'}</td>
                     <td className="p-2.5"><p className="text-xs font-semibold truncate">{req.businessName}</p></td>

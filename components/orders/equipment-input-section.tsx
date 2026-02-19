@@ -217,7 +217,7 @@ export function EquipmentInputSection({
                 readOnly
                 tabIndex={0}
                 onKeyDown={(e) => handleKeyDown(e, rowIndex, 7)}
-                className="h-8 text-xs text-right bg-blue-50 text-blue-700 font-semibold"
+                className="h-8 text-xs text-right bg-teal-50 text-teal-700 font-semibold"
               />
             </div>
 
@@ -228,7 +228,7 @@ export function EquipmentInputSection({
                 variant="ghost"
                 size="sm"
                 onClick={() => handleRemove(item.id!)}
-                className="h-6 w-6 p-0 text-red-500 hover:bg-red-50"
+                className="h-6 w-6 p-0 text-brick-500 hover:bg-brick-50"
               >
                 <X className="h-3 w-3" />
               </Button>
