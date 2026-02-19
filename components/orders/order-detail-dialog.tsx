@@ -20,7 +20,8 @@ import { Separator } from '@/components/ui/separator'
 import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
-  type Order
+  type Order,
+  type StoredEquipment
 } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 import {
@@ -50,6 +51,7 @@ interface OrderDetailDialogProps {
   onEdit?: (order: Order) => void                 // 수정 함수
   onCancelOrder?: (orderId: string, reason: string) => void  // 발주 취소 함수
   onQuoteView?: (order: Order) => void            // 견적서 보기/작성 함수
+  storedEquipment?: StoredEquipment[]             // 보관 장비 목록 (재고설치 정보 표시용)
 }
 
 /**
@@ -62,7 +64,8 @@ export function OrderDetailDialog({
   onDelete,
   onEdit,
   onCancelOrder,
-  onQuoteView
+  onQuoteView,
+  storedEquipment = []
 }: OrderDetailDialogProps) {
 
   const { showConfirm } = useAlert()
@@ -242,37 +245,59 @@ export function OrderDetailDialog({
               </div>
             ) : (
               <div className="space-y-2">
-                {order.items.map((item) => (
-                  <div
-                    key={item.id}
-                    className="border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors"
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        {/* 작업종류 - 신규설치는 파란색으로 강조! */}
-                        <Badge
-                          variant="outline"
-                          className={`font-normal ${
-                            item.workType === '신규설치'
-                              ? 'bg-blue-100 text-blue-700 border-blue-300 font-semibold'
-                              : ''
-                          }`}
-                        >
-                          {item.workType}
-                        </Badge>
-                        {/* 품목 */}
-                        <span className="font-medium">{item.category}</span>
+                {order.items.map((item) => {
+                  // 재고설치인 경우 원본 보관 장비 정보 조회
+                  const linkedEquip = item.storedEquipmentId
+                    ? storedEquipment.find(e => e.id === item.storedEquipmentId)
+                    : null
+
+                  return (
+                    <div
+                      key={item.id}
+                      className="border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          {/* 작업종류 - 신규설치는 파란색, 재고설치는 보라색으로 강조 */}
+                          <Badge
+                            variant="outline"
+                            className={`font-normal ${
+                              item.workType === '신규설치'
+                                ? 'bg-blue-100 text-blue-700 border-blue-300 font-semibold'
+                                : item.workType === '재고설치'
+                                  ? 'bg-purple-100 text-purple-700 border-purple-300 font-semibold'
+                                  : ''
+                            }`}
+                          >
+                            {item.workType}
+                          </Badge>
+                          {/* 품목 */}
+                          <span className="font-medium">{item.category}</span>
+                        </div>
+                        {/* 수량 */}
+                        <span className="text-lg font-bold text-blue-600">
+                          {item.quantity}대
+                        </span>
                       </div>
-                      {/* 수량 */}
-                      <span className="text-lg font-bold text-blue-600">
-                        {item.quantity}대
-                      </span>
+                      <div className="mt-2 text-sm text-gray-600 flex gap-4">
+                        <span>모델명: <span className="font-mono">{item.model}</span></span>
+                      </div>
+                      {/* 재고설치: 철거 현장 + 제조 정보 */}
+                      {linkedEquip && (
+                        <div className="mt-2 text-xs bg-blue-50 border border-blue-200 rounded-md px-3 py-2 space-y-0.5">
+                          <p className="font-semibold text-blue-800">
+                            {linkedEquip.affiliate && !linkedEquip.siteName.startsWith(linkedEquip.affiliate) ? `${linkedEquip.affiliate} · ` : ''}{linkedEquip.siteName} 철거 장비
+                          </p>
+                          <div className="flex gap-3 text-blue-500 flex-wrap">
+                            {linkedEquip.removalDate && <span>철거일: {linkedEquip.removalDate.replace(/-/g, '.')}</span>}
+                            {linkedEquip.manufacturer && <span>제조사: {linkedEquip.manufacturer}</span>}
+                            {linkedEquip.manufacturingDate && <span>{linkedEquip.manufacturingDate}년식</span>}
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="mt-2 text-sm text-gray-600 flex gap-4">
-                      <span>모델명: <span className="font-mono">{item.model}</span></span>
-                    </div>
-                  </div>
-                ))}
+                  )
+                })}
               </div>
             )}
           </div>

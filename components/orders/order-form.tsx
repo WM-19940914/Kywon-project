@@ -29,13 +29,16 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck, CalendarDays } from 'lucide-react'
+import { Plus, X, ChevronLeft, ChevronRight, MapPin, BookOpen, Briefcase, Building2, GraduationCap, ClipboardList, Package, User, FileText, MessageSquare, AlertTriangle, Lightbulb, Info, Truck, CalendarDays, Search } from 'lucide-react'
 import {
   AFFILIATE_OPTIONS,
   CATEGORY_OPTIONS,
   WORK_TYPE_OPTIONS,
+  EQUIPMENT_UNIT_TYPE_LABELS,
+  EQUIPMENT_UNIT_TYPE_COLORS,
   type OrderItem,
   type StoredEquipment,
+  type EquipmentUnitType,
   parseAddress
 } from '@/types/order'
 // import { PriceTableSheet } from '@/components/orders/price-table-dialog'
@@ -153,16 +156,56 @@ export function OrderForm({
   // 보관 장비 선택 Dialog 상태
   const [equipmentDialogOpen, setEquipmentDialogOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null) // 어느 작업 항목에 장비를 적용할지
+  const [equipmentSearch, setEquipmentSearch] = useState('') // 보관 장비 검색어
+  const [checkedEquipmentIds, setCheckedEquipmentIds] = useState<Set<string>>(new Set()) // 다중 선택용 체크된 장비 ID
 
-  // 선택 가능한 보관 장비 (이미 다른 항목에 선택된 장비 제외)
+  // 선택 가능한 보관 장비 (이미 발주내역에 연결된 장비 제외)
   const availableEquipment = useMemo(() => {
     const usedIds = items
-      .filter(item => item.storedEquipmentId && item.id !== selectedItemId)
+      .filter(item => item.storedEquipmentId)
       .map(item => item.storedEquipmentId!)
     return storedEquipment.filter(
       e => e.status === 'stored' && !usedIds.includes(e.id)
     )
-  }, [items, selectedItemId, storedEquipment])
+  }, [items, storedEquipment])
+
+  // 검색 필터링된 장비 목록
+  const filteredEquipment = useMemo(() => {
+    if (!equipmentSearch.trim()) return availableEquipment
+    const keyword = equipmentSearch.trim().toLowerCase()
+    return availableEquipment.filter(e =>
+      (e.siteName && e.siteName.toLowerCase().includes(keyword)) ||
+      (e.model && e.model.toLowerCase().includes(keyword)) ||
+      (e.affiliate && e.affiliate.toLowerCase().includes(keyword)) ||
+      (e.address && e.address.toLowerCase().includes(keyword))
+    )
+  }, [availableEquipment, equipmentSearch])
+
+  // 현장별 그룹핑 (siteName + warehouseId 기준)
+  const equipmentGroups = useMemo(() => {
+    const typeOrder: Record<string, number> = { indoor: 0, outdoor: 1, set: 2, etc: 3 }
+    const groupMap = new Map<string, StoredEquipment[]>()
+
+    for (const item of filteredEquipment) {
+      const key = `${item.siteName}__${item.warehouseId || ''}`
+      const arr = groupMap.get(key) || []
+      arr.push(item)
+      groupMap.set(key, arr)
+    }
+
+    // 그룹 내부: 실내기→실외기 순서 정렬
+    const groups: { key: string; siteName: string; items: StoredEquipment[] }[] = []
+    for (const [key, groupItems] of Array.from(groupMap)) {
+      groupItems.sort((a, b) =>
+        (typeOrder[a.equipmentUnitType || ''] ?? 9) - (typeOrder[b.equipmentUnitType || ''] ?? 9)
+      )
+      groups.push({ key, siteName: groupItems[0].siteName, items: groupItems })
+    }
+
+    // 그룹 간: 현장명 가나다 순
+    groups.sort((a, b) => a.siteName.localeCompare(b.siteName))
+    return groups
+  }, [filteredEquipment])
 
   /**
    * 다음 우편번호 서비스 스크립트 로드
@@ -268,41 +311,78 @@ export function OrderForm({
    */
   const handleOpenEquipmentDialog = (itemId: string) => {
     setSelectedItemId(itemId)
+    setEquipmentSearch('') // 검색어 초기화
+    setCheckedEquipmentIds(new Set()) // 체크 초기화
     setEquipmentDialogOpen(true)
   }
 
   /**
-   * 보관 장비 선택 시 자동 채움
+   * 장비 체크박스 토글 (다중 선택용)
    */
-  const handleSelectEquipment = (equipment: StoredEquipment) => {
-    if (!selectedItemId) return
+  const handleToggleEquipment = (equipmentId: string) => {
+    setCheckedEquipmentIds(prev => {
+      const next = new Set(prev)
+      if (next.has(equipmentId)) {
+        next.delete(equipmentId)
+      } else {
+        next.add(equipmentId)
+      }
+      return next
+    })
+  }
 
-    setItems(items.map(item => {
+  /**
+   * 선택 확정 — 체크된 장비들을 발주내역에 추가
+   * 첫 번째 장비: 현재 선택된 항목(selectedItemId)에 채움
+   * 나머지 장비: 새 OrderItem 행을 자동 생성
+   */
+  const handleConfirmEquipmentSelection = () => {
+    if (checkedEquipmentIds.size === 0) {
+      showAlert('장비를 1개 이상 선택해주세요', 'warning')
+      return
+    }
+
+    // 체크된 장비 목록 (실내기→실외기 순서로 정렬)
+    const typeOrder: Record<string, number> = { indoor: 0, outdoor: 1, set: 2, etc: 3 }
+    const selected = availableEquipment
+      .filter(e => checkedEquipmentIds.has(e.id))
+      .sort((a, b) =>
+        (typeOrder[a.equipmentUnitType || ''] ?? 9) - (typeOrder[b.equipmentUnitType || ''] ?? 9)
+      )
+
+    // 첫 번째 장비 → 현재 항목에 채움, 나머지 → 새 행 생성
+    const [firstEquip, ...restEquip] = selected
+
+    const updatedItems = items.map(item => {
       if (item.id === selectedItemId) {
         return {
           ...item,
-          category: equipment.category,
-          model: equipment.model || '',
-          size: equipment.size || '',
-          quantity: equipment.quantity,
-          storedEquipmentId: equipment.id, // 보관 장비 ID 저장
+          category: firstEquip.category,
+          model: firstEquip.model || '',
+          size: firstEquip.size || '',
+          quantity: firstEquip.quantity,
+          storedEquipmentId: firstEquip.id,
         }
       }
       return item
-    }))
-
-    // 보관 장비 안내 문구 자동 생성 → notes에 추가 (중복 방지)
-    const dateStr = equipment.removalDate
-      ? equipment.removalDate.replace(/-/g, '.')
-      : '날짜미상'
-    const equipmentNote = `[자동문구] ${dateStr}에 철거한 ${equipment.affiliate || ''} ${equipment.siteName}에 보관중인 장비를 사용해주세요`
-    setNotes(prev => {
-      if (prev.includes(equipmentNote)) return prev // 이미 있으면 추가 안 함
-      return prev ? `${prev}\n\n${equipmentNote}` : equipmentNote
     })
 
+    // 나머지 장비는 새 OrderItem 행으로 추가
+    const additionalItems = restEquip.map(equip => ({
+      id: `temp-${Date.now()}-${equip.id}`,
+      workType: '재고설치' as const,
+      category: equip.category,
+      model: equip.model || '',
+      size: equip.size || '',
+      quantity: equip.quantity,
+      storedEquipmentId: equip.id,
+    }))
+
+    const newItems = [...updatedItems, ...additionalItems]
+
+    setItems(newItems)
     setEquipmentDialogOpen(false)
-    showAlert(`${equipment.siteName}의 장비 정보가 적용되었습니다`, 'success')
+    showAlert(`${selected.length}개 장비가 발주내역에 추가되었습니다`, 'success')
   }
 
 
@@ -341,30 +421,18 @@ export function OrderForm({
         return
       }
 
-      // 🔥 사전견적이면 Step 3 건너뛰기
-      if (isPreliminaryQuote) {
-        // Step 3에서 하던 자동 생성을 여기서 처리
-        const today = new Date().toISOString().split('T')[0]
-        const dateStr = today.replace(/-/g, '')
-        const autoDocNumber = `${businessName}-${dateStr}-01`
-        setDocumentNumber(autoDocNumber)
-
-        // items 비우기
-        setItems([])
-
-        // Step 4로 직행
-        setCurrentStep(4)
-        return
-      }
+      // (사전견적도 일반 발주와 동일하게 4단계 진행)
     }
 
-    // Step 3: 작업 내역 (사전견적일 때는 여기 안 옴)
+    // Step 3: 작업 내역
     if (currentStep === 3) {
-      // 기존 검증 로직 유지
-      const hasEmptyQuantity = items.some(item => !item.quantity || item.quantity < 1)
-      if (hasEmptyQuantity) {
-        showAlert('수량을 입력해주세요', 'warning')
-        return
+      // 사전견적이 아닐 때만 수량 검증
+      if (!isPreliminaryQuote) {
+        const hasEmptyQuantity = items.some(item => !item.quantity || item.quantity < 1)
+        if (hasEmptyQuantity) {
+          showAlert('수량을 입력해주세요', 'warning')
+          return
+        }
       }
 
       if (isRelocation && !isInBuildingMove && !relocationAddress) {
@@ -386,12 +454,7 @@ export function OrderForm({
    * 이전 스텝으로 이동
    */
   const handlePrev = () => {
-    // Step 4에서 이전 클릭 시
-    if (currentStep === 4 && isPreliminaryQuote) {
-      setCurrentStep(2)  // 사전견적은 Step 3을 건너뛰었으므로 Step 2로
-    } else {
-      setCurrentStep(currentStep - 1)
-    }
+    setCurrentStep(currentStep - 1)
   }
 
   /**
@@ -452,25 +515,16 @@ export function OrderForm({
   /**
    * 진행률 계산
    */
-  // 전체 스텝 수 계산
-  const totalSteps = isPreliminaryQuote ? 3 : 4
-
-  // 진행률 계산
-  const getDisplayStep = () => {
-    if (isPreliminaryQuote && currentStep === 4) {
-      return 3  // Step 4를 Step 3처럼 표시
-    }
-    return currentStep
-  }
-
-  const progress = (getDisplayStep() / totalSteps) * 100
+  // 전체 스텝 수 (항상 4단계)
+  const totalSteps = 4
+  const progress = (currentStep / totalSteps) * 100
 
   return (
     <div className="space-y-6">
       {/* 진행률 표시 */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-gray-600">
-          <span>Step {getDisplayStep()} / {totalSteps}</span>
+          <span>Step {currentStep} / {totalSteps}</span>
           <span>{Math.round(progress)}%</span>
         </div>
         <div className="w-full bg-muted rounded-full h-1.5">
@@ -745,9 +799,8 @@ export function OrderForm({
                 }
               }
 
-              // 철거 작업 여부 (모델명/평형 선택사항)
+              // 철거 작업 여부 (모델명 선택사항)
               const isRemovalWork = item.workType === '철거보관' || item.workType === '철거폐기'
-              // 신규/이전 작업 여부 (평형 필수)
               return (
                 <Card key={item.id} className={`relative ${getBorderColor()}`}>
                   <CardContent className="p-5">
@@ -795,7 +848,7 @@ export function OrderForm({
                             </SelectContent>
                           </Select>
 
-                          {/* 재고설치 선택 시: 보관 장비 선택 */}
+                          {/* 재고설치 선택 시: 보관 장비 선택 버튼 */}
                           {item.workType === '재고설치' && (
                             <div className="mt-3">
                               <Button
@@ -865,16 +918,48 @@ export function OrderForm({
                         </div>
                       </div>
 
+                      {/* 재고설치: 선택된 보관 장비 정보 카드 (전체 너비) */}
+                      {item.workType === '재고설치' && item.storedEquipmentId && (() => {
+                        const eq = storedEquipment.find(e => e.id === item.storedEquipmentId)
+                        if (!eq) return null
+                        const unitType = eq.equipmentUnitType as EquipmentUnitType | undefined
+                        const unitLabel = unitType ? EQUIPMENT_UNIT_TYPE_LABELS[unitType] : null
+                        return (
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 space-y-2">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {/* 실내기/실외기 표시 (빨간 글씨) */}
+                              {unitLabel && (
+                                <span className="text-red-600 font-bold text-sm">
+                                  [{unitLabel}]
+                                </span>
+                              )}
+                              <span className="font-bold text-blue-900 text-sm">
+                                {eq.affiliate && !eq.siteName.startsWith(eq.affiliate) ? `${eq.affiliate} · ` : ''}{eq.siteName} 철거 장비
+                              </span>
+                            </div>
+                            {eq.address && (
+                              <p className="text-sm text-blue-700">{eq.address}</p>
+                            )}
+                            <div className="flex gap-4 text-sm text-blue-600 flex-wrap">
+                              {eq.removalDate && <span>철거일: {eq.removalDate.replace(/-/g, '.')}</span>}
+                              {eq.manufacturer && <span>제조사: {eq.manufacturer}</span>}
+                              {eq.manufacturingDate && <span>{eq.manufacturingDate}년식</span>}
+                              {eq.size && <span>평형: {eq.size}</span>}
+                            </div>
+                          </div>
+                        )
+                      })()}
+
                       {/* 안내문구 */}
                       {isRemovalWork ? (
                         <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
                           <Info className="h-3 w-3 mt-0.5 flex-shrink-0" />
                           철거 작업의 경우 모델명을 모르면 빈칸으로 두세요
                         </p>
-                      ) : (
+                      ) : item.workType !== '재고설치' && (
                         <p className="text-xs text-muted-foreground bg-white p-2 rounded border border-border/60 flex items-start gap-1.5">
                           <Lightbulb className="h-3 w-3 mt-0.5 flex-shrink-0" />
-                          모델명에 냉난방/냉방 + 평형수를 같이 적어주세요 (예: 냉난방 40평)
+                          모델명에 냉난방/냉방 + 평형을 같이 적어주세요 (예: 냉난방 40평)
                         </p>
                       )}
                     </div>
@@ -1125,33 +1210,56 @@ export function OrderForm({
                 <h3 className="font-bold text-base">작업 내역</h3>
               </div>
 
-              {isPreliminaryQuote ? (
-                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
+              {isPreliminaryQuote && (
+                <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg mb-2">
                   <p className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
                     <Info className="h-4 w-4" />
-                    사전견적 요청건 (현장 확인 후 장비 선택 예정)
+                    사전견적 요청건 (현장 확인 후 장비 변경 가능)
                   </p>
                 </div>
-              ) : (
-                <div className="space-y-2">
-                  {items.map((item, index) => (
-                    <div key={item.id} className="flex items-center gap-3 p-2 bg-gray-50 rounded">
-                      <Badge variant="outline" className="font-mono">
-                        {index + 1}
-                      </Badge>
-                      <div className="flex-1">
-                        <p className="font-semibold text-sm">
-                          {item.workType} · {item.category}
-                        </p>
-                        <p className="text-xs text-gray-600">
-                          {item.model && `${item.model} · `}
-                          {item.quantity}대
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               )}
+              <div className="space-y-2">
+                {items.length > 0 ? items.map((item, index) => {
+                  // 재고설치인 경우 원본 보관 장비 정보 조회
+                  const linkedEquip = item.storedEquipmentId
+                    ? storedEquipment.find(e => e.id === item.storedEquipmentId)
+                    : null
+
+                  return (
+                    <div key={item.id} className="p-2.5 bg-gray-50 rounded space-y-1">
+                      <div className="flex items-center gap-3">
+                        <Badge variant="outline" className="font-mono">
+                          {index + 1}
+                        </Badge>
+                        <div className="flex-1">
+                          <p className="font-semibold text-sm">
+                            {item.workType} · {item.category}
+                          </p>
+                          <p className="text-xs text-gray-600">
+                            {item.model && `${item.model} · `}
+                            {item.quantity}대
+                          </p>
+                        </div>
+                      </div>
+                      {/* 재고설치: 철거 현장 + 제조년월 정보 */}
+                      {linkedEquip && (
+                        <div className="ml-10 text-xs text-blue-600 bg-blue-50 rounded px-2 py-1.5">
+                          <span className="font-medium">
+                            {linkedEquip.affiliate && !linkedEquip.siteName.startsWith(linkedEquip.affiliate) ? `${linkedEquip.affiliate} · ` : ''}{linkedEquip.siteName} 철거 장비
+                          </span>
+                          <span className="text-blue-400 ml-2">
+                            {linkedEquip.removalDate && `철거 ${linkedEquip.removalDate.replace(/-/g, '.')}`}
+                            {linkedEquip.manufacturingDate && ` · ${linkedEquip.manufacturingDate}년식`}
+                            {linkedEquip.manufacturer && ` · ${linkedEquip.manufacturer}`}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )
+                }) : (
+                  <p className="text-sm text-gray-400 text-center py-2">작업 내역 없음</p>
+                )}
+              </div>
             </CardContent>
           </Card>
 
@@ -1213,55 +1321,211 @@ export function OrderForm({
         )}
       </div>
 
-      {/* 보관 장비 선택 Dialog */}
+      {/* 보관 장비 선택 Dialog — 검색 + 현장별 그룹핑 + 다중 선택 */}
       <Dialog open={equipmentDialogOpen} onOpenChange={setEquipmentDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>보관 중인 장비 선택</DialogTitle>
           </DialogHeader>
-          <div className="space-y-3 py-4">
+
+          {/* 안내 문구 */}
+          <p className="text-sm text-gray-600 bg-blue-50 px-3 py-2 rounded-md">
+            철거 보관중인 실내기 및 실외기를 선택해주세요. 여러 대를 한번에 선택할 수 있습니다.
+          </p>
+
+          {/* 검색 입력 */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              placeholder="현장명, 모델명, 계열사로 검색..."
+              value={equipmentSearch}
+              onChange={(e) => setEquipmentSearch(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+
+          {/* 장비 목록 (스크롤 영역) */}
+          <div className="flex-1 overflow-y-auto space-y-4 py-2 min-h-0">
             {availableEquipment.length === 0 ? (
               <p className="text-center text-gray-500 py-8">
                 선택 가능한 보관 장비가 없습니다.
               </p>
+            ) : equipmentGroups.length === 0 ? (
+              <p className="text-center text-gray-500 py-8">
+                &quot;{equipmentSearch}&quot; 검색 결과가 없습니다.
+              </p>
             ) : (
-              availableEquipment.map((equipment) => (
-                  <button
-                    key={equipment.id}
-                    onClick={() => handleSelectEquipment(equipment)}
-                    className="w-full text-left p-4 rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+              equipmentGroups.map((group) => {
+                const first = group.items[0]
+                const totalQty = group.items.reduce((sum, e) => sum + e.quantity, 0)
+                // 그룹 내 전체 선택 여부
+                const allChecked = group.items.every(e => checkedEquipmentIds.has(e.id))
+                const someChecked = group.items.some(e => checkedEquipmentIds.has(e.id))
+
+                return (
+                  <div
+                    key={group.key}
+                    className="rounded-lg border border-gray-200 overflow-hidden"
                   >
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge className="bg-blue-50 text-blue-700 font-semibold">
-                            {equipment.category}
-                          </Badge>
-                          <span className="text-sm text-gray-600">
-                            {equipment.model || '모델명 미입력'}
-                          </span>
+                    {/* 현장 헤더 */}
+                    <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            {/* 그룹 전체 선택 체크박스 */}
+                            <button
+                              type="button"
+                              className={`w-4 h-4 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                                allChecked
+                                  ? 'bg-blue-600 border-blue-600 text-white'
+                                  : someChecked
+                                    ? 'bg-blue-200 border-blue-400'
+                                    : 'border-gray-300 hover:border-blue-400'
+                              }`}
+                              onClick={() => {
+                                setCheckedEquipmentIds(prev => {
+                                  const next = new Set(prev)
+                                  if (allChecked) {
+                                    // 전체 해제
+                                    group.items.forEach(e => next.delete(e.id))
+                                  } else {
+                                    // 전체 선택
+                                    group.items.forEach(e => next.add(e.id))
+                                  }
+                                  return next
+                                })
+                              }}
+                            >
+                              {allChecked && <span className="text-[10px] font-bold">✓</span>}
+                              {someChecked && !allChecked && <span className="text-[8px] text-blue-600 font-bold">—</span>}
+                            </button>
+                            <MapPin className="h-4 w-4 text-gray-500 shrink-0" />
+                            {first.affiliate && (
+                              <Badge variant="outline" className="text-xs shrink-0">
+                                {first.affiliate}
+                              </Badge>
+                            )}
+                            <span className="font-semibold text-gray-900 truncate">
+                              {first.siteName}
+                            </span>
+                          </div>
+                          {first.address && (
+                            <p className="text-xs text-gray-500 mt-1 ml-10 truncate">
+                              {first.address}
+                            </p>
+                          )}
+                          <div className="flex items-center gap-3 text-xs text-gray-500 mt-1 ml-10 flex-wrap">
+                            {first.removalDate && (
+                              <span>철거일: {first.removalDate.replace(/-/g, '.')}</span>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm font-semibold text-gray-900 mb-1">
-                          {equipment.siteName}
-                        </p>
-                        <div className="flex items-center gap-4 text-xs text-gray-500">
-                          <span>수량: {equipment.quantity}대</span>
-                          {equipment.size && <span>평형: {equipment.size}</span>}
-                          {equipment.manufacturer && <span>제조사: {equipment.manufacturer}</span>}
-                          {equipment.manufacturingDate && <span>제조년월: {equipment.manufacturingDate}</span>}
-                        </div>
+                        <Badge variant="secondary" className="shrink-0 text-xs">
+                          {totalQty}대
+                        </Badge>
                       </div>
-                      <Button
-                        type="button"
-                        size="sm"
-                        className="shrink-0"
-                      >
-                        선택
-                      </Button>
                     </div>
-                  </button>
-                ))
+
+                    {/* 그룹 내 장비 리스트 */}
+                    <div className="divide-y divide-gray-100">
+                      {group.items.map((equipment) => {
+                        const unitType = equipment.equipmentUnitType as EquipmentUnitType | undefined
+                        const unitLabel = unitType ? EQUIPMENT_UNIT_TYPE_LABELS[unitType] : null
+                        const unitColor = unitType ? EQUIPMENT_UNIT_TYPE_COLORS[unitType] : ''
+                        const isChecked = checkedEquipmentIds.has(equipment.id)
+
+                        return (
+                          <button
+                            type="button"
+                            key={equipment.id}
+                            className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left ${
+                              isChecked ? 'bg-blue-50' : 'hover:bg-gray-50'
+                            }`}
+                            onClick={() => handleToggleEquipment(equipment.id)}
+                          >
+                            {/* 체크박스 */}
+                            <div className={`w-4 h-4 mt-0.5 rounded border shrink-0 flex items-center justify-center transition-colors ${
+                              isChecked
+                                ? 'bg-blue-600 border-blue-600 text-white'
+                                : 'border-gray-300'
+                            }`}>
+                              {isChecked && <span className="text-[10px] font-bold">✓</span>}
+                            </div>
+
+                            <div className="flex-1 min-w-0">
+                              {/* 1줄: 장비유형 + 모델명 + 평형 + 수량 */}
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {unitLabel ? (
+                                  <Badge className={`${unitColor} text-xs shrink-0 border`}>
+                                    {unitLabel}
+                                  </Badge>
+                                ) : (
+                                  <Badge className="bg-blue-50 text-blue-700 text-xs shrink-0">
+                                    {equipment.category}
+                                  </Badge>
+                                )}
+                                <span className="text-sm text-gray-700 truncate">
+                                  {equipment.model || '모델명 미입력'}
+                                </span>
+                                {equipment.size && (
+                                  <span className="text-xs text-gray-500 shrink-0">
+                                    {equipment.size}
+                                  </span>
+                                )}
+                                <span className="text-xs text-gray-400 shrink-0">
+                                  {equipment.quantity}대
+                                </span>
+                              </div>
+                              {/* 2줄: 제조사 + 제조년월 */}
+                              {(equipment.manufacturer || equipment.manufacturingDate) && (
+                                <div className="flex items-center gap-3 text-xs text-gray-400 mt-1">
+                                  {equipment.manufacturer && (
+                                    <span>제조사: {equipment.manufacturer}</span>
+                                  )}
+                                  {equipment.manufacturingDate && (
+                                    <span>{equipment.manufacturingDate}년식</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })
             )}
+          </div>
+
+          {/* 하단: 선택 현황 + 확인 버튼 */}
+          <div className="flex items-center justify-between pt-3 border-t">
+            <span className="text-sm text-gray-500">
+              {checkedEquipmentIds.size > 0
+                ? `${checkedEquipmentIds.size}개 장비 선택됨`
+                : `총 ${availableEquipment.length}대 보관중`}
+              {equipmentSearch && ` · 검색 결과 ${filteredEquipment.length}대`}
+            </span>
+            <div className="flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setEquipmentDialogOpen(false)}
+              >
+                취소
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                disabled={checkedEquipmentIds.size === 0}
+                onClick={handleConfirmEquipmentSelection}
+              >
+                {checkedEquipmentIds.size > 0
+                  ? `${checkedEquipmentIds.size}개 장비 추가`
+                  : '장비 추가'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

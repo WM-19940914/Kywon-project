@@ -421,6 +421,7 @@ export default function OrdersPage() {
         onEdit={handleEdit}
         onCancelOrder={handleCancelOrder}
         onQuoteView={handleQuoteView}
+        storedEquipment={storedEquipment}
       />
 
       {/* 수정 모달 */}

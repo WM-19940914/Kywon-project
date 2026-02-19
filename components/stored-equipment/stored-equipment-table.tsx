@@ -307,6 +307,7 @@ export function StoredEquipmentTable({
               <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '150px' }}>모델명</th>
               <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>평형</th>
               <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '38px' }}>수량</th>
+              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '120px' }}>설치예정</th>
               <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '50px' }}>제조사</th>
               <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>발주서</th>
               {activeTab === 'released' && (
@@ -405,6 +406,27 @@ export function StoredEquipmentTable({
                     {/* ── 수량 [INDIVIDUAL] ── */}
                     <td className="px-1 py-1.5 text-center">
                       <span className="text-xs font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
+                    </td>
+
+                    {/* ── 설치예정 [INDIVIDUAL] ── */}
+                    <td className="px-1.5 py-1.5">
+                      {(() => {
+                        // 이 장비를 재고설치로 사용하는 발주 찾기
+                        const matchedOrder = orders.find(o =>
+                          o.items?.some(oi => oi.storedEquipmentId === item.id)
+                        )
+                        if (!matchedOrder) return <span className="text-[10px] text-slate-300">-</span>
+                        return (
+                          <div className="space-y-0.5">
+                            <p className="text-[11px] font-semibold text-emerald-700 leading-tight truncate">
+                              {matchedOrder.businessName}
+                            </p>
+                            <p className="text-[10px] text-slate-400 leading-tight">
+                              {matchedOrder.affiliate}
+                            </p>
+                          </div>
+                        )
+                      })()}
                     </td>
 
                     {/* ── 제조사 [INDIVIDUAL] ── */}
@@ -648,6 +670,20 @@ export function StoredEquipmentTable({
                   <span className="ml-1.5 font-bold text-blue-700 tabular-nums">{first.manufacturingDate ? first.manufacturingDate.replace('-', '.') : '-'}</span>
                 </div>
               </div>
+
+              {/* 설치예정 (재고설치에 연결된 발주가 있으면 표시) */}
+              {(() => {
+                const matchedOrder = orders.find(o =>
+                  o.items?.some(oi => group.items.some(gi => oi.storedEquipmentId === gi.id))
+                )
+                if (!matchedOrder) return null
+                return (
+                  <div className="mx-4 mb-3 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                    <p className="text-[10px] text-emerald-500 font-medium">설치예정</p>
+                    <p className="text-xs font-bold text-emerald-800">{matchedOrder.affiliate} · {matchedOrder.businessName}</p>
+                  </div>
+                )
+              })()}
 
               {/* 출고 정보 (출고완료 탭) */}
               {activeTab === 'released' && first.releaseType && (
