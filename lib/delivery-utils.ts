@@ -375,17 +375,20 @@ export function analyzeDeliveryDelay(items?: EquipmentItem[]): {
 }
 
 /**
- * 발주완료 탭 문서상태 2단계 타입
- * - in-progress: 진행중 (배송확정일이 1개라도 없거나, 오늘 이후인 경우)
- * - completed: 완료 (모든 구성품의 배송확정일이 입력되어 있고, 모두 과거인 경우)
+ * 발주완료 탭 문서상태 3단계 타입
+ * - in-progress: 진행중 (배송확정일이 아직 안 잡힌 구성품이 있음)
+ * - arriving: 도착 예정 (모든 구성품 배송확정일 잡혔지만, 일부가 아직 미래 = 안 도착)
+ * - completed: 완료 (모든 구성품의 배송확정일이 과거 = 전부 도착)
  */
-export type OrderedDocStatus = 'in-progress' | 'completed'
+export type OrderedDocStatus = 'in-progress' | 'arriving' | 'completed'
 
 /**
  * 발주완료 탭 문서상태 자동 계산 (구성품 배열을 직접 받음)
  *
- * - 완료: 모든 구성품의 배송확정일이 입력 + 모두 오늘 이전(과거)
- * - 진행중: 그 외 전부 (배송확정일 미입력, 오늘, 미래 포함)
+ * 3단계 판정:
+ * - in-progress: 배송확정일이 아직 안 잡힌 구성품이 1개라도 있음
+ * - arriving: 모든 구성품 배송확정일 잡혔지만, 일부가 아직 미래(도착 안 함)
+ * - completed: 모든 구성품 배송확정일이 과거 (전부 도착 완료)
  *
  * @param items - 구성품 배열 (편집 중이면 editingItems, 아니면 order.equipmentItems)
  * @returns 계산된 문서상태
@@ -396,14 +399,45 @@ export function computeOrderedDocStatus(items: EquipmentItem[]): OrderedDocStatu
   // 구성품이 없으면 진행중
   if (items.length === 0) return 'in-progress'
 
-  // 모든 구성품에 배송확정일이 있고, 전부 과거(오늘 미포함)인지 확인
-  const allDone = items.every(item => {
-    if (!item.confirmedDeliveryDate) return false
-    // daysDiff(확정일, 오늘) < 0 → 확정일이 과거 (오늘은 포함 안 함)
-    return daysDiff(item.confirmedDeliveryDate, today) < 0
+  // 배송확정일 미입력 구성품이 있는지 확인
+  const hasNoDate = items.some(item => !item.confirmedDeliveryDate)
+  if (hasNoDate) return 'in-progress'
+
+  // 여기부터는 모든 구성품에 배송확정일이 있음
+  // 전부 과거(오늘 미포함)인지 확인
+  const allPast = items.every(item => {
+    // daysDiff(확정일, 오늘) < 0 → 확정일이 과거
+    return daysDiff(item.confirmedDeliveryDate!, today) < 0
   })
 
-  return allDone ? 'completed' : 'in-progress'
+  if (allPast) return 'completed'
+
+  // 모든 확정일 잡혔지만 일부가 아직 미래(오늘 포함) → 도착 예정
+  return 'arriving'
+}
+
+/**
+ * 배송 미완료 구성품 수 계산
+ * 배송확정일이 없거나 아직 미래(오늘 포함)인 구성품 수를 반환
+ *
+ * @param items - 구성품 배열
+ * @returns { noDate: 확정일 미입력 수, futureDate: 미래 날짜 수, total: 전체 미완료 수 }
+ */
+export function countUndeliveredItems(items: EquipmentItem[]): { noDate: number; futureDate: number; total: number } {
+  const today = getToday()
+  let noDate = 0
+  let futureDate = 0
+
+  for (const item of items) {
+    if (!item.confirmedDeliveryDate) {
+      noDate++
+    } else if (daysDiff(item.confirmedDeliveryDate, today) >= 0) {
+      // 확정일이 오늘이거나 미래 → 아직 도착 안 함
+      futureDate++
+    }
+  }
+
+  return { noDate, futureDate, total: noDate + futureDate }
 }
 
 /**
@@ -411,6 +445,7 @@ export function computeOrderedDocStatus(items: EquipmentItem[]): OrderedDocStatu
  */
 export const ORDERED_DOC_STATUS_STYLES: Record<OrderedDocStatus, { label: string; color: string; bgColor: string; borderColor: string }> = {
   'in-progress': { label: '🚚 배송 진행중', color: 'text-blue-700', bgColor: 'bg-blue-50', borderColor: 'border-blue-200' },
+  'arriving': { label: '📦 입고 대기중', color: 'text-sky-700', bgColor: 'bg-sky-50', borderColor: 'border-sky-200' },
   'completed': { label: '✅ 배송완료', color: 'text-green-700', bgColor: 'bg-green-50', borderColor: 'border-green-200' },
 }
 

@@ -65,6 +65,7 @@ import {
   computeItemDeliveryStatus,
   analyzeDeliveryDelay,
   computeOrderedDocStatus,
+  countUndeliveredItems,
   ORDERED_DOC_STATUS_STYLES,
   getWarehouseCache,
 } from '@/lib/delivery-utils'
@@ -594,28 +595,59 @@ function DeliveryProgressSummary({ order }: { order: Order }) {
     return <span className="text-xs text-gray-400">-</span>
   }
 
-  // 전체 배송확정: 초록 체크 아이콘
+  // 확정일이 미래인 건(아직 안 도착) 계산
+  const items = order.equipmentItems || []
+  const undelivered = countUndeliveredItems(items)
+  const arrived = progress.total - undelivered.total  // 도착 완료 수
+
+  // 전체 배송확정
   if (progress.confirmed === progress.total) {
+    // 미래 날짜 건이 있으면: "전체확정" + 도착현황 미니 바
+    if (undelivered.futureDate > 0) {
+      return (
+        <div className="flex flex-col gap-0.5 max-w-[90px]">
+          <div className="flex items-center gap-1">
+            <span className="inline-flex h-[16px] px-1 items-center rounded-full bg-green-100 border border-green-200">
+              <span className="text-[9px] font-bold text-green-700">전체확정</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1">
+            <div className="flex-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-green-400 to-green-500 rounded-full transition-all"
+                style={{ width: `${Math.round((arrived / progress.total) * 100)}%` }}
+              />
+            </div>
+            <span className="text-[9px] font-semibold text-sky-600 whitespace-nowrap">{undelivered.futureDate}건 대기</span>
+          </div>
+        </div>
+      )
+    }
+
+    // 전부 도착 완료
     return (
-      <div className="flex items-center gap-1.5">
-        <svg className="h-3.5 w-3.5 text-green-600" viewBox="0 0 20 20" fill="currentColor">
+      <span className="inline-flex h-[18px] px-1.5 items-center rounded-full bg-green-100 border border-green-200">
+        <svg className="h-3 w-3 text-green-600 mr-0.5" viewBox="0 0 20 20" fill="currentColor">
           <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.857-9.809a.75.75 0 00-1.214-.882l-3.483 4.79-1.88-1.88a.75.75 0 10-1.06 1.061l2.5 2.5a.75.75 0 001.137-.089l4-5.5z" clipRule="evenodd" />
         </svg>
-        <span className="text-xs font-medium text-green-700">전체확정</span>
-      </div>
+        <span className="text-[10px] font-bold text-green-700">전체확정</span>
+      </span>
     )
   }
 
-  // 진행 중: 프로그레스 바
+  // 진행 중: 확정 수 + 프로그레스 바
   const percent = Math.round((progress.confirmed / progress.total) * 100)
   return (
-    <div className="flex flex-col gap-1 min-w-[60px]">
-      <span className="text-[11px] font-semibold text-blue-700">
-        {progress.confirmed}/{progress.total} 확정
-      </span>
-      <div className="w-full h-1.5 bg-blue-100 rounded-full overflow-hidden">
+    <div className="flex flex-col gap-0.5 max-w-[90px]">
+      <div className="flex items-center justify-between">
+        <span className="text-[9px] font-bold text-blue-700">
+          {progress.confirmed}<span className="text-gray-400 font-normal">/{progress.total}</span> 확정
+        </span>
+        <span className="text-[9px] text-gray-400">{percent}%</span>
+      </div>
+      <div className="w-full h-1 bg-blue-50 rounded-full overflow-hidden">
         <div
-          className="h-full bg-blue-500 rounded-full transition-all"
+          className="h-full bg-gradient-to-r from-blue-400 to-blue-500 rounded-full transition-all"
           style={{ width: `${percent}%` }}
         />
       </div>
@@ -763,11 +795,13 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
   /** pickerTarget.context: 'bulk' = 전체 적용(기본), 'individual' = 해당 행만 변경 */
   const [pickerTarget, setPickerTarget] = useState<{ orderId: string; itemIdx: number; context: 'bulk' | 'individual' } | null>(null)
 
-  /** 상태 전환 확인 다이얼로그 대상 (orderId + 현장명 + 이동할 상태) */
+  /** 상태 전환 확인 다이얼로그 대상 (orderId + 현장명 + 이동할 상태 + 미완료 경고 정보) */
   const [statusChangeTarget, setStatusChangeTarget] = useState<{
     orderId: string
     businessName: string
     newStatus: DeliveryStatus
+    /** 배송완료 전환 시 미완료 구성품 경고 정보 (없으면 정상) */
+    warning?: { noDate: number; futureDate: number; total: number; itemCount: number }
   } | null>(null)
 
   /** 발주취소 다이얼로그 대상 */
@@ -997,7 +1031,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '100px' }}>현장진행상황</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '90px' }}>교원 발주등록일</th>
               <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '70px' }}>교원 발주서</th>
-              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>배송현황</th>
+              <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>주문상태</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>현장명</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '180px' }}>현장주소</th>
               <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '130px' }}>창고정보</th>
@@ -1094,7 +1128,17 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                             <Button
                               size="sm"
                               className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
-                              onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}
+                              onClick={() => {
+                                // 배송완료 전환 전 미완료 구성품 검증
+                                const items = editingItems[order.id] || order.equipmentItems || []
+                                const undelivered = countUndeliveredItems(items)
+                                setStatusChangeTarget({
+                                  orderId: order.id,
+                                  businessName: order.businessName,
+                                  newStatus: 'delivered',
+                                  warning: undelivered.total > 0 ? { ...undelivered, itemCount: items.length } : undefined,
+                                })
+                              }}
                             >
                               배송완료 →
                             </Button>
@@ -1526,7 +1570,17 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                       )}
                       {currentTab === 'ordered' && (
                         <Button size="sm" className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 h-7"
-                          onClick={() => setStatusChangeTarget({ orderId: order.id, businessName: order.businessName, newStatus: 'delivered' })}>
+                          onClick={() => {
+                            // 배송완료 전환 전 미완료 구성품 검증
+                            const items = editingItems[order.id] || order.equipmentItems || []
+                            const undelivered = countUndeliveredItems(items)
+                            setStatusChangeTarget({
+                              orderId: order.id,
+                              businessName: order.businessName,
+                              newStatus: 'delivered',
+                              warning: undelivered.total > 0 ? { ...undelivered, itemCount: items.length } : undefined,
+                            })
+                          }}>
                           배송완료 →
                         </Button>
                       )}
@@ -1807,25 +1861,54 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
             <AlertDialogTitle>
               {statusChangeTarget?.newStatus === 'pending' && '발주대기로 변경'}
               {statusChangeTarget?.newStatus === 'ordered' && '진행중으로 변경'}
-              {statusChangeTarget?.newStatus === 'delivered' && '배송완료로 변경'}
+              {statusChangeTarget?.newStatus === 'delivered' && (
+                statusChangeTarget?.warning ? '⚠️ 배송 미완료 경고' : '배송완료로 변경'
+              )}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              &ldquo;{statusChangeTarget?.businessName}&rdquo;을(를){' '}
-              {statusChangeTarget?.newStatus === 'pending' && '발주대기'}
-              {statusChangeTarget?.newStatus === 'ordered' && '진행중'}
-              {statusChangeTarget?.newStatus === 'delivered' && '배송완료'}
-              (으)로 변경하시겠습니까?
+            <AlertDialogDescription asChild>
+              <div className="text-sm text-muted-foreground">
+                {/* 배송완료 전환 + 미완료 구성품 있을 때 경고 */}
+                {statusChangeTarget?.newStatus === 'delivered' && statusChangeTarget?.warning ? (
+                  <div className="space-y-2">
+                    <p className="font-medium text-amber-700">
+                      아직 배송이 완료되지 않은 구성품이 있습니다.
+                    </p>
+                    <div className="bg-amber-50 border border-amber-200 rounded-md p-3 text-xs space-y-1">
+                      <p>전체 구성품: <span className="font-bold">{statusChangeTarget.warning.itemCount}개</span></p>
+                      {statusChangeTarget.warning.noDate > 0 && (
+                        <p className="text-red-600">배송확정일 미입력: <span className="font-bold">{statusChangeTarget.warning.noDate}개</span></p>
+                      )}
+                      {statusChangeTarget.warning.futureDate > 0 && (
+                        <p className="text-amber-700">도착 예정(미래 날짜): <span className="font-bold">{statusChangeTarget.warning.futureDate}개</span></p>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-500">
+                      그래도 배송완료로 변경하시겠습니까?
+                    </p>
+                  </div>
+                ) : (
+                  <p>
+                    &ldquo;{statusChangeTarget?.businessName}&rdquo;을(를){' '}
+                    {statusChangeTarget?.newStatus === 'pending' && '발주대기'}
+                    {statusChangeTarget?.newStatus === 'ordered' && '진행중'}
+                    {statusChangeTarget?.newStatus === 'delivered' && '배송완료'}
+                    (으)로 변경하시겠습니까?
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
               className={
-                statusChangeTarget?.newStatus === 'delivered'
-                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
-                  : statusChangeTarget?.newStatus === 'ordered'
-                    ? 'bg-blue-600 hover:bg-blue-700 text-white'
-                    : 'bg-orange-500 hover:bg-orange-600 text-white'
+                statusChangeTarget?.warning
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white'
+                  : statusChangeTarget?.newStatus === 'delivered'
+                    ? 'bg-emerald-600 hover:bg-emerald-700 text-white'
+                    : statusChangeTarget?.newStatus === 'ordered'
+                      ? 'bg-blue-600 hover:bg-blue-700 text-white'
+                      : 'bg-orange-500 hover:bg-orange-600 text-white'
               }
               onClick={() => {
                 if (statusChangeTarget && onChangeStatus) {
@@ -1834,7 +1917,7 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                 setStatusChangeTarget(null)
               }}
             >
-              변경
+              {statusChangeTarget?.warning ? '강제 변경' : '변경'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

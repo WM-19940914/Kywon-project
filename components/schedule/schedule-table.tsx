@@ -767,7 +767,8 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
               )}
 
               {/* 일정미정 탭: 설치예정 이동 버튼 / 설치예정 탭: 설치완료 버튼 / 설치완료 탭: 되돌리기 버튼 */}
-              <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: activeTab === 'completed' ? '140px' : '80px' }}></th>
+              {/* sticky right: 스크롤해도 항상 보이게 고정 */}
+              <th className="text-center p-3 text-sm font-medium whitespace-nowrap sticky right-0 bg-muted/80 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)]" style={{ width: activeTab === 'completed' ? '140px' : '80px' }}></th>
             </tr>
           </thead>
           <tbody>
@@ -966,9 +967,9 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       </td>
                     )}
 
-                    {/* 일정미정: 설치예정 이동 버튼 + 취소 X */}
+                    {/* 일정미정: 설치예정 이동 버튼 + 취소 X — sticky로 항상 보이게 */}
                     {activeTab === 'unscheduled' && (
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
@@ -991,9 +992,9 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       </td>
                     )}
 
-                    {/* 설치예정: 설치완료 버튼 + 취소 X */}
+                    {/* 설치예정: 설치완료 버튼 + 취소 X — sticky로 항상 보이게 */}
                     {activeTab === 'scheduled' && (
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
@@ -1016,9 +1017,9 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       </td>
                     )}
 
-                    {/* 설치완료: 되돌리기 버튼 (일정미정 / 설치예정) */}
+                    {/* 설치완료: 되돌리기 버튼 — sticky로 항상 보이게 */}
                     {activeTab === 'completed' && (
-                      <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-red-50' : urgency === 'today' ? 'bg-orange-50' : urgency === 'tomorrow' ? 'bg-blue-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <Button
                           size="sm"
                           variant="outline"

@@ -18,6 +18,11 @@ import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
 import { Package, CheckCircle2, Box, ChevronDown, Ban, ArrowRight } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
+
+/** formatStockDate — 뱃지 제거, 일반 날짜 표시만 */
+function formatStockDate(dateString?: string): React.ReactNode {
+  return formatShortDate(dateString)
+}
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
@@ -110,7 +115,11 @@ export function InventoryWarehouseView({
     orders.forEach(order => {
       if (!order.equipmentItems || order.equipmentItems.length === 0) return
 
-      // 입고 확정된 구성품만 필터
+      // 배송완료(delivered) 상태인 발주만 입고내역에 표시
+      // 단, 발주취소(cancelled)된 건은 유휴재고로 표시해야 하므로 포함
+      if (order.deliveryStatus !== 'delivered' && order.status !== 'cancelled') return
+
+      // 배송확정일이 있는 구성품만 필터
       const confirmedItems = order.equipmentItems.filter(eq => eq.confirmedDeliveryDate)
       if (confirmedItems.length === 0) return
 
@@ -358,7 +367,7 @@ export function InventoryWarehouseView({
                 <thead className="bg-muted/80">
                   <tr>
                     <th className="text-center p-3 text-sm font-medium" style={{ width: '120px' }}>상태</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '100px' }}>입고일</th>
+                    <th className="text-left p-3 text-sm font-medium" style={{ width: '130px' }}>입고일</th>
                     <th className="text-left p-3 text-sm font-medium" style={{ width: '150px' }}>창고</th>
                     <th className="text-left p-3 text-sm font-medium">원래 현장</th>
                     <th className="text-left p-3 text-sm font-medium">구성품 (모델명)</th>
@@ -391,7 +400,7 @@ export function InventoryWarehouseView({
                             </Badge>
                           )}
                         </td>
-                        <td className="p-3 text-sm">{formatShortDate(item.confirmedDeliveryDate)}</td>
+                        <td className="p-3 text-sm">{formatStockDate(item.confirmedDeliveryDate)}</td>
                         <td className="p-3 text-sm">
                           <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
                         </td>
@@ -469,7 +478,7 @@ export function InventoryWarehouseView({
                           유휴재고
                         </Badge>
                       )}
-                      <span className="text-xs text-gray-500">{formatShortDate(item.confirmedDeliveryDate)}</span>
+                      <span className="text-xs text-gray-500">{formatStockDate(item.confirmedDeliveryDate)}</span>
                     </div>
                     {/* 원래 현장 */}
                     <div>
@@ -524,7 +533,7 @@ export function InventoryWarehouseView({
               <table className="w-full">
                 <thead className="bg-muted/80">
                   <tr>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '100px' }}>입고일</th>
+                    <th className="text-left p-3 text-sm font-medium" style={{ width: '130px' }}>입고일</th>
                     <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>창고 (담당자)</th>
                     <th className="text-left p-3 text-sm font-medium">현장명</th>
                     <th className="text-left p-3 text-sm font-medium">구성품 (모델명)</th>
@@ -538,7 +547,7 @@ export function InventoryWarehouseView({
                       key={`${item.orderId}-${idx}`}
                       className="border-b border-gray-100 hover:bg-gray-50/50"
                     >
-                      <td className="p-3 text-sm">{formatShortDate(item.confirmedDeliveryDate)}</td>
+                      <td className="p-3 text-sm">{formatStockDate(item.confirmedDeliveryDate)}</td>
                       <td className="p-3 text-sm">
                         <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
                       </td>
@@ -582,7 +591,7 @@ export function InventoryWarehouseView({
                     <Badge className={`${WAREHOUSE_STOCK_STATUS_COLORS[item.stockStatus]} text-[10px] border`}>
                       {WAREHOUSE_STOCK_STATUS_LABELS[item.stockStatus]}
                     </Badge>
-                    <span className="text-xs text-gray-500">{formatShortDate(item.confirmedDeliveryDate)}</span>
+                    <span className="text-xs text-gray-500">{formatStockDate(item.confirmedDeliveryDate)}</span>
                   </div>
                   <div>
                     <h3 className="font-semibold text-sm">{item.businessName}</h3>
