@@ -270,7 +270,6 @@ export function OrderDetailDialog({
                     </div>
                     <div className="mt-2 text-sm text-gray-600 flex gap-4">
                       <span>모델명: <span className="font-mono">{item.model}</span></span>
-                      <span>평형: {item.size}</span>
                     </div>
                   </div>
                 ))}
