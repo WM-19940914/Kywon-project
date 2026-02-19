@@ -208,7 +208,11 @@ function EquipmentStatusBadge({ order }: { order: Order }) {
 
   // 일부 입고: 프로그레스 바
   const items = order.equipmentItems || []
-  const confirmed = items.filter(item => item.confirmedDeliveryDate).length
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const confirmed = items.filter(item =>
+    item.confirmedDeliveryDate && item.confirmedDeliveryDate <= todayStr
+  ).length
   const total = items.length
   const percent = total > 0 ? Math.round((confirmed / total) * 100) : 0
 

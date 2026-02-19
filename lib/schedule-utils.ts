@@ -151,8 +151,14 @@ export function getEquipmentStatusInfo(order: Order): EquipmentStatusInfo {
     }
   }
 
-  // 입고 완료 수 (confirmed = 배송확정일 입력됨)
-  const confirmedCount = items.filter(item => item.confirmedDeliveryDate).length
+  // KST 기준 오늘 날짜 (YYYY-MM-DD 문자열 비교)
+  const now = new Date()
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+
+  // 입고 완료 수 (배송확정일이 오늘 이전인 것만 입고로 간주)
+  const confirmedCount = items.filter(item =>
+    item.confirmedDeliveryDate && item.confirmedDeliveryDate <= todayStr
+  ).length
   const total = items.length
 
   if (confirmedCount >= total) {
