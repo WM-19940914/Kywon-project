@@ -159,6 +159,11 @@ export interface Order {
   // ✅ 정산 검토 상태 (멜레아/교원 각각 확인)
   melleeaReviewStatus?: ReviewStatus       // 멜레아 검토 상태
   gyowonReviewStatus?: ReviewStatus        // 교원 검토 상태
+
+  // 📋 옵티/계약 정보 (배송관리 아코디언에서 입력)
+  optiName?: string                        // 옵티명
+  optiNumber?: string                      // 옵티번호
+  contractNumber?: string                  // 계약번호
 }
 
 /**

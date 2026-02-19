@@ -425,6 +425,13 @@ export default function DeliveryPage() {
                 return { ...order, equipmentItems: items }
               }))
             }}
+            onSaveOrderField={async (orderId, updates) => {
+              await updateOrder(orderId, updates)
+              setOrders(prev => prev.map(order => {
+                if (order.id !== orderId) return order
+                return { ...order, ...updates }
+              }))
+            }}
             readOnly={false}
             currentTab={statusFilter}
           />

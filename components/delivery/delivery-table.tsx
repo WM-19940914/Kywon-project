@@ -515,6 +515,8 @@ interface DeliveryTableProps {
   onCancelOrder?: (orderId: string, reason: string) => void
   /** 인라인 편집 저장 콜백 */
   onSaveItems?: (orderId: string, items: EquipmentItem[]) => void
+  /** 발주 단일 필드 저장 콜백 (옵티명/옵티번호/계약번호 등) */
+  onSaveOrderField?: (orderId: string, updates: Partial<Order>) => void
   /** 읽기전용 모드 */
   readOnly?: boolean
   /** 현재 선택된 탭 */
@@ -784,7 +786,7 @@ function createDefaultRows(): EquipmentItem[] {
 }
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
-export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onCancelOrder, onSaveItems, readOnly, currentTab }: DeliveryTableProps) {
+export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeStatus, onCancelOrder, onSaveItems, onSaveOrderField, readOnly, currentTab }: DeliveryTableProps) {
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set())
 
   /** 주문별 편집 중인 구성품 데이터 (orderId → EquipmentItem[]) */
@@ -1198,6 +1200,54 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                     <tr>
                       <td colSpan={10} className="p-0">
                         <div className="border-t border-gray-200 bg-gray-50/60 px-4 py-4">
+                          {/* 옵티명/옵티번호/계약번호 입력 바 */}
+                          <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-2.5 mb-3 flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">옵티명</label>
+                              <Input
+                                defaultValue={order.optiName || ''}
+                                placeholder="옵티명 입력"
+                                className="h-7 text-xs w-[500px] bg-white border-blue-200 focus:border-blue-400"
+                                readOnly={readOnly}
+                                onBlur={(e) => {
+                                  const val = e.target.value.trim()
+                                  if (val !== (order.optiName || '') && onSaveOrderField) {
+                                    onSaveOrderField(order.id, { optiName: val })
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">옵티번호</label>
+                              <Input
+                                defaultValue={order.optiNumber || ''}
+                                placeholder="옵티번호 입력"
+                                className="h-7 text-xs w-[160px] bg-white border-blue-200 focus:border-blue-400"
+                                readOnly={readOnly}
+                                onBlur={(e) => {
+                                  const val = e.target.value.trim()
+                                  if (val !== (order.optiNumber || '') && onSaveOrderField) {
+                                    onSaveOrderField(order.id, { optiNumber: val })
+                                  }
+                                }}
+                              />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <label className="text-xs font-medium text-blue-700 whitespace-nowrap">계약번호</label>
+                              <Input
+                                defaultValue={order.contractNumber || ''}
+                                placeholder="계약번호 입력"
+                                className="h-7 text-xs w-[160px] bg-white border-blue-200 focus:border-blue-400"
+                                readOnly={readOnly}
+                                onBlur={(e) => {
+                                  const val = e.target.value.trim()
+                                  if (val !== (order.contractNumber || '') && onSaveOrderField) {
+                                    onSaveOrderField(order.id, { contractNumber: val })
+                                  }
+                                }}
+                              />
+                            </div>
+                          </div>
                           <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm mb-3">
                             <table className="text-sm" style={{ minWidth: '1720px' }}>
                               <thead>
@@ -1625,6 +1675,54 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
 
               {isExpanded && (
                 <div className="bg-gray-50 border-t px-4 py-3">
+                  {/* 옵티명/옵티번호/계약번호 입력 바 (모바일) */}
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2.5 mb-3 space-y-2">
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">옵티명</label>
+                      <Input
+                        defaultValue={order.optiName || ''}
+                        placeholder="옵티명 입력"
+                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        readOnly={readOnly}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val !== (order.optiName || '') && onSaveOrderField) {
+                            onSaveOrderField(order.id, { optiName: val })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">옵티번호</label>
+                      <Input
+                        defaultValue={order.optiNumber || ''}
+                        placeholder="옵티번호 입력"
+                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        readOnly={readOnly}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val !== (order.optiNumber || '') && onSaveOrderField) {
+                            onSaveOrderField(order.id, { optiNumber: val })
+                          }
+                        }}
+                      />
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <label className="text-xs font-medium text-blue-700 whitespace-nowrap w-[52px]">계약번호</label>
+                      <Input
+                        defaultValue={order.contractNumber || ''}
+                        placeholder="계약번호 입력"
+                        className="h-7 text-xs bg-white border-blue-200 flex-1"
+                        readOnly={readOnly}
+                        onBlur={(e) => {
+                          const val = e.target.value.trim()
+                          if (val !== (order.contractNumber || '') && onSaveOrderField) {
+                            onSaveOrderField(order.id, { contractNumber: val })
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
                   {/* 모바일 인라인 편집 카드 */}
                   <div className="space-y-2 mb-3">
                     {(() => {
