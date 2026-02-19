@@ -32,6 +32,7 @@ export interface MenuItem {
   url: string          // 이동할 페이지 주소
   icon: LucideIcon     // 아이콘
   disabled?: boolean   // 미구현 메뉴 여부 (true면 클릭 불가 + "준비중" 표시)
+  badge?: string       // 메뉴 옆 마크 표시 (예: 'MeLEA')
 }
 
 /** 메뉴 그룹 타입 */
@@ -109,26 +110,31 @@ export const menuItems: MenuGroup[] = [
         title: '설치 관리/견적 관리',
         url: '/mellea/schedule',
         icon: CalendarCheck,
+        badge: 'S1ENG',
       },
       {
         title: '에스원 정산관리',
         url: '/mellea/s1-settlement',
         icon: Receipt,
+        badge: 'S1ENG',
       },
       {
         title: '배송 관리',
         url: '/mellea/delivery',
         icon: Truck,
+        badge: 'MeLEA',
       },
       {
         title: '재고 관리',
         url: '/mellea/inventory',
         icon: Warehouse,
+        badge: 'MeLEA',
       },
       {
         title: '철거 보관 관리',
         url: '/mellea/stored-equipment',
         icon: Archive,
+        badge: 'S1ENG',
       },
       {
         title: '전국 설치팀 창고',

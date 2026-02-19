@@ -168,12 +168,25 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
                                   borderLeft: '3px solid transparent',
                                 }}
                               >
-                                <Link href={item.url}>
+                                <Link href={item.url} className="flex items-center gap-2 w-full">
                                   <item.icon
-                                    className="h-4 w-4 transition-colors"
+                                    className="h-4 w-4 transition-colors shrink-0"
                                     style={isActive && theme ? { color: theme.active } : undefined}
                                   />
                                   <span>{item.title}</span>
+                                  {item.badge === 'MeLEA' && (
+                                    <span className="ml-auto inline-flex items-center px-1.5 py-0.5 rounded" style={{ background: '#E09520' }}>
+                                      <span style={{ color: '#2D2519', fontSize: '9px', fontWeight: 800, lineHeight: 1 }}>M</span>
+                                      <span style={{ color: '#fff', fontSize: '10px', fontStyle: 'italic', fontWeight: 600, lineHeight: 1, paddingRight: '1px' }}>e</span>
+                                      <span style={{ color: '#2D2519', fontSize: '9px', fontWeight: 800, lineHeight: 1 }}>LEA</span>
+                                    </span>
+                                  )}
+                                  {item.badge === 'S1ENG' && (
+                                    <span className="ml-auto inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded" style={{ background: '#2563EB' }}>
+                                      <span style={{ color: '#fff', fontSize: '9px', fontWeight: 800, lineHeight: 1 }}>S1</span>
+                                      <span style={{ color: '#93C5FD', fontSize: '9px', fontWeight: 600, lineHeight: 1 }}>ENG</span>
+                                    </span>
+                                  )}
                                 </Link>
                               </SidebarMenuButton>
                             </SidebarMenuItem>

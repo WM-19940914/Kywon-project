@@ -156,7 +156,7 @@ export default function SchedulePage() {
             <path d="M4 10C4 7.8 5.8 6 8 6H24C26.2 6 28 7.8 28 10V16L16 16L4 10Z" fill="#60A5FA" />
             <path d="M20 10H13C11.3 10 10 11.3 10 13V13C10 14.7 11.3 16 13 16H19C20.7 16 22 17.3 22 19V19C22 20.7 20.7 22 19 22H12" stroke="white" strokeWidth="2.5" strokeLinecap="round" />
           </svg>
-          <span className="font-bold text-white text-xs tracking-wide">에스원이엔지 (주)</span>
+          <span className="font-bold text-white text-xs tracking-wide">에스원이엔지</span>
         </span>
         <span className="text-muted-foreground">
           설치예정일이 아직 정해지지 않은 현장입니다. 배송현황을 확인하고 설치일정을 잡아주세요.
