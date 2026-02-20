@@ -1,8 +1,8 @@
 /**
  * 관리자 페이지 Server Actions — 계정 관리
  *
- * Supabase DB 함수(SECURITY DEFINER)를 호출하여
- * 계정 생성/수정/삭제/비밀번호 초기화를 처리합니다.
+ * 계정 생성/비밀번호 초기화: Supabase Auth Admin API 사용 (service_role 키)
+ * 기타 DB 작업: Supabase DB 함수(SECURITY DEFINER) 사용
  *
  * 모든 액션은 admin 역할 체크 후 실행됩니다.
  */
@@ -10,7 +10,17 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { revalidatePath } from 'next/cache'
+
+/** service_role 키를 사용하는 Admin 클라이언트 (서버 전용!) */
+function createAdminClient() {
+  return createSupabaseClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { auth: { autoRefreshToken: false, persistSession: false } }
+  )
+}
 
 /** 관리자 권한 체크 — admin이 아니면 에러 */
 async function requireAdmin() {
@@ -36,7 +46,7 @@ export async function fetchUsers() {
   return { error: null, users: data || [] }
 }
 
-/** 신규 계정 생성 */
+/** 신규 계정 생성 — Auth Admin API 사용 (GoTrue가 직접 비밀번호 해싱) */
 export async function createUser(formData: FormData) {
   const supabase = await requireAdmin()
 
@@ -54,19 +64,39 @@ export async function createUser(formData: FormData) {
     return { error: '비밀번호는 6자 이상이어야 합니다.' }
   }
 
-  const { error } = await supabase.rpc('admin_create_user', {
-    p_username: username,
-    p_password: password,
-    p_display_name: displayName,
-    p_role: role,
-    p_affiliate_name: affiliateName,
+  const email = `${username}@melea.local`
+
+  // 1단계: Auth Admin API로 auth.users + auth.identities 생성
+  const adminClient = createAdminClient()
+  const { data: authData, error: authError } = await adminClient.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true, // 이메일 인증 자동 완료
   })
 
-  if (error) {
-    if (error.message.includes('duplicate') || error.message.includes('unique')) {
+  if (authError) {
+    if (authError.message.includes('already been registered')) {
       return { error: '이미 존재하는 사용자이름입니다.' }
     }
-    return { error: `계정 생성 실패: ${error.message}` }
+    return { error: `계정 생성 실패: ${authError.message}` }
+  }
+
+  // 2단계: user_profiles 테이블에 역할 정보 저장
+  const { error: profileError } = await supabase
+    .from('user_profiles')
+    .insert({
+      id: authData.user.id,
+      username,
+      display_name: displayName,
+      role,
+      affiliate_name: affiliateName,
+      plain_password: password,
+    })
+
+  if (profileError) {
+    // 프로필 저장 실패 시 auth 유저도 삭제 (롤백)
+    await adminClient.auth.admin.deleteUser(authData.user.id)
+    return { error: `프로필 저장 실패: ${profileError.message}` }
   }
 
   revalidatePath('/admin/server')
@@ -90,20 +120,29 @@ export async function updateUserRole(userId: string, role: string, displayName?:
   return { error: null }
 }
 
-/** 비밀번호 초기화 */
+/** 비밀번호 초기화 — Auth Admin API 사용 */
 export async function resetPassword(userId: string, newPassword: string) {
-  const supabase = await requireAdmin()
+  await requireAdmin()
 
   if (newPassword.length < 6) {
     return { error: '비밀번호는 6자 이상이어야 합니다.' }
   }
 
-  const { error } = await supabase.rpc('admin_reset_password', {
-    p_user_id: userId,
-    p_new_password: newPassword,
+  // Auth Admin API로 비밀번호 변경 (GoTrue가 직접 해싱)
+  const adminClient = createAdminClient()
+  const { error: authError } = await adminClient.auth.admin.updateUserById(userId, {
+    password: newPassword,
   })
 
-  if (error) return { error: `비밀번호 초기화 실패: ${error.message}` }
+  if (authError) return { error: `비밀번호 초기화 실패: ${authError.message}` }
+
+  // user_profiles의 plain_password도 업데이트
+  const supabase = await createClient()
+  await supabase
+    .from('user_profiles')
+    .update({ plain_password: newPassword })
+    .eq('id', userId)
+
   return { error: null }
 }
 
@@ -115,13 +154,12 @@ export async function fetchDbStats() {
   return { error: null, stats: data }
 }
 
-/** 계정 삭제 */
+/** 계정 삭제 — Auth Admin API 사용 (auth.users 삭제 → user_profiles는 CASCADE로 자동 삭제) */
 export async function deleteUser(userId: string) {
-  const supabase = await requireAdmin()
+  await requireAdmin()
 
-  const { error } = await supabase.rpc('admin_delete_user', {
-    p_user_id: userId,
-  })
+  const adminClient = createAdminClient()
+  const { error } = await adminClient.auth.admin.deleteUser(userId)
 
   if (error) return { error: `계정 삭제 실패: ${error.message}` }
 
