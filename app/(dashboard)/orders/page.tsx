@@ -460,6 +460,8 @@ export default function OrdersPage() {
                 contactName: orderToEdit.contactName,
                 contactPhone: orderToEdit.contactPhone,
                 buildingManagerPhone: orderToEdit.buildingManagerPhone,
+                contacts: orderToEdit.contacts,
+                buildingManagers: orderToEdit.buildingManagers,
                 requestedInstallDate: orderToEdit.requestedInstallDate,
                 items: orderToEdit.items,
                 notes: orderToEdit.notes,

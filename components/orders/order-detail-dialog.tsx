@@ -21,7 +21,9 @@ import {
   ORDER_STATUS_LABELS,
   ORDER_STATUS_COLORS,
   type Order,
-  type StoredEquipment
+  type StoredEquipment,
+  type ContactPerson,
+  type BuildingManager
 } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 import {
@@ -194,36 +196,49 @@ export function OrderDetailDialog({
                 <span className="col-span-2">{formatDate(order.requestedInstallDate)}</span>
               </div>
 
-              {/* 담당자 정보 */}
-              {(order.contactName || order.contactPhone || order.buildingManagerPhone) && (
-                <>
-                  <Separator />
-                  {order.contactName && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <span className="text-sm text-gray-500 flex items-center gap-1">
-                        <User className="h-3.5 w-3.5" />담당자
-                      </span>
-                      <span className="col-span-2 font-medium">{order.contactName}</span>
-                    </div>
-                  )}
-                  {order.contactPhone && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <span className="text-sm text-gray-500 flex items-center gap-1">
-                        <Phone className="h-3.5 w-3.5" />담당자 연락처
-                      </span>
-                      <span className="col-span-2">{order.contactPhone}</span>
-                    </div>
-                  )}
-                  {order.buildingManagerPhone && (
-                    <div className="grid grid-cols-3 gap-2">
-                      <span className="text-sm text-gray-500 flex items-center gap-1">
-                        <Phone className="h-3.5 w-3.5" />건물관리인
-                      </span>
-                      <span className="col-span-2">{order.buildingManagerPhone}</span>
-                    </div>
-                  )}
-                </>
-              )}
+              {/* 담당자 정보 — contacts 배열 우선, 없으면 레거시 필드 fallback */}
+              {(() => {
+                const contactList: ContactPerson[] = (order.contacts && order.contacts.length > 0)
+                  ? order.contacts
+                  : (order.contactName || order.contactPhone)
+                    ? [{ name: order.contactName || '', phone: order.contactPhone || '' }]
+                    : []
+                const managerList: BuildingManager[] = (order.buildingManagers && order.buildingManagers.length > 0)
+                  ? order.buildingManagers
+                  : order.buildingManagerPhone
+                    ? [{ name: '', phone: order.buildingManagerPhone }]
+                    : []
+                const hasAny = contactList.length > 0 || managerList.length > 0
+                if (!hasAny) return null
+                return (
+                  <>
+                    <Separator />
+                    {contactList.map((c, idx) => (
+                      <div key={idx} className="grid grid-cols-3 gap-2">
+                        <span className="text-sm text-gray-500 flex items-center gap-1">
+                          <User className="h-3.5 w-3.5" />담당자{contactList.length > 1 ? ` ${idx + 1}` : ''}
+                        </span>
+                        <span className="col-span-2">
+                          <span className="font-medium">{c.name || '-'}</span>
+                          {c.phone && <span className="ml-2 text-gray-600">{c.phone}</span>}
+                          {c.memo && <span className="ml-2 text-xs text-gray-400">({c.memo})</span>}
+                        </span>
+                      </div>
+                    ))}
+                    {managerList.map((m, idx) => (
+                      <div key={idx} className="grid grid-cols-3 gap-2">
+                        <span className="text-sm text-gray-500 flex items-center gap-1">
+                          <Phone className="h-3.5 w-3.5" />건물관리인{managerList.length > 1 ? ` ${idx + 1}` : ''}
+                        </span>
+                        <span className="col-span-2">
+                          {m.name && <span className="font-medium">{m.name} </span>}
+                          <span>{m.phone}</span>
+                        </span>
+                      </div>
+                    ))}
+                  </>
+                )
+              })()}
             </div>
           </div>
 

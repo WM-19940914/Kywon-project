@@ -39,6 +39,8 @@ import {
   type OrderItem,
   type StoredEquipment,
   type EquipmentUnitType,
+  type ContactPerson,
+  type BuildingManager,
   parseAddress
 } from '@/types/order'
 // import { PriceTableSheet } from '@/components/orders/price-table-dialog'
@@ -55,9 +57,11 @@ export interface OrderFormData {
   orderNumber: string
   affiliate: string
   businessName: string
-  contactName: string           // 담당자 성함
-  contactPhone: string          // 담당자 연락처
-  buildingManagerPhone?: string // 건물관리인 연락처 (선택)
+  contactName: string           // 담당자 성함 (레거시 — 첫 번째 담당자와 동기화)
+  contactPhone: string          // 담당자 연락처 (레거시)
+  buildingManagerPhone?: string // 건물관리인 연락처 (레거시)
+  contacts: ContactPerson[]     // 다중 담당자 배열 (최대 5명)
+  buildingManagers: BuildingManager[] // 다중 건물관리인 배열 (최대 5명)
   requestedInstallDate?: string // 설치요청일
   items: OrderItem[]
   notes?: string                // 설치기사님 전달사항
@@ -145,9 +149,13 @@ export function OrderForm({
   const [relocationDetailAddress, setRelocationDetailAddress] = useState('') // 이전 목적지 상세주소
   const [isInBuildingMove, setIsInBuildingMove] = useState(false) // 건물 내 이동 여부
   const [businessName, setBusinessName] = useState(initialData?.businessName || '')
-  const [contactName, setContactName] = useState('') // 담당자 성함
-  const [contactPhone, setContactPhone] = useState('') // 담당자 연락처
-  const [buildingManagerPhone, setBuildingManagerPhone] = useState('') // 건물관리인 연락처 (선택)
+  // 다중 담당자 배열 (기본 2행)
+  const [contacts, setContacts] = useState<ContactPerson[]>([
+    { name: '', phone: '', memo: '' },
+    { name: '', phone: '', memo: '' }
+  ])
+  // 다중 건물관리인 배열 (기본 0행 — "+" 버튼으로 추가)
+  const [buildingManagers, setBuildingManagers] = useState<BuildingManager[]>([])
   const [documentNumber, setDocumentNumber] = useState('') // 문서번호 (자동 생성, 수정 가능)
   const [orderDate, setOrderDate] = useState(initialData?.orderDate || new Date().toISOString().split('T')[0]) // 발주일 (기본값: 오늘)
   const [requestedInstallDate, setRequestedInstallDate] = useState('') // 설치요청일 (선택)
@@ -231,9 +239,24 @@ export function OrderForm({
       setIsPreliminaryQuote(initialData.isPreliminaryQuote || false)
       setItems(initialData.items || [createEmptyItem()])
       setBusinessName(initialData.businessName || '')
-      setContactName(initialData.contactName || '')
-      setContactPhone(initialData.contactPhone || '')
-      setBuildingManagerPhone(initialData.buildingManagerPhone || '')
+
+      // 다중 담당자 복원: contacts 배열 우선, 없으면 레거시 필드에서 복원
+      if (initialData.contacts && initialData.contacts.length > 0) {
+        setContacts(initialData.contacts)
+      } else if (initialData.contactName || initialData.contactPhone) {
+        setContacts([
+          { name: initialData.contactName || '', phone: initialData.contactPhone || '', memo: '' },
+          { name: '', phone: '', memo: '' }
+        ])
+      }
+
+      // 다중 건물관리인 복원: buildingManagers 배열 우선, 없으면 레거시 필드에서 복원
+      if (initialData.buildingManagers && initialData.buildingManagers.length > 0) {
+        setBuildingManagers(initialData.buildingManagers)
+      } else if (initialData.buildingManagerPhone) {
+        setBuildingManagers([{ name: '', phone: initialData.buildingManagerPhone }])
+      }
+
       setDocumentNumber(initialData.documentNumber || '')
       setOrderDate(initialData.orderDate || new Date().toISOString().split('T')[0])
       setRequestedInstallDate(initialData.requestedInstallDate || '')
@@ -412,12 +435,12 @@ export function OrderForm({
         showAlert('사업자명을 입력해주세요', 'warning')
         return
       }
-      if (!contactName) {
-        showAlert('담당자 성함을 입력해주세요', 'warning')
+      if (!contacts[0]?.name) {
+        showAlert('첫 번째 담당자 성함을 입력해주세요', 'warning')
         return
       }
-      if (!contactPhone) {
-        showAlert('담당자 연락처를 입력해주세요', 'warning')
+      if (!contacts[0]?.phone) {
+        showAlert('첫 번째 담당자 연락처를 입력해주세요', 'warning')
         return
       }
 
@@ -493,6 +516,10 @@ export function OrderForm({
       finalAddress = baseDetailAddress ? `${baseAddress}, ${baseDetailAddress}` : baseAddress
     }
 
+    // 빈 행 제거 (이름도 연락처도 없으면 제거)
+    const validContacts = contacts.filter(c => c.name.trim() || c.phone.trim())
+    const validManagers = buildingManagers.filter(m => m.name.trim() || m.phone.trim())
+
     const formData: OrderFormData = {
       documentNumber,
       address: finalAddress,
@@ -500,9 +527,12 @@ export function OrderForm({
       orderNumber: '', // 주문번호는 빈 문자열 (사용 안 함)
       affiliate,
       businessName,
-      contactName,
-      contactPhone,
-      buildingManagerPhone: buildingManagerPhone || undefined,
+      // 레거시 필드 동기화 (첫 번째 담당자)
+      contactName: validContacts[0]?.name || '',
+      contactPhone: validContacts[0]?.phone || '',
+      buildingManagerPhone: validManagers[0]?.phone || undefined,
+      contacts: validContacts,
+      buildingManagers: validManagers,
       requestedInstallDate,
       items,  // 사전견적일 때는 빈 배열
       notes,
@@ -693,49 +723,137 @@ export function OrderForm({
                 <h3 className="font-bold text-lg">담당자 정보</h3>
               </div>
 
-              {/* 담당자 성함 + 연락처 (한 행) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    성함 <span className="text-brick-500">*</span>
-                  </label>
-                  <Input
-                    value={contactName}
-                    onChange={(e) => setContactName(e.target.value)}
-                    placeholder="홍길동"
-                  />
+              {/* 다중 담당자 입력 */}
+              {contacts.map((contact, idx) => (
+                <div key={idx} className="relative">
+                  {idx === 0 && (
+                    <label className="block text-sm font-medium mb-2">
+                      담당자 {idx + 1} <span className="text-brick-500">* (필수)</span>
+                    </label>
+                  )}
+                  {idx > 0 && (
+                    <label className="block text-sm font-medium mb-2">담당자 {idx + 1}</label>
+                  )}
+                  <div className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-start">
+                    <Input
+                      value={contact.name}
+                      onChange={(e) => {
+                        const updated = [...contacts]
+                        updated[idx] = { ...updated[idx], name: e.target.value }
+                        setContacts(updated)
+                      }}
+                      placeholder="성함"
+                    />
+                    <Input
+                      type="tel"
+                      value={contact.phone}
+                      onChange={(e) => {
+                        const updated = [...contacts]
+                        updated[idx] = { ...updated[idx], phone: formatPhoneNumber(e.target.value) }
+                        setContacts(updated)
+                      }}
+                      placeholder="010-1234-5678"
+                      maxLength={13}
+                    />
+                    <Input
+                      value={contact.memo || ''}
+                      onChange={(e) => {
+                        const updated = [...contacts]
+                        updated[idx] = { ...updated[idx], memo: e.target.value }
+                        setContacts(updated)
+                      }}
+                      placeholder="메모 (선택)"
+                    />
+                    {/* 삭제 버튼: 2행 이하일 때는 숨김 */}
+                    {contacts.length > 2 ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 p-0 text-brick-500 hover:bg-brick-50"
+                        onClick={() => setContacts(contacts.filter((_, i) => i !== idx))}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <div className="w-9" /> /* 빈 공간으로 정렬 유지 */
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-2">
-                    연락처 <span className="text-brick-500">*</span>
-                  </label>
-                  <Input
-                    type="tel"
-                    value={contactPhone}
-                    onChange={(e) => setContactPhone(formatPhoneNumber(e.target.value))}
-                    placeholder="010-1234-5678"
-                    maxLength={13}
-                  />
-                </div>
+              ))}
+
+              {/* 담당자 추가 버튼 (최대 5명) */}
+              {contacts.length < 5 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
+                  onClick={() => setContacts([...contacts, { name: '', phone: '', memo: '' }])}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  담당자 추가 ({contacts.length}/5)
+                </Button>
+              )}
+
+              {/* 구분선 */}
+              <div className="border-t border-gray-200 my-2" />
+
+              {/* 다중 건물관리인 입력 */}
+              <div className="flex items-center gap-2 mb-1">
+                <h4 className="text-sm font-medium text-gray-700">건물관리인 (선택)</h4>
+                <span className="text-xs text-gray-500">건물 소장이나 관리인 연락처</span>
               </div>
 
-              {/* 건물관리인 연락처 (선택) */}
-              <div>
-                <label className="block text-sm font-medium mb-2">
-                  건물관리인 연락처 (선택)
-                </label>
-                <Input
-                  type="tel"
-                  value={buildingManagerPhone}
-                  onChange={(e) => setBuildingManagerPhone(formatPhoneNumber(e.target.value))}
-                  placeholder="02-123-4567 또는 010-9876-5432"
-                  maxLength={13}
-                  className="max-w-md"
-                />
-                <p className="text-xs text-gray-500 mt-1">
-                  건물 소장이나 관리인과 연락해야 한다면 입력하세요
-                </p>
-              </div>
+              {buildingManagers.map((manager, idx) => (
+                <div key={idx}>
+                  <div className="grid grid-cols-[1fr_1fr_auto] gap-2 items-start">
+                    <Input
+                      value={manager.name}
+                      onChange={(e) => {
+                        const updated = [...buildingManagers]
+                        updated[idx] = { ...updated[idx], name: e.target.value }
+                        setBuildingManagers(updated)
+                      }}
+                      placeholder="성함"
+                    />
+                    <Input
+                      type="tel"
+                      value={manager.phone}
+                      onChange={(e) => {
+                        const updated = [...buildingManagers]
+                        updated[idx] = { ...updated[idx], phone: formatPhoneNumber(e.target.value) }
+                        setBuildingManagers(updated)
+                      }}
+                      placeholder="02-123-4567"
+                      maxLength={13}
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-9 w-9 p-0 text-brick-500 hover:bg-brick-50"
+                      onClick={() => setBuildingManagers(buildingManagers.filter((_, i) => i !== idx))}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+
+              {/* 건물관리인 추가 버튼 (최대 5명) */}
+              {buildingManagers.length < 5 && (
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="gap-1 text-gray-600 border-gray-300 hover:bg-gray-50"
+                  onClick={() => setBuildingManagers([...buildingManagers, { name: '', phone: '' }])}
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                  건물관리인 추가 ({buildingManagers.length}/5)
+                </Button>
+              )}
             </CardContent>
           </Card>
 
@@ -1156,21 +1274,34 @@ export function OrderForm({
                 <h3 className="font-bold text-base">담당자</h3>
               </div>
 
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2">
-                <div>
-                  <p className="text-xs text-gray-600">성함</p>
-                  <p className="font-semibold text-sm">{contactName}</p>
+              {/* 모든 담당자 표시 (빈 행 제외) */}
+              {contacts.filter(c => c.name || c.phone).map((c, idx) => (
+                <div key={idx} className={idx > 0 ? 'pt-2 border-t border-gray-100' : ''}>
+                  <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                    <div>
+                      <p className="text-xs text-gray-600">성함 {idx > 0 ? `(${idx + 1})` : ''}</p>
+                      <p className="font-semibold text-sm">{c.name || '-'}</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-600">연락처</p>
+                      <p className="font-semibold text-sm">{c.phone || '-'}</p>
+                    </div>
+                  </div>
+                  {c.memo && (
+                    <p className="text-xs text-gray-500 mt-1">메모: {c.memo}</p>
+                  )}
                 </div>
-                <div>
-                  <p className="text-xs text-gray-600">연락처</p>
-                  <p className="font-semibold text-sm">{contactPhone}</p>
-                </div>
-              </div>
+              ))}
 
-              {buildingManagerPhone && (
+              {/* 건물관리인 */}
+              {buildingManagers.filter(m => m.name || m.phone).length > 0 && (
                 <div className="pt-2 border-t border-gray-200">
-                  <p className="text-xs text-gray-600">건물관리인</p>
-                  <p className="font-semibold text-sm">{buildingManagerPhone}</p>
+                  <p className="text-xs text-gray-600 mb-1">건물관리인</p>
+                  {buildingManagers.filter(m => m.name || m.phone).map((m, idx) => (
+                    <p key={idx} className="font-semibold text-sm">
+                      {m.name ? `${m.name} ` : ''}{m.phone}
+                    </p>
+                  ))}
                 </div>
               )}
             </CardContent>

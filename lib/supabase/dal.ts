@@ -252,6 +252,17 @@ export async function createOrder(order: Order): Promise<Order | null> {
   delete dbMainFields.profit_margin
   delete dbMainFields.profit_amount
 
+  // 레거시 필드 동기화: contacts 배열의 첫 번째 항목 → 단일 필드
+  const contactsArr = dbMainFields.contacts as Array<{name: string; phone: string}> | undefined
+  if (contactsArr && contactsArr.length > 0) {
+    dbMainFields.contact_name = contactsArr[0].name || dbMainFields.contact_name
+    dbMainFields.contact_phone = contactsArr[0].phone || dbMainFields.contact_phone
+  }
+  const managersArr = dbMainFields.building_managers as Array<{name: string; phone: string}> | undefined
+  if (managersArr && managersArr.length > 0) {
+    dbMainFields.building_manager_phone = managersArr[0].phone || dbMainFields.building_manager_phone
+  }
+
   const { data: orderData, error: orderError } = await supabase
     .from('orders')
     .insert(dbMainFields)
@@ -328,6 +339,17 @@ export async function updateOrder(id: string, updates: Partial<Order>): Promise<
     delete dbUpdates.profit_margin
     delete dbUpdates.profit_amount
     dbUpdates.updated_at = new Date().toISOString()
+
+    // 레거시 필드 동기화: contacts 배열의 첫 번째 항목 → 단일 필드
+    const contactsArr = dbUpdates.contacts as Array<{name: string; phone: string}> | undefined
+    if (contactsArr && contactsArr.length > 0) {
+      dbUpdates.contact_name = contactsArr[0].name || dbUpdates.contact_name
+      dbUpdates.contact_phone = contactsArr[0].phone || dbUpdates.contact_phone
+    }
+    const managersArr = dbUpdates.building_managers as Array<{name: string; phone: string}> | undefined
+    if (managersArr && managersArr.length > 0) {
+      dbUpdates.building_manager_phone = managersArr[0].phone || dbUpdates.building_manager_phone
+    }
 
     const { error } = await supabase
       .from('orders')
