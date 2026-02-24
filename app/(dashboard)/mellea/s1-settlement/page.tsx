@@ -585,7 +585,7 @@ export default function S1SettlementPage() {
     try {
       // DB 업데이트 (정산완료 시 화면에서 선택한 정산월 전달)
       const settMonth = `${settlementYear}-${String(settlementMonth).padStart(2, '0')}`
-      const success = await batchUpdateS1SettlementStatus(ids, targetStatus, targetStatus === 'settled' ? settMonth : undefined)
+      const success = await batchUpdateS1SettlementStatus(ids, targetStatus, (targetStatus === 'settled' || targetStatus === 'in-progress') ? settMonth : undefined)
       if (success) {
         // UI 반영 (위에서 계산한 settMonth 사용)
         setOrders(prev => prev.map(order => {
@@ -593,7 +593,7 @@ export default function S1SettlementPage() {
             return {
               ...order,
               s1SettlementStatus: targetStatus,
-              s1SettlementMonth: targetStatus === 'settled' ? settMonth : order.s1SettlementMonth,
+              s1SettlementMonth: (targetStatus === 'settled' || targetStatus === 'in-progress') ? settMonth : order.s1SettlementMonth,
             }
           }
           return order
@@ -624,7 +624,7 @@ export default function S1SettlementPage() {
       if (success) {
         setOrders(prev => prev.map(order => {
           if (order.id === orderId) {
-            return { ...order, s1SettlementStatus: 'unsettled' as const }
+            return { ...order, s1SettlementStatus: 'unsettled' as const, s1SettlementMonth: undefined }
           }
           return order
         }))

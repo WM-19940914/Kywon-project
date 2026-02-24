@@ -764,18 +764,23 @@ export async function saveCustomerQuote(orderId: string, quote: CustomerQuote): 
  * 개별 발주의 에스원 정산 상태 변경
  * @param orderId - 발주 ID
  * @param status - 새 정산 상태 (unsettled/in-progress/settled)
+ * @param settlementMonth - 정산월 (YYYY-MM 형식, 정산 진행중/완료 시 사용)
  */
-export async function updateS1SettlementStatus(orderId: string, status: S1SettlementStatus): Promise<boolean> {
+export async function updateS1SettlementStatus(orderId: string, status: S1SettlementStatus, settlementMonth?: string): Promise<boolean> {
   const supabase = createClient()
   const updates: Record<string, unknown> = {
     s1_settlement_status: status,
     updated_at: new Date().toISOString()
   }
 
-  // 정산 완료 시 정산 월 자동 입력
-  if (status === 'settled') {
-    const now = new Date()
-    updates.s1_settlement_month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  // 정산 진행중/완료 시 정산 월 저장
+  if ((status === 'settled' || status === 'in-progress') && settlementMonth) {
+    updates.s1_settlement_month = settlementMonth
+  }
+
+  // 미정산으로 되돌릴 때 정산 월 초기화
+  if (status === 'unsettled') {
+    updates.s1_settlement_month = null
   }
 
   const { error } = await supabase
@@ -804,9 +809,14 @@ export async function batchUpdateS1SettlementStatus(orderIds: string[], status: 
     updated_at: new Date().toISOString()
   }
 
-  // 정산 완료 시 정산 월 저장 (화면에서 선택한 월 사용)
-  if (status === 'settled' && settlementMonth) {
+  // 정산 진행중/완료 시 정산 월 저장 (화면에서 선택한 월 사용)
+  if ((status === 'settled' || status === 'in-progress') && settlementMonth) {
     updates.s1_settlement_month = settlementMonth
+  }
+
+  // 미정산으로 되돌릴 때 정산 월 초기화
+  if (status === 'unsettled') {
+    updates.s1_settlement_month = null
   }
 
   const { error } = await supabase
