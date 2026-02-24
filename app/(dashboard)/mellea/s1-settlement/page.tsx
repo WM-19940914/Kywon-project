@@ -9,7 +9,8 @@
 
 'use client'
 
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useRef } from 'react'
+import { createPortal } from 'react-dom'
 import { fetchOrders, updateOrder, updateS1SettlementStatus, batchUpdateS1SettlementStatus } from '@/lib/supabase/dal'
 import type { Order, S1SettlementStatus } from '@/types/order'
 import {
@@ -85,6 +86,7 @@ function SettledMonthGroup({
   setSelectedIds,
   expandedIds,
   onToggleExpand,
+  onSaveSettlementMonth,
 }: {
   monthKey: string
   monthOrders: Order[]
@@ -93,6 +95,7 @@ function SettledMonthGroup({
   setSelectedIds: React.Dispatch<React.SetStateAction<Set<string>>>
   expandedIds: Set<string>
   onToggleExpand: (orderId: string) => void
+  onSaveSettlementMonth: (orderId: string, newMonth: string) => void
 }) {
   const [isOpen, setIsOpen] = useState(defaultOpen)
   const [page, setPage] = useState(1)
@@ -232,13 +235,14 @@ function SettledMonthGroup({
                             {S1_SETTLEMENT_STATUS_LABELS['settled']}
                           </Badge>
                         </td>
-                        <td className="p-3 text-center">
-                          <span className="text-xs font-medium text-olive-700">
-                            {order.s1SettlementMonth
-                              ? formatYearMonth(order.s1SettlementMonth)
-                              : '-'
-                            }
-                          </span>
+                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                          <EditableMonthCell
+                            currentMonth={order.s1SettlementMonth}
+                            textColorClass="text-olive-700"
+                            pencilColorClass="text-olive-400"
+                            hoverBgClass="hover:bg-olive-50"
+                            onSave={(newMonth) => onSaveSettlementMonth(order.id, newMonth)}
+                          />
                         </td>
                       </tr>
 
@@ -364,6 +368,119 @@ function SettledMonthGroup({
   )
 }
 
+/**
+ * 정산월 수정 가능한 셀 컴포넌트 (포탈 기반)
+ * - 클릭하면 버튼 아래에 년/월 선택 드롭다운이 포탈로 렌더링
+ * - overflow-hidden 컨테이너에서도 잘림 없이 표시
+ */
+function EditableMonthCell({
+  currentMonth,
+  fallbackLabel,
+  textColorClass,
+  pencilColorClass,
+  hoverBgClass,
+  onSave,
+}: {
+  currentMonth?: string
+  fallbackLabel?: string
+  textColorClass: string
+  pencilColorClass: string
+  hoverBgClass: string
+  onSave: (newMonth: string) => void
+}) {
+  const [editing, setEditing] = useState(false)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState({ top: 0, left: 0 })
+
+  const now = new Date()
+  const parts = (currentMonth || '').split('-')
+  const [year, setYear] = useState(parseInt(parts[0]) || now.getFullYear())
+  const [month, setMonth] = useState(parseInt(parts[1]) || now.getMonth() + 1)
+
+  // 열 때 현재 값으로 초기화 + 위치 계산
+  const handleOpen = () => {
+    const p = (currentMonth || '').split('-')
+    setYear(parseInt(p[0]) || now.getFullYear())
+    setMonth(parseInt(p[1]) || now.getMonth() + 1)
+    if (buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect()
+      setPos({ top: rect.bottom + 4, left: rect.left + rect.width / 2 })
+    }
+    setEditing(true)
+  }
+
+  // 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!editing) return
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        dropdownRef.current && !dropdownRef.current.contains(e.target as Node) &&
+        buttonRef.current && !buttonRef.current.contains(e.target as Node)
+      ) {
+        setEditing(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside)
+    return () => document.removeEventListener('mousedown', handleClickOutside)
+  }, [editing])
+
+  const displayLabel = currentMonth ? formatYearMonth(currentMonth) : (fallbackLabel || '-')
+
+  return (
+    <>
+      <button
+        ref={buttonRef}
+        className={`inline-flex items-center gap-1 text-xs font-medium ${textColorClass} ${hoverBgClass} rounded px-1.5 py-0.5 transition-colors`}
+        onClick={(e) => { e.stopPropagation(); handleOpen() }}
+      >
+        {displayLabel}
+        <Pencil className={`h-2.5 w-2.5 ${pencilColorClass}`} />
+      </button>
+      {editing && createPortal(
+        <div
+          ref={dropdownRef}
+          className="bg-white border border-slate-200 rounded-lg shadow-lg p-2 flex items-center gap-1.5 whitespace-nowrap"
+          style={{ position: 'fixed', top: pos.top, left: pos.left, transform: 'translateX(-50%)', zIndex: 9999 }}
+          onClick={e => e.stopPropagation()}
+        >
+          <select
+            className="text-xs border border-slate-300 rounded px-1 py-0.5 bg-white focus:outline-none"
+            value={year}
+            onChange={(e) => setYear(Number(e.target.value))}
+          >
+            {[now.getFullYear() - 1, now.getFullYear(), now.getFullYear() + 1].map(y => (
+              <option key={y} value={y}>{y}년</option>
+            ))}
+          </select>
+          <select
+            className="text-xs border border-slate-300 rounded px-1 py-0.5 bg-white focus:outline-none"
+            value={month}
+            onChange={(e) => setMonth(Number(e.target.value))}
+          >
+            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
+              <option key={m} value={m}>{m}월</option>
+            ))}
+          </select>
+          <button
+            className="text-[10px] bg-carrot-500 text-white rounded-md px-2 py-0.5 hover:bg-carrot-600 font-medium"
+            onClick={() => { onSave(`${year}-${String(month).padStart(2, '0')}`); setEditing(false) }}
+          >
+            확인
+          </button>
+          <button
+            className="text-[10px] text-slate-400 hover:text-slate-600 px-1"
+            onClick={() => setEditing(false)}
+          >
+            ✕
+          </button>
+        </div>,
+        document.body
+      )}
+    </>
+  )
+}
+
 /** 스켈레톤 로딩 UI */
 function SettlementSkeleton() {
   return (
@@ -436,6 +553,7 @@ export default function S1SettlementPage() {
 
   // 체크박스 선택 상태
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+
 
   // 탭 변경 시 선택 초기화
   useEffect(() => {
@@ -633,6 +751,15 @@ export default function S1SettlementPage() {
     } finally {
       setActionLoading(false)
     }
+  }
+
+  /** 정산월 개별 수정 저장 */
+  const handleSaveSettlementMonth = async (orderId: string, newMonth: string) => {
+    await updateOrder(orderId, { s1SettlementMonth: newMonth })
+    setOrders(prev => prev.map(o =>
+      o.id === orderId ? { ...o, s1SettlementMonth: newMonth } : o
+    ))
+    showAlert('정산월이 변경되었습니다.', 'success')
   }
 
   /** 설치비 소계 계산 헬퍼 */
@@ -841,6 +968,7 @@ export default function S1SettlementPage() {
                 setSelectedIds={setSelectedIds}
                 expandedIds={expandedIds}
                 onToggleExpand={handleToggleExpand}
+                onSaveSettlementMonth={handleSaveSettlementMonth}
               />
             ))}
           </div>
@@ -864,32 +992,32 @@ export default function S1SettlementPage() {
 
           {/* 데스크톱 테이블 */}
           <div className="hidden md:block bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-            <table className="w-full">
+            <table className="w-full" style={{ tableLayout: 'fixed' }}>
               <thead className="bg-slate-50/80">
                 <tr>
                   {/* 체크박스 */}
                   {true && (
-                    <th className="p-3 text-center" style={{ width: '45px' }}>
+                    <th className="p-3 text-center" style={{ width: '40px' }}>
                       <Checkbox
                         checked={selectedIds.size === filteredOrders.length && filteredOrders.length > 0}
                         onCheckedChange={handleSelectAll}
                       />
                     </th>
                   )}
-                  <th className="text-left p-3 text-xs text-slate-500 font-semibold" style={{ width: '110px' }}>작업종류</th>
-                  <th className="text-left p-3 text-xs text-slate-500 font-semibold whitespace-nowrap" style={{ width: '80px' }}>설치상태</th>
-                  <th className="text-left p-3 text-xs text-slate-500 font-semibold" style={{ width: '95px' }}>설치완료일</th>
-                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '220px' }}>현장명</th>
-                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '200px' }}>주소</th>
-                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '130px' }}>설치비 소계</th>
-                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '110px' }}>정산</th>
+                  <th className="text-left p-3 text-xs text-slate-500 font-semibold" style={{ width: '100px' }}>작업종류</th>
+                  <th className="text-left p-3 text-xs text-slate-500 font-semibold whitespace-nowrap" style={{ width: '72px' }}>설치상태</th>
+                  <th className="text-left p-3 text-xs text-slate-500 font-semibold" style={{ width: '88px' }}>설치완료일</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '200px' }}>현장명</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '240px' }}>주소</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '105px' }}>설치비 소계</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold whitespace-nowrap" style={{ width: '78px' }}>정산</th>
                   {/* 진행중 탭: 정산월 */}
                   {activeTab === 'in-progress' && (
-                    <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '90px' }}>정산월</th>
+                    <th className="text-center p-3 text-xs text-slate-500 font-semibold whitespace-nowrap" style={{ width: '100px' }}>정산월</th>
                   )}
                   {/* 진행중 탭: 미정산으로 제외 버튼 */}
                   {activeTab === 'in-progress' && (
-                    <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '80px' }}></th>
+                    <th className="text-center p-3 text-xs text-slate-500 font-semibold" style={{ width: '125px' }}></th>
                   )}
                 </tr>
               </thead>
@@ -957,15 +1085,15 @@ export default function S1SettlementPage() {
                         </td>
 
                         {/* 현장명 + 펼침 아이콘 */}
-                        <td className="p-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                        <td className="p-3 text-center overflow-hidden">
+                          <div className="flex items-center justify-center gap-1.5 min-w-0">
+                            <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                             <p className="font-semibold text-sm truncate" title={order.businessName}>{order.businessName}</p>
                           </div>
                         </td>
 
                         {/* 주소 */}
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center overflow-hidden">
                           <p className="text-xs text-slate-600 truncate" title={order.address}>{order.address}</p>
                         </td>
 
@@ -992,15 +1120,17 @@ export default function S1SettlementPage() {
                           </Badge>
                         </td>
 
-                        {/* 진행중 탭: 정산월 */}
+                        {/* 진행중 탭: 정산월 (클릭하여 수정 가능) */}
                         {activeTab === 'in-progress' && (
-                          <td className="p-3 text-center">
-                            <span className="text-xs font-medium text-carrot-700">
-                              {order.s1SettlementMonth
-                                ? formatYearMonth(order.s1SettlementMonth)
-                                : `${settlementYear}년 ${settlementMonth}월`
-                              }
-                            </span>
+                          <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                            <EditableMonthCell
+                              currentMonth={order.s1SettlementMonth}
+                              fallbackLabel={`${settlementYear}년 ${settlementMonth}월`}
+                              textColorClass="text-carrot-700"
+                              pencilColorClass="text-carrot-400"
+                              hoverBgClass="hover:bg-carrot-50"
+                              onSave={(newMonth) => handleSaveSettlementMonth(order.id, newMonth)}
+                            />
                           </td>
                         )}
 
@@ -1010,7 +1140,7 @@ export default function S1SettlementPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-7 text-xs text-slate-500 hover:text-slate-700 rounded-lg"
+                              className="h-6 text-[10px] text-slate-500 hover:text-slate-700 rounded-lg px-2"
                               onClick={() => handleRevertToUnsettled(order.id, order.businessName)}
                             >
                               <Undo2 className="h-3 w-3 mr-1" />

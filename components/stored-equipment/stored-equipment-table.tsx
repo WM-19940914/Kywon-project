@@ -10,7 +10,7 @@
 
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import {
@@ -64,7 +64,7 @@ function formatDate(date?: string): string {
 // ─── 정렬 타입 ───
 
 /** 정렬 기준 */
-type SortField = 'removalDate' | 'manufacturingDate'
+type SortField = 'removalDate' | 'manufacturingDate' | 'releaseDate'
 /** 정렬 방향: asc = 오래된순(↑), desc = 최신순(↓) */
 type SortDir = 'asc' | 'desc'
 
@@ -136,9 +136,20 @@ export function StoredEquipmentTable({
 }: StoredEquipmentTableProps) {
   const { showAlert } = useAlert()
 
-  /** 정렬 상태: 기본은 철거일 최신순 */
-  const [sortField, setSortField] = useState<SortField>('removalDate')
+  /** 정렬 상태: 보관중은 철거일 최신순, 출고완료는 출고일 최신순 */
+  const [sortField, setSortField] = useState<SortField>(activeTab === 'released' ? 'releaseDate' : 'removalDate')
   const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  // 탭 전환 시 정렬 기준 자동 변경
+  useEffect(() => {
+    if (activeTab === 'released') {
+      setSortField('releaseDate')
+      setSortDir('desc')
+    } else {
+      setSortField('removalDate')
+      setSortDir('desc')
+    }
+  }, [activeTab])
 
   /** 헤더 클릭 시 정렬 전환 */
   const handleSort = (field: SortField) => {
@@ -230,102 +241,125 @@ export function StoredEquipmentTable({
 
   return (
     <>
-      {/* ═══ 정렬 컨트롤 바 ═══ */}
+      {/* ═══ 정렬 컨트롤 바 — 탭별로 다른 정렬 옵션 ═══ */}
       <div className="flex items-center gap-2 mb-2.5 px-0.5">
         <span className="text-[11px] text-slate-400 font-medium">정렬 기준</span>
-        <button
-          type="button"
-          onClick={() => handleSort('removalDate')}
-          className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-            sortField === 'removalDate'
-              ? 'bg-brick-50 border-brick-300 text-brick-600 shadow-sm shadow-brick-100'
-              : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
-          }`}
-        >
-          철거일
-          {sortField === 'removalDate' && (
-            <>
-              {sortDir === 'desc' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
-              <span className="text-[10px] font-normal opacity-70">{sortDir === 'desc' ? '최신순' : '오래된순'}</span>
-            </>
-          )}
-        </button>
-        <button
-          type="button"
-          onClick={() => handleSort('manufacturingDate')}
-          className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
-            sortField === 'manufacturingDate'
-              ? 'bg-teal-50 border-teal-300 text-teal-600 shadow-sm shadow-teal-100'
-              : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
-          }`}
-        >
-          제조년월
-          {sortField === 'manufacturingDate' && (
-            <>
-              {sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
-              <span className="text-[10px] font-normal opacity-70">{sortDir === 'asc' ? '오래된순' : '최신순'}</span>
-            </>
-          )}
-        </button>
+        {activeTab === 'released' ? (
+          /* 출고완료 탭: 출고일 정렬만 */
+          <button
+            type="button"
+            onClick={() => handleSort('releaseDate')}
+            className="inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all bg-olive-50 border-olive-300 text-olive-600 shadow-sm shadow-olive-100"
+          >
+            출고일
+            {sortDir === 'desc' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
+            <span className="text-[10px] font-normal opacity-70">{sortDir === 'desc' ? '최신순' : '오래된순'}</span>
+          </button>
+        ) : (
+          /* 보관중 탭: 철거일 / 제조년월 정렬 */
+          <>
+            <button
+              type="button"
+              onClick={() => handleSort('removalDate')}
+              className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                sortField === 'removalDate'
+                  ? 'bg-brick-50 border-brick-300 text-brick-600 shadow-sm shadow-brick-100'
+                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+              }`}
+            >
+              철거일
+              {sortField === 'removalDate' && (
+                <>
+                  {sortDir === 'desc' ? <ArrowDown className="h-3.5 w-3.5" /> : <ArrowUp className="h-3.5 w-3.5" />}
+                  <span className="text-[10px] font-normal opacity-70">{sortDir === 'desc' ? '최신순' : '오래된순'}</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={() => handleSort('manufacturingDate')}
+              className={`inline-flex items-center gap-1 text-[12px] font-semibold px-3 py-1.5 rounded-lg border transition-all ${
+                sortField === 'manufacturingDate'
+                  ? 'bg-teal-50 border-teal-300 text-teal-600 shadow-sm shadow-teal-100'
+                  : 'bg-white border-slate-200 text-slate-400 hover:border-slate-300 hover:text-slate-600'
+              }`}
+            >
+              제조년월
+              {sortField === 'manufacturingDate' && (
+                <>
+                  {sortDir === 'asc' ? <ArrowUp className="h-3.5 w-3.5" /> : <ArrowDown className="h-3.5 w-3.5" />}
+                  <span className="text-[10px] font-normal opacity-70">{sortDir === 'asc' ? '오래된순' : '최신순'}</span>
+                </>
+              )}
+            </button>
+          </>
+        )}
       </div>
 
       {/* ═══ 데스크톱 테이블 (md 이상) — 현장별 rowSpan 그룹핑 ═══ */}
       <div className="hidden md:block border border-slate-200 rounded-xl overflow-hidden shadow-sm overflow-x-auto">
-        <table className="w-full" style={{ minWidth: activeTab === 'released' ? '1100px' : '850px' }}>
+        <table className="w-full" style={{ minWidth: activeTab === 'released' ? '800px' : '850px' }}>
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '130px' }}>철거된 장소</th>
-              <th
-                className="text-center px-2 py-2 font-semibold text-[11px] tracking-wider whitespace-nowrap cursor-pointer select-none group/th"
-                style={{ width: '78px' }}
-                onClick={() => handleSort('removalDate')}
-              >
-                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'removalDate' ? 'text-brick-600' : 'text-slate-500 group-hover/th:text-slate-700'}`}>
-                  철거일
-                  {sortField === 'removalDate' ? (
-                    sortDir === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
-                  ) : (
-                    <ArrowDown className="h-3 w-3 opacity-0 group-hover/th:opacity-40 transition-opacity" />
-                  )}
-                </span>
-              </th>
-              <th
-                className="text-center px-2 py-2 font-semibold text-[11px] tracking-wider whitespace-nowrap cursor-pointer select-none group/th2"
-                style={{ width: '74px' }}
-                onClick={() => handleSort('manufacturingDate')}
-              >
-                <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'manufacturingDate' ? 'text-teal-600' : 'text-slate-500 group-hover/th2:text-slate-700'}`}>
-                  제조년월
-                  {sortField === 'manufacturingDate' ? (
-                    sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
-                  ) : (
-                    <ArrowUp className="h-3 w-3 opacity-0 group-hover/th2:opacity-40 transition-opacity" />
-                  )}
-                </span>
-              </th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '54px' }}>유형</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '150px' }}>모델명</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>평형</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '38px' }}>수량</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '120px' }}>설치예정</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '50px' }}>제조사</th>
-              <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>발주서</th>
-              {activeTab === 'released' && (
-                <>
-                  <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '60px' }}>출고유형</th>
-                  <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '78px' }}>출고일</th>
-                </>
-              )}
-              <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: activeTab === 'released' ? '150px' : '140px' }}>
-                {activeTab === 'released' ? '설치 현장' : '보관 창고'}
-              </th>
-              {activeTab === 'released' && (
-                <th className="text-left px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '80px' }}>주소</th>
-              )}
-              {!readOnly && (
-                <th className="text-center px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider" style={{ width: '32px' }}></th>
-              )}
-            </tr>
+            {activeTab === 'released' ? (
+              /* ── 출고완료 탭 헤더: 설치현장 → 출고일 → 출고유형 → 철거장소 → ... ── */
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '160px' }}>설치 현장</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '82px' }}>출고일</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '64px' }}>출고유형</th>
+                <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '120px' }}>철거된 장소</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '54px' }}>유형</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '140px' }}>모델명</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>평형</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '38px' }}>수량</th>
+                {!readOnly && (
+                  <th className="text-center px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '76px' }}></th>
+                )}
+              </tr>
+            ) : (
+              /* ── 보관중 탭 헤더 ── */
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '130px' }}>철거된 장소</th>
+                <th
+                  className="text-center px-2 py-2 font-semibold text-[11px] tracking-wider whitespace-nowrap cursor-pointer select-none group/th"
+                  style={{ width: '78px' }}
+                  onClick={() => handleSort('removalDate')}
+                >
+                  <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'removalDate' ? 'text-brick-600' : 'text-slate-500 group-hover/th:text-slate-700'}`}>
+                    철거일
+                    {sortField === 'removalDate' ? (
+                      sortDir === 'desc' ? <ArrowDown className="h-3 w-3" /> : <ArrowUp className="h-3 w-3" />
+                    ) : (
+                      <ArrowDown className="h-3 w-3 opacity-0 group-hover/th:opacity-40 transition-opacity" />
+                    )}
+                  </span>
+                </th>
+                <th
+                  className="text-center px-2 py-2 font-semibold text-[11px] tracking-wider whitespace-nowrap cursor-pointer select-none group/th2"
+                  style={{ width: '74px' }}
+                  onClick={() => handleSort('manufacturingDate')}
+                >
+                  <span className={`inline-flex items-center gap-0.5 transition-colors ${sortField === 'manufacturingDate' ? 'text-teal-600' : 'text-slate-500 group-hover/th2:text-slate-700'}`}>
+                    제조년월
+                    {sortField === 'manufacturingDate' ? (
+                      sortDir === 'asc' ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />
+                    ) : (
+                      <ArrowUp className="h-3 w-3 opacity-0 group-hover/th2:opacity-40 transition-opacity" />
+                    )}
+                  </span>
+                </th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '54px' }}>유형</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '150px' }}>모델명</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>평형</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '38px' }}>수량</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '120px' }}>설치예정</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '50px' }}>제조사</th>
+                <th className="text-center px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '48px' }}>발주서</th>
+                <th className="text-left px-2 py-2 font-semibold text-[11px] text-slate-500 tracking-wider whitespace-nowrap" style={{ width: '140px' }}>보관 창고</th>
+                {!readOnly && (
+                  <th className="text-center px-1 py-2 font-semibold text-[11px] text-slate-500 tracking-wider" style={{ width: '32px' }}></th>
+                )}
+              </tr>
+            )}
           </thead>
           <tbody>
             {groups.map((group, gIdx) =>
@@ -342,202 +376,269 @@ export function StoredEquipmentTable({
                       isFirst && gIdx > 0 ? 'border-t-[2px] border-t-slate-200' : isFirst ? '' : 'border-t border-t-slate-100/50'
                     }`}
                   >
-                    {/* ── 철거된 장소 [MERGED] ── */}
-                    {isFirst && (
-                      <td
-                        rowSpan={groupSize}
-                        className={`px-2 py-1.5 align-top ${bgColor}`}
-                        style={isGrouped ? { borderLeft: '3px solid #3b82f6' } : undefined}
-                      >
-                        {item.affiliate && (
-                          <p className="text-[10px] text-slate-400 font-medium leading-tight">{item.affiliate}</p>
-                        )}
-                        <p className="text-xs font-semibold text-slate-800 truncate" title={item.siteName}>{item.siteName}</p>
-                        {isGrouped && (
-                          <p className="text-[9px] text-teal-500/60 mt-0.5">{groupSize}대 구성</p>
-                        )}
-                      </td>
-                    )}
-
-                    {/* ── 철거일 [MERGED] ── */}
-                    {isFirst && (
-                      <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
-                        <span className="text-[11px] text-brick-600 font-bold tabular-nums">
-                          {item.removalDate ? formatDate(item.removalDate) : '-'}
-                        </span>
-                      </td>
-                    )}
-
-                    {/* ── 제조년월 [INDIVIDUAL] ── */}
-                    <td className="px-1.5 py-1.5 text-center">
-                      <span className="text-[11px] font-bold text-teal-700 tabular-nums">
-                        {item.manufacturingDate ? item.manufacturingDate.replace('-', '.') : '-'}
-                      </span>
-                    </td>
-
-                    {/* ── 유형 [INDIVIDUAL] ── */}
-                    <td className="px-1 py-1.5 text-center">
-                      {item.equipmentUnitType ? (
-                        <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border leading-tight ${EQUIPMENT_UNIT_TYPE_COLORS[item.equipmentUnitType]}`}>
-                          {EQUIPMENT_UNIT_TYPE_LABELS[item.equipmentUnitType]}
-                        </span>
-                      ) : (
-                        <span className="text-[10px] text-slate-300">-</span>
-                      )}
-                    </td>
-
-                    {/* ── 모델명 [INDIVIDUAL] ── */}
-                    <td className="px-2 py-1.5 text-center">
-                      <p className="text-xs text-slate-800 font-semibold font-mono truncate" title={item.model || '-'}>{item.model || '-'}</p>
-                      <p className="text-[10px] text-slate-400">{item.category}</p>
-                    </td>
-
-                    {/* ── 평형 [MERGED] ── */}
-                    {isFirst && (
-                      <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
-                        {item.size ? (
-                          <span className="text-[11px] font-bold text-teal-700">{item.size}</span>
-                        ) : (
-                          <span className="text-[10px] text-slate-300">-</span>
-                        )}
-                      </td>
-                    )}
-
-                    {/* ── 수량 [INDIVIDUAL] ── */}
-                    <td className="px-1 py-1.5 text-center">
-                      <span className="text-xs font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
-                    </td>
-
-                    {/* ── 설치예정 [INDIVIDUAL] ── */}
-                    <td className="px-1.5 py-1.5">
-                      {(() => {
-                        // 이 장비를 재고설치로 사용하는 발주 찾기
-                        const matchedOrder = orders.find(o =>
-                          o.items?.some(oi => oi.storedEquipmentId === item.id)
-                        )
-                        if (!matchedOrder) return <span className="text-[10px] text-slate-300">-</span>
-                        return (
-                          <div className="space-y-0.5">
-                            <p className="text-[11px] font-semibold text-olive-700 leading-tight truncate">
-                              {matchedOrder.businessName}
-                            </p>
-                            <p className="text-[10px] text-slate-400 leading-tight">
-                              {matchedOrder.affiliate}
-                            </p>
-                          </div>
-                        )
-                      })()}
-                    </td>
-
-                    {/* ── 제조사 [INDIVIDUAL] ── */}
-                    <td className="px-1.5 py-1.5 text-center">
-                      <span className="text-[11px] text-slate-600">{item.manufacturer || '-'}</span>
-                    </td>
-
-                    {/* ── 발주서 [MERGED] ── */}
-                    {isFirst && (
-                      <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
-                        {(() => {
-                          const order = getOrder(item.orderId)
-                          if (order) {
-                            return (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                className="h-6 px-1.5 text-[11px] gap-0.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50"
-                                onClick={() => handleViewOrder(item.orderId)}
-                              >
-                                <FileText className="h-2.5 w-2.5" />
-                                보기
-                              </Button>
-                            )
-                          }
-                          return <span className="text-[10px] text-slate-300">수동</span>
-                        })()}
-                      </td>
-                    )}
-
-                    {/* ── 출고 정보 [MERGED] (출고완료 탭) ── */}
-                    {activeTab === 'released' && isFirst && (
+                    {activeTab === 'released' ? (
+                      /* ═══ 출고완료 탭: 설치현장 → 출고일 → 출고유형 → 철거장소 → ... ═══ */
                       <>
-                        <td rowSpan={groupSize} className={`px-1.5 py-1.5 align-top ${bgColor}`}>
-                          {item.releaseType ? (
-                            <Badge className={`${RELEASE_TYPE_COLORS[item.releaseType as ReleaseType]} text-[10px] font-medium`}>
-                              {RELEASE_TYPE_LABELS[item.releaseType as ReleaseType]}
-                            </Badge>
-                          ) : '-'}
-                        </td>
-                        <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
-                          <span className="text-[11px] text-slate-600 tabular-nums">{formatDate(item.releaseDate)}</span>
-                        </td>
-                      </>
-                    )}
-
-                    {/* ── 보관 창고 / 설치 현장 [MERGED] ── */}
-                    {isFirst && (
-                      activeTab === 'released' ? (
-                        (() => {
-                          let relSiteName = item.releaseDestination || ''
-                          let relAddress = item.releaseAddress || ''
-                          if (!relAddress && relSiteName.includes(' (') && relSiteName.endsWith(')')) {
-                            const splitIdx = relSiteName.indexOf(' (')
-                            relAddress = relSiteName.slice(splitIdx + 2, -1)
-                            relSiteName = relSiteName.slice(0, splitIdx)
-                          }
-                          return (
-                            <>
-                              <td rowSpan={groupSize} className={`px-2 py-1.5 align-top ${bgColor}`}>
-                                {relSiteName ? (
-                                  <p className="text-xs font-medium text-slate-800 truncate" title={relSiteName}>{relSiteName}</p>
-                                ) : (
-                                  <span className="text-[10px] text-slate-300">-</span>
-                                )}
-                              </td>
-                              <td rowSpan={groupSize} className={`px-1 py-1.5 align-top ${bgColor}`}>
-                                {relAddress ? (
-                                  <p className="text-[10px] text-slate-400 truncate" title={relAddress}>{relAddress}</p>
-                                ) : (
-                                  <span className="text-[10px] text-slate-300">-</span>
-                                )}
-                              </td>
-                            </>
-                          )
-                        })()
-                      ) : (
-                        <td rowSpan={groupSize} className={`px-2 py-1.5 align-top ${bgColor}`}>
-                          {(() => {
-                            const warehouse = getWarehouse(item.warehouseId)
-                            if (warehouse) {
+                        {/* ── 설치 현장 + 주소 [MERGED] ── */}
+                        {isFirst && (
+                          <td
+                            rowSpan={groupSize}
+                            className={`px-2 py-1.5 align-top ${bgColor}`}
+                            style={{ borderLeft: '3px solid #22c55e' }}
+                          >
+                            {(() => {
+                              let relSiteName = item.releaseDestination || ''
+                              let relAddress = item.releaseAddress || ''
+                              if (!relAddress && relSiteName.includes(' (') && relSiteName.endsWith(')')) {
+                                const splitIdx = relSiteName.indexOf(' (')
+                                relAddress = relSiteName.slice(splitIdx + 2, -1)
+                                relSiteName = relSiteName.slice(0, splitIdx)
+                              }
                               return (
-                                <div>
-                                  <div className="flex items-center gap-1">
-                                    <WarehouseIcon className="h-3 w-3 text-slate-400" />
-                                    <span className="text-xs font-medium text-slate-700">{warehouse.name}</span>
-                                  </div>
-                                  {warehouse.address && (
-                                    <p className="text-[9px] text-slate-400 ml-4 leading-tight truncate" title={warehouse.address}>{warehouse.address}</p>
+                                <>
+                                  <p className="text-xs font-bold text-slate-800 truncate" title={relSiteName}>{relSiteName || '-'}</p>
+                                  {relAddress && (
+                                    <p className="text-[10px] text-slate-400 truncate mt-0.5" title={relAddress}>{relAddress}</p>
                                   )}
-                                </div>
+                                </>
                               )
-                            }
-                            return <span className="text-[11px] text-slate-300">-</span>
+                            })()}
+                          </td>
+                        )}
+
+                        {/* ── 출고일 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
+                            <span className="text-[11px] text-slate-700 font-bold tabular-nums">{formatDate(item.releaseDate)}</span>
+                          </td>
+                        )}
+
+                        {/* ── 출고유형 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
+                            {item.releaseType ? (
+                              <Badge className={`${RELEASE_TYPE_COLORS[item.releaseType as ReleaseType]} text-[10px] font-medium`}>
+                                {RELEASE_TYPE_LABELS[item.releaseType as ReleaseType]}
+                              </Badge>
+                            ) : '-'}
+                          </td>
+                        )}
+
+                        {/* ── 철거된 장소 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-2 py-1.5 align-top ${bgColor}`}>
+                            {item.affiliate && (
+                              <p className="text-[10px] text-slate-400 font-medium leading-tight">{item.affiliate}</p>
+                            )}
+                            <p className="text-xs font-medium text-slate-600 truncate" title={item.siteName}>{item.siteName}</p>
+                          </td>
+                        )}
+
+                        {/* ── 유형 [INDIVIDUAL] ── */}
+                        <td className="px-1 py-1.5 text-center">
+                          {item.equipmentUnitType ? (
+                            <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border leading-tight ${EQUIPMENT_UNIT_TYPE_COLORS[item.equipmentUnitType]}`}>
+                              {EQUIPMENT_UNIT_TYPE_LABELS[item.equipmentUnitType]}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-300">-</span>
+                          )}
+                        </td>
+
+                        {/* ── 모델명 + 제조년월 [INDIVIDUAL] ── */}
+                        <td className="px-2 py-1.5 text-center">
+                          <div className="flex items-center justify-center gap-1.5">
+                            <p className="text-xs text-slate-800 font-semibold font-mono truncate" title={item.model || '-'}>{item.model || '-'}</p>
+                            {item.manufacturingDate && (
+                              <span className="text-[10px] font-bold text-teal-600 tabular-nums shrink-0">
+                                {item.manufacturingDate.replace('-', '.')}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[10px] text-slate-400">{item.category}</p>
+                        </td>
+
+                        {/* ── 평형 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
+                            {item.size ? (
+                              <span className="text-[11px] font-bold text-teal-700">{item.size}</span>
+                            ) : (
+                              <span className="text-[10px] text-slate-300">-</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* ── 수량 [INDIVIDUAL] ── */}
+                        <td className="px-1 py-1.5 text-center">
+                          <span className="text-xs font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
+                        </td>
+
+                        {/* ── 되돌리기 버튼 [MERGED] — 드롭다운 대신 직접 노출 ── */}
+                        {!readOnly && isFirst && (
+                          <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-7 text-[11px] text-gold-600 hover:text-gold-700 hover:bg-gold-50 gap-1 px-2"
+                              onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
+                            >
+                              <Undo2 className="h-3 w-3" />
+                              보관중
+                            </Button>
+                          </td>
+                        )}
+                      </>
+                    ) : (
+                      /* ═══ 보관중 탭: 기존 열 순서 유지 ═══ */
+                      <>
+                        {/* ── 철거된 장소 [MERGED] ── */}
+                        {isFirst && (
+                          <td
+                            rowSpan={groupSize}
+                            className={`px-2 py-1.5 align-top ${bgColor}`}
+                            style={isGrouped ? { borderLeft: '3px solid #3b82f6' } : undefined}
+                          >
+                            {item.affiliate && (
+                              <p className="text-[10px] text-slate-400 font-medium leading-tight">{item.affiliate}</p>
+                            )}
+                            <p className="text-xs font-semibold text-slate-800 truncate" title={item.siteName}>{item.siteName}</p>
+                            {isGrouped && (
+                              <p className="text-[9px] text-teal-500/60 mt-0.5">{groupSize}대 구성</p>
+                            )}
+                          </td>
+                        )}
+
+                        {/* ── 철거일 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1.5 py-1.5 text-center align-top ${bgColor}`}>
+                            <span className="text-[11px] text-brick-600 font-bold tabular-nums">
+                              {item.removalDate ? formatDate(item.removalDate) : '-'}
+                            </span>
+                          </td>
+                        )}
+
+                        {/* ── 제조년월 [INDIVIDUAL] ── */}
+                        <td className="px-1.5 py-1.5 text-center">
+                          <span className="text-[11px] font-bold text-teal-700 tabular-nums">
+                            {item.manufacturingDate ? item.manufacturingDate.replace('-', '.') : '-'}
+                          </span>
+                        </td>
+
+                        {/* ── 유형 [INDIVIDUAL] ── */}
+                        <td className="px-1 py-1.5 text-center">
+                          {item.equipmentUnitType ? (
+                            <span className={`inline-block text-[10px] font-bold px-1.5 py-0.5 rounded border leading-tight ${EQUIPMENT_UNIT_TYPE_COLORS[item.equipmentUnitType]}`}>
+                              {EQUIPMENT_UNIT_TYPE_LABELS[item.equipmentUnitType]}
+                            </span>
+                          ) : (
+                            <span className="text-[10px] text-slate-300">-</span>
+                          )}
+                        </td>
+
+                        {/* ── 모델명 [INDIVIDUAL] ── */}
+                        <td className="px-2 py-1.5 text-center">
+                          <p className="text-xs text-slate-800 font-semibold font-mono truncate" title={item.model || '-'}>{item.model || '-'}</p>
+                          <p className="text-[10px] text-slate-400">{item.category}</p>
+                        </td>
+
+                        {/* ── 평형 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
+                            {item.size ? (
+                              <span className="text-[11px] font-bold text-teal-700">{item.size}</span>
+                            ) : (
+                              <span className="text-[10px] text-slate-300">-</span>
+                            )}
+                          </td>
+                        )}
+
+                        {/* ── 수량 [INDIVIDUAL] ── */}
+                        <td className="px-1 py-1.5 text-center">
+                          <span className="text-xs font-semibold text-slate-700 tabular-nums">{item.quantity}대</span>
+                        </td>
+
+                        {/* ── 설치예정 [INDIVIDUAL] ── */}
+                        <td className="px-1.5 py-1.5">
+                          {(() => {
+                            const matchedOrder = orders.find(o =>
+                              o.items?.some(oi => oi.storedEquipmentId === item.id)
+                            )
+                            if (!matchedOrder) return <span className="text-[10px] text-slate-300">-</span>
+                            return (
+                              <div className="space-y-0.5">
+                                <p className="text-[11px] font-semibold text-olive-700 leading-tight truncate">
+                                  {matchedOrder.businessName}
+                                </p>
+                                <p className="text-[10px] text-slate-400 leading-tight">
+                                  {matchedOrder.affiliate}
+                                </p>
+                              </div>
+                            )
                           })()}
                         </td>
-                      )
-                    )}
 
-                    {/* ── 액션 [INDIVIDUAL] ── */}
-                    {!readOnly && (
-                      <td className="px-1 py-1.5 text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600">
-                              <MoreVertical className="h-3.5 w-3.5" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-32">
-                            {activeTab === 'stored' ? (
-                              <>
+                        {/* ── 제조사 [INDIVIDUAL] ── */}
+                        <td className="px-1.5 py-1.5 text-center">
+                          <span className="text-[11px] text-slate-600">{item.manufacturer || '-'}</span>
+                        </td>
+
+                        {/* ── 발주서 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-1 py-1.5 text-center align-top ${bgColor}`}>
+                            {(() => {
+                              const order = getOrder(item.orderId)
+                              if (order) {
+                                return (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 px-1.5 text-[11px] gap-0.5 text-teal-600 hover:text-teal-800 hover:bg-teal-50"
+                                    onClick={() => handleViewOrder(item.orderId)}
+                                  >
+                                    <FileText className="h-2.5 w-2.5" />
+                                    보기
+                                  </Button>
+                                )
+                              }
+                              return <span className="text-[10px] text-slate-300">수동</span>
+                            })()}
+                          </td>
+                        )}
+
+                        {/* ── 보관 창고 [MERGED] ── */}
+                        {isFirst && (
+                          <td rowSpan={groupSize} className={`px-2 py-1.5 align-top ${bgColor}`}>
+                            {(() => {
+                              const warehouse = getWarehouse(item.warehouseId)
+                              if (warehouse) {
+                                return (
+                                  <div>
+                                    <div className="flex items-center gap-1">
+                                      <WarehouseIcon className="h-3 w-3 text-slate-400" />
+                                      <span className="text-xs font-medium text-slate-700">{warehouse.name}</span>
+                                    </div>
+                                    {warehouse.address && (
+                                      <p className="text-[9px] text-slate-400 ml-4 leading-tight truncate" title={warehouse.address}>{warehouse.address}</p>
+                                    )}
+                                  </div>
+                                )
+                              }
+                              return <span className="text-[11px] text-slate-300">-</span>
+                            })()}
+                          </td>
+                        )}
+
+                        {/* ── 액션 [INDIVIDUAL] ── */}
+                        {!readOnly && (
+                          <td className="px-1 py-1.5 text-center">
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" className="h-6 w-6 p-0 text-slate-400 hover:text-slate-600">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-32">
                                 <DropdownMenuItem onClick={() => onEdit(item)} className="text-xs gap-2">
                                   <Edit2 className="h-3 w-3" /> 수정
                                 </DropdownMenuItem>
@@ -550,18 +651,11 @@ export function StoredEquipmentTable({
                                 >
                                   <Trash2 className="h-3 w-3" /> 삭제
                                 </DropdownMenuItem>
-                              </>
-                            ) : (
-                              <DropdownMenuItem
-                                onClick={() => setRevertTarget({ id: item.id, siteName: item.siteName })}
-                                className="text-xs gap-2 text-gold-600"
-                              >
-                                <Undo2 className="h-3 w-3" /> 되돌리기
-                              </DropdownMenuItem>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </td>
+                        )}
+                      </>
                     )}
                   </tr>
                 )

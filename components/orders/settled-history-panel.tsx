@@ -35,7 +35,7 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
   const [selectedMonth, setSelectedMonth] = useState<string>('all') // 선택된 월
   const [searchTerm, setSearchTerm] = useState('') // 검색어
 
-  // 년도 목록 생성 (실제 데이터 기준 + 현재 년도)
+  // 년도 목록 생성 (정산월 / 취소일 기준)
   const years = useMemo(() => {
     const historyOrders = orders.filter(o => {
       const s = computeKanbanStatus(o)
@@ -43,18 +43,18 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
     })
     const yearSet = new Set<number>()
 
-    // 발주일 기준으로 년도 추출
+    // 정산월(YYYY-MM) 또는 취소일에서 년도 추출
     historyOrders.forEach(order => {
-      if (order.orderDate) {
-        const year = parseInt(order.orderDate.substring(0, 4))
+      if (order.s1SettlementMonth) {
+        const year = parseInt(order.s1SettlementMonth.substring(0, 4))
+        yearSet.add(year)
+      } else if (order.cancelledAt) {
+        const year = new Date(order.cancelledAt).getFullYear()
         yearSet.add(year)
       }
     })
 
-    // 현재 년도도 추가 (미래 발주 대비)
     yearSet.add(new Date().getFullYear())
-
-    // 정렬 (최신순)
     return Array.from(yearSet).sort((a, b) => b - a)
   }, [orders])
 
@@ -80,10 +80,22 @@ export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanel
         if (!matchesSearch) return false
       }
 
-      // 3. 년/월 필터 (발주일 기준)
+      // 3. 년/월 필터 (정산월 기준, 취소 건은 취소일 기준)
       if (selectedYear !== 'all' || selectedMonth !== 'all') {
-        if (!order.orderDate) return false
-        const [year, month] = order.orderDate.split('-')
+        let year = '', month = ''
+        if (order.s1SettlementMonth) {
+          // 정산완료 건: 정산월(YYYY-MM) 기준
+          const parts = order.s1SettlementMonth.split('-')
+          year = parts[0]
+          month = parts[1]
+        } else if (order.cancelledAt) {
+          // 취소 건: 취소일 기준
+          const d = new Date(order.cancelledAt)
+          year = String(d.getFullYear())
+          month = String(d.getMonth() + 1).padStart(2, '0')
+        } else {
+          return false
+        }
         if (selectedYear !== 'all' && year !== selectedYear) return false
         if (selectedMonth !== 'all' && month !== selectedMonth) return false
       }
