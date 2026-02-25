@@ -39,6 +39,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "dotenv": "^17.2.4",
+    "exceljs": "^4.4.0",
     "html2canvas": "^1.4.1",
     "jspdf": "^4.1.0",
     "jspdf-autotable": "^5.0.7",
@@ -48,8 +49,7 @@
     "react-dom": "^18",
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.4.0",
-    "tailwindcss-animate": "^1.0.7",
-    "xlsx": "^0.18.5"
+    "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
     "@types/node": "^20",

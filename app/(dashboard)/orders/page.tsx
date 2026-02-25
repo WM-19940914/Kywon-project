@@ -481,6 +481,7 @@ export default function OrdersPage() {
         open={quoteDialogOpen}
         onOpenChange={setQuoteDialogOpen}
         onSave={handleQuoteSave}
+        readOnly
       />
     </div>
   )

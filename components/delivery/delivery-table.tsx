@@ -1249,23 +1249,22 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                             </div>
                           </div>
                           <div className="rounded-lg border border-gray-200 overflow-x-auto shadow-sm mb-3">
-                            <table className="text-sm" style={{ minWidth: '1720px' }}>
+                            <table className="text-sm" style={{ minWidth: '1500px' }}>
                               <thead>
                                 <tr className="bg-gray-100/80 text-xs text-gray-500 tracking-wide">
                                   <th className="text-center px-2 py-2.5 font-medium w-[32px]"></th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[82px]">배송 상태</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[96px]">매입처</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[80px]">매입처</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[120px]">현장명</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[162px]">주문일</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[130px]">주문일</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[132px]">주문번호</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[162px]">배송요청일</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[162px]">배송예정일</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[162px]">배송확정일</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[130px]">배송요청일</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[130px]">배송예정일</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[130px]">배송확정일</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[202px]">모델명</th>
                                   <th className="text-left px-2 py-2.5 font-medium w-[80px]">구성품</th>
                                   <th className="text-center px-2 py-2.5 font-medium w-[45px]">수량</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[161px]">창고명</th>
-                                  <th className="text-left px-2 py-2.5 font-medium w-[220px]">창고주소</th>
+                                  <th className="text-left px-2 py-2.5 font-medium w-[200px]">창고</th>
                                 </tr>
                               </thead>
                               <tbody className="bg-white divide-y divide-gray-100">
@@ -1455,36 +1454,43 @@ export function DeliveryTable({ orders, onEditDelivery, onViewDetail, onChangeSt
                                           tabIndex={readOnly ? -1 : undefined}
                                         />
                                       </td>
-                                      {/* 창고명 (팝업으로 한번에 선택, 3컬럼 분리 표시) */}
+                                      {/* 창고 (창고명 + 주소를 1열로 합침) */}
                                       <td className="px-1 py-1.5">
                                         {readOnly ? (
-                                          <span className="text-xs font-semibold text-gray-800 truncate" title={(() => {
-                                              const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
-                                              return d ? `${d.name}_${d.managerName}` : ''
-                                            })()}>
+                                          <div className="flex flex-col gap-0.5">
+                                            <span className="text-xs font-semibold text-gray-800 truncate" title={(() => {
+                                                const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                                return d ? `${d.name}_${d.managerName}` : ''
+                                              })()}>
+                                              {(() => {
+                                                const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                                return d ? `${d.name}_${d.managerName}` : '-'
+                                              })()}
+                                            </span>
                                             {(() => {
                                               const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
-                                              return d ? `${d.name}_${d.managerName}` : '-'
+                                              return d ? (
+                                                <p className="text-[11px] text-gray-500 truncate" title={d.address}>{d.address}</p>
+                                              ) : null
                                             })()}
-                                          </span>
+                                          </div>
                                         ) : (
-                                          <WarehouseNameCell
-                                            warehouseId={item.warehouseId}
-                                            onPickerOpen={() => {
-                                              setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
-                                              setPickerOpen(true)
-                                            }}
-                                          />
+                                          <div className="flex flex-col gap-0.5">
+                                            <WarehouseNameCell
+                                              warehouseId={item.warehouseId}
+                                              onPickerOpen={() => {
+                                                setPickerTarget({ orderId: order.id, itemIdx: idx, context: item.warehouseId ? 'individual' : 'bulk' })
+                                                setPickerOpen(true)
+                                              }}
+                                            />
+                                            {(() => {
+                                              const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
+                                              return d ? (
+                                                <p className="text-[11px] text-gray-500 truncate" title={d.address}>{d.address}</p>
+                                              ) : null
+                                            })()}
+                                          </div>
                                         )}
-                                      </td>
-                                      {/* 창고주소 */}
-                                      <td className="px-1 py-1.5">
-                                        {(() => {
-                                          const d = item.warehouseId ? getWarehouseDetail(item.warehouseId) : null
-                                          return d ? (
-                                            <p className="text-[11px] text-gray-500 truncate" title={d.address}>{d.address}</p>
-                                          ) : <span className="text-xs text-gray-300">—</span>
-                                        })()}
                                       </td>
                                     </tr>
                                   )

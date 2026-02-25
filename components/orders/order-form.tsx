@@ -1438,6 +1438,17 @@ export function OrderForm({
               이전
             </Button>
           )}
+          {/* 수정 모드 + step 1~3에서 즉시 저장 버튼 (step 4는 기존 수정 버튼 사용) */}
+          {initialData && currentStep < 4 && (
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="bg-green-600 hover:bg-green-700 text-white"
+            >
+              {isSubmitting ? '저장 중...' : '수정완료'}
+            </Button>
+          )}
         </div>
 
         {currentStep < 4 ? (

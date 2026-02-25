@@ -265,7 +265,7 @@ export default function DeliveryPage() {
   ]
 
   return (
-    <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
+    <div className="container mx-auto max-w-[1600px] py-6 px-4 md:px-6">
       {/* 페이지 헤더 */}
       <div className="flex items-center gap-4 mb-6">
         <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">

@@ -135,9 +135,21 @@ export function DetailedExpenseReportTab({
       }
     })
 
+    /** 지출결의서 계열사 정렬 순서: 구몬 → Wells 영업 → Wells 서비스 → 교육플랫폼 → 기타 → AS */
+    const AFFILIATE_SORT_ORDER: Record<string, number> = {
+      '구몬': 0, 'Wells 영업': 1, 'Wells 서비스': 2, '교육플랫폼': 3, '기타': 4,
+    }
+
+    // 계열사 순서대로 발주 정렬
+    const sortedOrders = [...orders].sort((a, b) => {
+      const aOrder = AFFILIATE_SORT_ORDER[a.affiliate || '기타'] ?? 4
+      const bOrder = AFFILIATE_SORT_ORDER[b.affiliate || '기타'] ?? 4
+      return aOrder - bOrder
+    })
+
     let sortOrder = 0
 
-    orders.forEach(order => {
+    sortedOrders.forEach(order => {
       const amounts = calcAmounts(order)
       const equipmentItems = order.equipmentItems || []
       const workTypes = Array.from(new Set(order.items.map(i => i.workType))).join(', ')
@@ -233,8 +245,9 @@ export function DetailedExpenseReportTab({
     })
 
     const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
+    // 정산대기(completed) + 정산완료(settled) 모두 포함
     const filteredAS = asData.filter(
-      (as: ASRequest) => as.status === 'settled' && as.settlementMonth === monthKey
+      (as: ASRequest) => (as.status === 'completed' || as.status === 'settled') && as.settlementMonth === monthKey
     )
     const asGrouped: Record<string, { asCost: number; totalAmount: number; count: number }> = {}
     filteredAS.forEach((as: ASRequest) => {
@@ -245,7 +258,13 @@ export function DetailedExpenseReportTab({
       asGrouped[key].count += 1
     })
 
-    Object.entries(asGrouped).forEach(([affiliate, data]) => {
+    // AS도 계열사 순서대로 정렬
+    const asEntries = Object.entries(asGrouped).sort(([a], [b]) => {
+      const aOrder = AFFILIATE_SORT_ORDER[a] ?? 4
+      const bOrder = AFFILIATE_SORT_ORDER[b] ?? 4
+      return aOrder - bOrder
+    })
+    asEntries.forEach(([affiliate, data]) => {
       if (data.count === 0) return
       const purchaseTotalPrice = data.asCost
       const salesTotalPrice = Math.floor(data.totalAmount / 1000) * 1000

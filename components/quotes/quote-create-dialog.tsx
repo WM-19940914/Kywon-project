@@ -28,6 +28,7 @@ interface QuoteCreateDialogProps {
   order: Order | null
   onSuccess?: () => void
   onSave?: (orderId: string, quote: CustomerQuote) => void  // 견적서 저장 핸들러 추가
+  readOnly?: boolean  // 읽기 전용 모드 (정산관리 등에서 조회 시 사용)
 }
 
 interface QuoteLineItem {
@@ -45,7 +46,8 @@ export function QuoteCreateDialog({
   open,
   onOpenChange,
   order,
-  onSave  // 새 prop 받기
+  onSave,  // 새 prop 받기
+  readOnly = false  // 읽기 전용 모드 (기본: 편집 가능)
 }: QuoteCreateDialogProps) {
   const [equipmentItems, setEquipmentItems] = useState<QuoteLineItem[]>([])
   const [installationItems, setInstallationItems] = useState<QuoteLineItem[]>([])
@@ -189,6 +191,8 @@ export function QuoteCreateDialog({
     if (isInitialLoad.current) return
     // 모달이 닫혀있으면 무시
     if (!open || !order) return
+    // 읽기 전용 모드면 자동 저장 하지 않음
+    if (readOnly) return
 
     if (debounceRef.current) clearTimeout(debounceRef.current)
     debounceRef.current = setTimeout(() => {
@@ -422,7 +426,9 @@ export function QuoteCreateDialog({
     setItems(newItems)
   }
 
-  /** 테이블 행 렌더링 (printMode: input → span 변환) */
+  /** 테이블 행 렌더링 (printMode/readOnly: input → span 변환) */
+  // 읽기 전용 또는 PDF 출력 모드에서는 input 대신 span 표시
+  const isViewOnly = printMode || readOnly
   const renderRow = (
     item: QuoteLineItem,
     index: number,
@@ -436,7 +442,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 품목 */}
       <td className="py-1.5 px-1">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-2 py-1.5 text-sm">{item.product}</span>
         ) : (
           <input
@@ -450,7 +456,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 모델명 */}
       <td className="py-1.5 px-1">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-2 py-1.5 text-sm">{item.model}</span>
         ) : (
           <input
@@ -464,7 +470,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 수량 */}
       <td className="py-1.5 px-1 w-16">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-2 py-1.5 text-sm text-center">{item.quantity || ''}</span>
         ) : (
           <input
@@ -479,7 +485,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 단위 */}
       <td className="py-1.5 px-1 w-14">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-1.5 py-1.5 text-sm text-center">{item.unit}</span>
         ) : (
           <input
@@ -493,7 +499,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 단가 (쉼표 포맷팅) */}
       <td className="py-1.5 px-1 w-28">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-2 py-1.5 text-sm text-right">{item.price ? item.price.toLocaleString('ko-KR') : ''}</span>
         ) : (
           <input
@@ -517,7 +523,7 @@ export function QuoteCreateDialog({
       </td>
       {/* 비고 */}
       <td className="py-1.5 px-1 w-32">
-        {printMode ? (
+        {isViewOnly ? (
           <span className="block px-2 py-1.5 text-xs">{item.notes}</span>
         ) : (
           <input
@@ -529,7 +535,8 @@ export function QuoteCreateDialog({
           />
         )}
       </td>
-      {/* 삭제 (PDF 출력 시 숨김) */}
+      {/* 삭제 (PDF 출력/읽기 전용 시 숨김) */}
+      {!readOnly && (
       <td className="py-1.5 px-1 w-8 print-hide">
         <button
           type="button"
@@ -539,6 +546,7 @@ export function QuoteCreateDialog({
           <X className="h-3.5 w-3.5 text-brick-400" />
         </button>
       </td>
+      )}
     </tr>
   )
 
@@ -562,6 +570,8 @@ export function QuoteCreateDialog({
             ({items.filter(i => i.product.trim()).length}건 입력)
           </span>
         </div>
+        {/* 읽기 전용 모드에서는 단가표/행추가 버튼 숨김 */}
+        {!readOnly && (
         <div className="flex items-center gap-2 print-hide">
           {/* 장비 섹션: 장비 단가표 */}
           {showPriceTable && (
@@ -571,14 +581,8 @@ export function QuoteCreateDialog({
           {showInstallPriceTable && (
             <InstallPriceSheet onSelect={handleInstallPriceSelect} />
           )}
-          <button
-            type="button"
-            className="flex items-center gap-1 text-xs text-teal-500 hover:text-teal-700 px-2 py-1 rounded hover:bg-teal-50 transition-colors"
-            onClick={() => setItems([...items, createEmptyItem()])}
-          >
-            <Plus className="h-3 w-3" /> 행 추가
-          </button>
         </div>
+        )}
       </div>
 
       {/* 테이블 */}
@@ -594,7 +598,7 @@ export function QuoteCreateDialog({
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">단가</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-right w-28">금액</th>
               <th className="py-2 px-2 text-xs font-medium text-gray-500 text-left w-32">비고</th>
-              <th className="w-8 print-hide"></th>
+              {!readOnly && <th className="w-8 print-hide"></th>}
             </tr>
           </thead>
           <tbody>
@@ -602,13 +606,24 @@ export function QuoteCreateDialog({
           </tbody>
         </table>
 
+        {/* 행 추가 버튼 — 테이블 하단 (readOnly/printMode일 때 숨김) */}
+        {!readOnly && !printMode && (
+          <button
+            type="button"
+            className="w-full flex items-center justify-center gap-1 text-xs text-teal-500 hover:text-teal-700 py-2 border-t border-dashed border-gray-200 bg-gray-50/50 hover:bg-teal-50 transition-colors print-hide"
+            onClick={() => setItems([...items, createEmptyItem()])}
+          >
+            <Plus className="h-3 w-3" /> 행 추가
+          </button>
+        )}
+
         {/* 설치비 단위절사 (설치비 섹션에서만, 소계 위에 표시) */}
         {showRounding && (
           <div className="flex justify-end items-center px-4 py-2 border-t border-carrot-100 bg-carrot-50/30">
             <span className="text-sm text-gray-600 mr-4">설치비 단위절사</span>
             <div className="flex items-center gap-2">
               <span className="text-sm text-brick-600 font-semibold">-</span>
-              {printMode ? (
+              {isViewOnly ? (
                 <span className="text-sm text-right text-brick-600 font-semibold">{installRounding ? installRounding.toLocaleString('ko-KR') : '0'}</span>
               ) : (
                 <input
@@ -655,8 +670,8 @@ export function QuoteCreateDialog({
       <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className={`max-w-4xl p-0 ${printMode ? 'overflow-visible !max-h-none' : 'max-h-[90vh] overflow-y-auto'}`}
-        onInteractOutside={(e) => e.preventDefault()}
-        onEscapeKeyDown={(e) => e.preventDefault()}
+        onInteractOutside={(e) => { if (!readOnly) e.preventDefault() }}
+        onEscapeKeyDown={(e) => { if (!readOnly) e.preventDefault() }}
       >
         {/* PDF 생성 중 로딩 오버레이 */}
         {pdfLoading && (
@@ -801,22 +816,30 @@ export function QuoteCreateDialog({
         {/* 하단 버튼 (PDF 캡처 영역 밖) */}
         {!printMode && (
         <div className="sticky bottom-0 bg-white border-t px-6 py-3 flex justify-between items-center">
-          {/* 자동 저장 상태 표시 */}
+          {/* 자동 저장 상태 표시 (읽기 전용 모드에서는 조회 전용 안내) */}
           <div className="text-xs text-gray-400">
-            {autoSaveStatus === 'saving' && (
-              <span className="inline-flex items-center gap-1">
-                <span className="h-1.5 w-1.5 rounded-full bg-carrot-400 animate-pulse" />
-                저장 중...
+            {readOnly ? (
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                조회 전용
               </span>
-            )}
-            {autoSaveStatus === 'saved' && (
-              <span className="inline-flex items-center gap-1 text-olive-600">
-                <Check className="h-3 w-3" />
-                자동 저장됨
-              </span>
-            )}
-            {autoSaveStatus === 'idle' && (
-              <span>입력 시 자동 저장</span>
+            ) : (
+              <>
+                {autoSaveStatus === 'saving' && (
+                  <span className="inline-flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-carrot-400 animate-pulse" />
+                    저장 중...
+                  </span>
+                )}
+                {autoSaveStatus === 'saved' && (
+                  <span className="inline-flex items-center gap-1 text-olive-600">
+                    <Check className="h-3 w-3" />
+                    자동 저장됨
+                  </span>
+                )}
+                {autoSaveStatus === 'idle' && (
+                  <span>입력 시 자동 저장</span>
+                )}
+              </>
             )}
           </div>
           <div className="flex items-center gap-2">
