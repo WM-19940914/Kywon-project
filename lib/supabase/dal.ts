@@ -797,6 +797,32 @@ export async function updateS1SettlementStatus(orderId: string, status: S1Settle
 }
 
 /**
+ * 정산 구분 변경 (신규설치 ↔ 이전설치)
+ * @param orderId - 발주 ID
+ * @param category - '신규설치' | '이전설치'
+ */
+export async function updateSettlementCategory(
+  orderId: string,
+  category: '신규설치' | '이전설치'
+): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('orders')
+    .update({
+      settlement_category: category,
+      updated_at: new Date().toISOString()
+    })
+    .eq('id', orderId)
+
+  if (error) {
+    console.error('정산 구분 변경 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
  * 여러 발주의 에스원 정산 상태 일괄 변경
  * @param orderIds - 발주 ID 배열
  * @param status - 새 정산 상태

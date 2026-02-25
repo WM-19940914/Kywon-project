@@ -183,6 +183,9 @@ export interface Order {
   melleeaReviewStatus?: ReviewStatus       // 멜레아 검토 상태
   gyowonReviewStatus?: ReviewStatus        // 교원 검토 상태
 
+  // 📊 정산 구분 (신규설치/이전설치 — 자동판별, 수동변경 가능)
+  settlementCategory?: SettlementCategory  // 정산 구분
+
   // 📋 옵티/계약 정보 (배송관리 아코디언에서 입력)
   optiName?: string                        // 옵티명
   optiNumber?: string                      // 옵티번호
@@ -222,6 +225,14 @@ export const AFFILIATE_OPTIONS = [
   '교육플랫폼',
   '기타'
 ] as const
+
+/**
+ * 정산 구분 (신규설치 vs 이전설치)
+ * - 자동판별: 발주 내역(items)의 workType을 기준으로 분류
+ * - 수동변경: 사용자가 직접 변경 가능 (DB에 저장)
+ */
+export const SETTLEMENT_CATEGORIES = ['신규설치', '이전설치'] as const
+export type SettlementCategory = typeof SETTLEMENT_CATEGORIES[number]
 
 /**
  * 작업종류 표시 순서

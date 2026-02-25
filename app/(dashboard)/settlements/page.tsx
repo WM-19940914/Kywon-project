@@ -12,18 +12,20 @@
 'use client'
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react'
-import { fetchOrders, fetchASRequests, fetchSettlementConfirmation, saveSettlementConfirmation, clearSettlementConfirmation } from '@/lib/supabase/dal'
+import { fetchOrders, fetchASRequests, fetchSettlementConfirmation, saveSettlementConfirmation, clearSettlementConfirmation, updateSettlementCategory } from '@/lib/supabase/dal'
 import type { SettlementConfirmation } from '@/lib/supabase/dal'
 import type { Order } from '@/types/order'
 import type { ASRequest } from '@/types/as'
 import {
   AFFILIATE_OPTIONS,
+  SETTLEMENT_CATEGORIES,
   sortWorkTypes,
   getWorkTypeBadgeStyle,
 } from '@/types/order'
+import type { SettlementCategory } from '@/types/order'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw, FileText, CircleDollarSign, Wrench } from 'lucide-react'
+import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw, FileText, CircleDollarSign, Wrench, RefreshCw } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportSettlementExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn, SettlementSheetData } from '@/lib/excel-export'
@@ -113,14 +115,18 @@ function calcOrderAmounts(order: Order) {
  */
 function AffiliateGroup({
   affiliateName,
+  categoryLabel,
   orders,
   onViewOrder,
   onQuoteView,
+  onToggleCategory,
 }: {
   affiliateName: string
+  categoryLabel?: SettlementCategory
   orders: Order[]
   onViewOrder: (order: Order) => void
   onQuoteView: (order: Order) => void
+  onToggleCategory?: (orderId: string, newCategory: SettlementCategory) => void
 }) {
   const [isOpen, setIsOpen] = useState(orders.length > 0)
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set())
@@ -161,6 +167,15 @@ function AffiliateGroup({
             orders.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
           }`} />
           <h3 className="text-lg font-bold text-slate-800">{affiliateName}</h3>
+          {categoryLabel && (
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
+              categoryLabel === '신규설치'
+                ? 'bg-teal-50 text-teal-700 border-teal-200'
+                : 'bg-slate-100 text-slate-600 border-slate-200'
+            }`}>
+              {categoryLabel}
+            </span>
+          )}
           <span className="text-sm text-slate-500">({orders.length}건)</span>
         </div>
         {orders.length > 0 && (
@@ -204,6 +219,7 @@ function AffiliateGroup({
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider">사업자명</th>
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '70px' }}>견적서</th>
                   <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '80px' }}>현장사진</th>
+                  <th className="text-center p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '80px' }}>정산구분</th>
                   <th className="text-right p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '120px' }}>부가세별도</th>
                   <th className="text-right p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '100px' }}>부가세</th>
                   <th className="text-right p-3 text-xs text-slate-500 font-semibold uppercase tracking-wider" style={{ width: '130px' }}>부가세포함</th>
@@ -293,6 +309,32 @@ function AffiliateGroup({
                           />
                         </td>
 
+                        {/* 정산구분 토글 */}
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          {onToggleCategory && (() => {
+                            const currentCat = order.settlementCategory
+                              || (order.items.some(i => i.workType === '신규설치') ? '신규설치' : '이전설치')
+                            const isAuto = !order.settlementCategory
+                            const newCat: SettlementCategory = currentCat === '신규설치' ? '이전설치' : '신규설치'
+                            return (
+                              <button
+                                onClick={() => onToggleCategory(order.id, newCat)}
+                                className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 transition-colors ${
+                                  isAuto
+                                    ? 'border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600'
+                                    : (currentCat === '신규설치'
+                                      ? 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100'
+                                      : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100')
+                                }`}
+                                title={isAuto ? '자동판별 (클릭하여 변경)' : '수동 설정됨 (클릭하여 변경)'}
+                              >
+                                <RefreshCw className="h-3 w-3" />
+                                {currentCat === '신규설치' ? '신규' : '이전'}
+                              </button>
+                            )
+                          })()}
+                        </td>
+
                         {/* 부가세별도 */}
                         <td className="p-3 text-right">
                           <p className="text-sm tabular-nums text-slate-700">
@@ -318,7 +360,7 @@ function AffiliateGroup({
                       {/* 견적서 상세 (아코디언) */}
                       {expandedIds.has(order.id) && (
                       <tr>
-                        <td colSpan={11} className="p-0">
+                        <td colSpan={12} className="p-0">
                             <div className="mx-4 my-3">
                               <div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
                                 {/* 견적서 헤더 — gradient + 현장명 */}
@@ -474,7 +516,7 @@ function AffiliateGroup({
               return (
                 <div key={order.id} className={`bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden cursor-pointer ${expandedIds.has(order.id) ? 'ring-1 ring-teal-300' : ''}`} onClick={() => handleToggleExpand(order.id)}>
                   <div className="p-4 space-y-3">
-                    {/* 상단: 작업종류 */}
+                    {/* 상단: 작업종류 + 정산구분 토글 */}
                     <div className="flex items-center justify-between">
                       <div className="flex flex-wrap gap-1">
                         {workTypes.map(type => {
@@ -487,6 +529,27 @@ function AffiliateGroup({
                           )
                         })}
                       </div>
+                      {onToggleCategory && (() => {
+                        const currentCat = order.settlementCategory
+                          || (order.items.some(i => i.workType === '신규설치') ? '신규설치' : '이전설치')
+                        const isAuto = !order.settlementCategory
+                        const newCat: SettlementCategory = currentCat === '신규설치' ? '이전설치' : '신규설치'
+                        return (
+                          <button
+                            onClick={(e) => { e.stopPropagation(); onToggleCategory(order.id, newCat) }}
+                            className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 ${
+                              isAuto
+                                ? 'border-dashed border-slate-300 text-slate-400'
+                                : (currentCat === '신규설치'
+                                  ? 'border-teal-300 bg-teal-50 text-teal-700'
+                                  : 'border-slate-300 bg-slate-50 text-slate-600')
+                            }`}
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            {currentCat === '신규설치' ? '신규' : '이전'}
+                          </button>
+                        )
+                      })()}
                     </div>
 
                     {/* 현장명 + 주소 */}
@@ -898,25 +961,60 @@ export default function SettlementsPage() {
     })
   }, [orders, selectedYear, selectedMonth])
 
-  /** 계열사별 그룹화 */
+  /**
+   * 자동판별: 발주 내역에 '신규설치'가 하나라도 있으면 → 신규설치, 없으면 → 이전설치
+   * DB에 settlementCategory가 저장되어 있으면 그 값 우선 사용
+   */
+  const getSettlementCategory = useCallback((order: Order): SettlementCategory => {
+    if (order.settlementCategory) return order.settlementCategory
+    return order.items.some(i => i.workType === '신규설치') ? '신규설치' : '이전설치'
+  }, [])
+
+  /** 계열사 × 정산구분(신규/이전) = 10개 그룹 */
   const affiliateGroups = useMemo(() => {
+    // 10개 그룹 키 생성: "구몬_신규설치", "구몬_이전설치", ...
     const groups: Record<string, Order[]> = {}
-    AFFILIATE_OPTIONS.forEach(aff => { groups[aff] = [] })
+    AFFILIATE_OPTIONS.forEach(aff => {
+      SETTLEMENT_CATEGORIES.forEach(cat => {
+        groups[`${aff}_${cat}`] = []
+      })
+    })
 
     filteredOrders.forEach(order => {
       const affiliate = order.affiliate || '기타'
-      if (groups[affiliate]) {
-        groups[affiliate].push(order)
+      const category = getSettlementCategory(order)
+      const key = `${affiliate}_${category}`
+      if (groups[key]) {
+        groups[key].push(order)
       } else {
-        groups['기타'].push(order)
+        groups[`기타_${category}`].push(order)
       }
     })
 
-    return AFFILIATE_OPTIONS.map(aff => ({
-      name: aff,
-      orders: groups[aff],
-    }))
-  }, [filteredOrders])
+    // 계열사별로 신규 → 이전 순서로 반환
+    const result: { name: string; category: SettlementCategory; orders: Order[] }[] = []
+    AFFILIATE_OPTIONS.forEach(aff => {
+      SETTLEMENT_CATEGORIES.forEach(cat => {
+        result.push({
+          name: aff,
+          category: cat,
+          orders: groups[`${aff}_${cat}`],
+        })
+      })
+    })
+    return result
+  }, [filteredOrders, getSettlementCategory])
+
+  /** 정산구분 변경 핸들러 (신규 ↔ 이전 토글) */
+  const handleToggleCategory = useCallback(async (orderId: string, newCategory: SettlementCategory) => {
+    const ok = await updateSettlementCategory(orderId, newCategory)
+    if (ok) {
+      // 로컬 상태 즉시 반영 (전체 데이터 리로드 안 하고 해당 건만 업데이트)
+      setOrders(prev => prev.map(o =>
+        o.id === orderId ? { ...o, settlementCategory: newCategory } : o
+      ))
+    }
+  }, [])
 
   /** AS 정산 필터링 (선택한 월 + 정산대기 또는 정산완료 상태) */
   const filteredASRequests = useMemo(() => {
@@ -930,13 +1028,19 @@ export default function SettlementsPage() {
 
   /** 엑셀 다운로드 — 계열사별 시트 (정산 요약 + 사업자별 견적 상세) */
   const handleExcelExport = useCallback(() => {
-    // 계열사별로 데이터 그룹화 (모든 계열사 순서 보장)
+    // 계열사×정산구분(10개)로 데이터 그룹화
     const affiliateData: Record<string, SettlementSheetData[]> = {}
-    AFFILIATE_OPTIONS.forEach(name => { affiliateData[name] = [] })
+    AFFILIATE_OPTIONS.forEach(name => {
+      SETTLEMENT_CATEGORIES.forEach(cat => {
+        affiliateData[`${name}_${cat}`] = []
+      })
+    })
 
     filteredOrders.forEach(order => {
       const affiliate = order.affiliate || '기타'
-      if (!affiliateData[affiliate]) affiliateData[affiliate] = []
+      const category = getSettlementCategory(order)
+      const key = `${affiliate}_${category}`
+      if (!affiliateData[key]) affiliateData[key] = []
 
       const amounts = calcOrderAmounts(order)
       const workTypes = sortWorkTypes(Array.from(new Set(order.items.map(i => i.workType)))).join(', ')
@@ -955,7 +1059,7 @@ export default function SettlementsPage() {
         }
       })
 
-      affiliateData[affiliate].push({
+      affiliateData[key].push({
         businessName: order.businessName,
         workTypes,
         orderDate: order.orderDate || '',
@@ -1008,9 +1112,11 @@ export default function SettlementsPage() {
       })
     })
 
-    // 요약 통계 생성
+    // 요약 통계 생성 (계열사별로 신규+이전 합산)
     const summaryData = AFFILIATE_OPTIONS.map(name => {
-      const installOrders = affiliateData[name] || []
+      const newOrders = affiliateData[`${name}_신규설치`] || []
+      const moveOrders = affiliateData[`${name}_이전설치`] || []
+      const installOrders = [...newOrders, ...moveOrders]
       const installTotal = installOrders.reduce((s, o) => s + o.grandTotal, 0)
       const asReqs = asAffiliateData[name] || []
       const asRaw = asReqs.reduce((s, r) => s + ((r.totalAmount as number) || 0), 0)
@@ -1034,7 +1140,7 @@ export default function SettlementsPage() {
       fileName: buildExcelFileName('정산관리', monthLabel),
       monthLabel,
     })
-  }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth])
+  }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth, getSettlementCategory])
 
   /** AS 계열사별 그룹화 */
   const asAffiliateGroups = useMemo(() => {
@@ -1079,14 +1185,17 @@ export default function SettlementsPage() {
   }, [filteredOrders])
 
   /** 계열사별 합계 */
+  /** 계열사별 합계 (신규+이전 합산) — 통계 카드용 */
   const affiliateTotals = useMemo(() => {
-    return affiliateGroups.map(group => {
-      const total = group.orders.reduce((sum, order) => sum + calcOrderAmounts(order).grandTotal, 0)
+    return AFFILIATE_OPTIONS.map(aff => {
+      const groups = affiliateGroups.filter(g => g.name === aff)
+      const count = groups.reduce((s, g) => s + g.orders.length, 0)
+      const total = groups.reduce((s, g) => s + g.orders.reduce((s2, o) => s2 + calcOrderAmounts(o).grandTotal, 0), 0)
       return {
-        name: group.name,
-        count: group.orders.length,
+        name: aff,
+        count,
         total,
-        color: AFFILIATE_COLORS[group.name] || 'bg-gray-400',
+        color: AFFILIATE_COLORS[aff] || 'bg-gray-400',
       }
     })
   }, [affiliateGroups])
@@ -1371,11 +1480,13 @@ export default function SettlementsPage() {
         <div className="space-y-4">
           {affiliateGroups.map(group => (
             <AffiliateGroup
-              key={group.name}
+              key={`${group.name}_${group.category}`}
               affiliateName={group.name}
+              categoryLabel={group.category}
               orders={group.orders}
               onViewOrder={handleViewOrder}
               onQuoteView={handleQuoteView}
+              onToggleCategory={handleToggleCategory}
             />
           ))}
 
