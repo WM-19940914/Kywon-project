@@ -23,6 +23,16 @@ import { Input } from '@/components/ui/input'
 import { Skeleton } from '@/components/ui/skeleton'
 import { EmptyState } from '@/components/ui/empty-state'
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -104,6 +114,12 @@ export default function ASPage() {
   const [formDialogOpen, setFormDialogOpen] = useState(false)
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<ASRequest | null>(null)
+
+  /** 
+   * [일괄 정산 처리 확인창 상태]
+   * 여러 건을 한 번에 정산완료 처리할 때, 실수를 막기 위해 예쁜 안내창을 띄우는 용도입니다.
+   */
+  const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
 
   // URL에 ?action=new 가 있으면 AS 접수 다이얼로그 자동 오픈
   useEffect(() => {
@@ -233,15 +249,28 @@ export default function ASPage() {
     }
   }
 
-  const handleBatchSettle = async () => {
+  /**
+   * [정산완료 일괄 처리 시작]
+   * 버튼을 누르면 즉시 처리하지 않고 안내창(AlertDialog)을 먼저 띄웁니다.
+   */
+  const handleBatchSettleInit = () => {
+    if (selectedIds.size === 0) return
+    setBatchConfirmOpen(true) // 예쁜 알림창 열기
+  }
+
+  /**
+   * [정산완료 일괄 처리 확정]
+   * 사용자가 안내창에서 [네, 일괄 처리하겠습니다]를 눌렀을 때 실행됩니다.
+   */
+  const confirmBatchSettle = async () => {
     if (actionLoading) return
     if (selectedIds.size === 0) return
-    const ok = window.confirm(`선택한 ${selectedIds.size}건을 정산완료로 처리하시겠습니까?`)
-    if (!ok) return
+
     setActionLoading(true)
     try {
       const ids = Array.from(selectedIds)
       const success = await batchUpdateASStatus(ids, 'settled', selectedSettlementMonth)
+
       if (success) {
         setRequests(prev => prev.map(r =>
           ids.includes(r.id)
@@ -249,6 +278,7 @@ export default function ASPage() {
             : r
         ))
         setSelectedIds(new Set())
+        setBatchConfirmOpen(false) // 창 닫기
         showAlert(`${ids.length}건이 정산완료 처리되었습니다.`, 'success')
       } else {
         showAlert('일괄 변경에 실패했습니다.', 'error')
@@ -361,11 +391,10 @@ export default function ASPage() {
               onClick={() => handleTabChange(tab.key)}
             >
               {tab.label}
-              <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${
-                activeTab === tab.key
+              <span className={`ml-1.5 px-2 py-0.5 rounded-full text-xs ${activeTab === tab.key
                   ? 'bg-teal-100 text-teal-600'
                   : 'bg-slate-100 text-slate-500'
-              }`}>
+                }`}>
                 {tabCounts[tab.key]}
               </span>
             </button>
@@ -382,11 +411,10 @@ export default function ASPage() {
               {settlementMonthOptions.map(opt => (
                 <button
                   key={opt.value}
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-                    selectedSettlementMonth === opt.value
+                  className={`px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${selectedSettlementMonth === opt.value
                       ? 'bg-teal-600 text-white'
                       : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                  }`}
+                    }`}
                   onClick={() => setSelectedSettlementMonth(opt.value)}
                 >
                   {opt.label}
@@ -440,9 +468,8 @@ export default function ASPage() {
 
           {/* 정산완료 일괄 처리 */}
           {activeTab === 'completed' && selectedIds.size > 0 && (
-            <Button onClick={handleBatchSettle} disabled={actionLoading} className="bg-olive-600 hover:bg-olive-700 text-white rounded-lg">
-              <CheckCircle2 className="h-4 w-4 mr-1" />
-              정산완료 처리 ({selectedIds.size}건)
+            <Button onClick={handleBatchSettleInit} disabled={actionLoading} className="bg-olive-600 hover:bg-olive-700 text-white rounded-lg">
+              <CheckCircle2 className="h-4 w-4 mr-1" />              정산완료 처리 ({selectedIds.size}건)
             </Button>
           )}
 
@@ -545,11 +572,10 @@ export default function ASPage() {
                           절사 <span className="font-medium">-{diff.toLocaleString('ko-KR')}</span>
                         </span>
                       )}
-                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-bold ${
-                        activeTab === 'settled'
+                      <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[11px] font-bold ${activeTab === 'settled'
                           ? 'bg-olive-50 text-olive-700 border border-olive-200'
                           : 'bg-teal-50 text-teal-700 border border-teal-200'
-                      }`}>
+                        }`}>
                         소계 {truncated.toLocaleString('ko-KR')}원
                       </span>
                       <span className="text-[10px] text-slate-400">[VAT별도]</span>
@@ -598,6 +624,42 @@ export default function ASPage() {
         onUpdate={handleUpdate}
         onDelete={handleDelete}
       />
+
+      {/* 
+          정산완료 일괄 처리용 '예쁜 확인창' (AlertDialog)
+          실수로 대량의 데이터가 변경되는 것을 방지합니다.
+      */}
+      <AlertDialog open={batchConfirmOpen} onOpenChange={setBatchConfirmOpen}>
+        <AlertDialogContent className="max-w-[420px] border-2 border-olive-200">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-olive-100 p-1.5 rounded-full">
+                <CheckCircle2 className="h-5 w-5 text-olive-600" />
+              </div>
+              정산완료 일괄 처리
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-3 pb-2 text-base text-slate-600">
+              <span className="font-bold text-olive-700 text-lg">{selectedIds.size}</span>개의 AS 처리 건을 한 번에
+              <span className="font-bold text-slate-800"> [정산완료]</span> 상태로 변경하시겠습니까?
+              <br /><br />
+              <span className="text-sm text-slate-500 bg-slate-50 p-2 rounded-lg border border-slate-100 block">
+                선택된 월: <span className="font-semibold">{selectedSettlementMonth}</span>
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-4">
+            <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-50 font-semibold h-11">
+              아니요, 취소할게요
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmBatchSettle}
+              className="bg-olive-600 hover:bg-olive-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 h-11"
+            >
+              네, 일괄 처리하겠습니다
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

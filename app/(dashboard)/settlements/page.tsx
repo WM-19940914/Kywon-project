@@ -25,7 +25,7 @@ import {
 import type { SettlementCategory } from '@/types/order'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { FileText, ChevronDown, PlusCircle, ArrowRightLeft, Wrench, RefreshCw, ChevronRightIcon, CircleDollarSign, Archive, Trash2, Package, RotateCcw, Receipt, ChevronLeft } from 'lucide-react'
+import { FileText, ChevronDown, PlusCircle, ArrowRightLeft, Wrench, RefreshCw, ChevronRightIcon, CircleDollarSign, Archive, Trash2, Package, RotateCcw, Receipt, ChevronLeft, CheckCircle2 } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportSettlementExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn, SettlementSheetData } from '@/lib/excel-export'
@@ -34,6 +34,16 @@ import { formatShortDate } from '@/lib/delivery-utils'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
 import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SitePhotoViewer } from '@/components/schedule/site-photo-viewer'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 /** 작업종류 아이콘 매핑 */
 const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
@@ -865,6 +875,19 @@ export default function SettlementsPage() {
   const [kyowonInput, setKyowonInput] = useState('')
   const [kyowonName, setKyowonName] = useState('')
 
+  /** 
+   * [정산구분 변경 확인창 상태]
+   * 버튼을 눌렀을 때 바로 바뀌지 않고, 화면 중앙에 예쁜 창을 띄우기 위해
+   * 어떤 데이터를 바꿀지 잠시 저장해두는 공간입니다.
+   */
+  const [toggleConfirmOpen, setToggleConfirmOpen] = useState(false)
+  const [pendingToggle, setPendingToggle] = useState<{
+    orderId: string;
+    newCategory: SettlementCategory;
+    businessName: string;
+  } | null>(null)
+
+
   // 월 변경 시 정산 확인 데이터 로드
   useEffect(() => {
     const loadConfirmation = async () => {
@@ -1001,16 +1024,40 @@ export default function SettlementsPage() {
     return affiliateGroups.filter(g => `${g.name}_${g.category}` === affiliateFilter)
   }, [affiliateGroups, affiliateFilter])
 
-  /** 정산구분 변경 핸들러 (신규 ↔ 이전 토글) */
+  /** 
+   * [정산구분 변경 시작]
+   * 사용자가 버튼을 누르면 이 함수가 먼저 실행됩니다.
+   * 실제 저장을 하기 전에 사용자에게 물어보는 '예쁜 창'을 띄워줍니다.
+   */
   const handleToggleCategory = useCallback(async (orderId: string, newCategory: SettlementCategory) => {
-    const ok = await updateSettlementCategory(orderId, newCategory)
+    // 현재 리스트에서 해당 건의 이름을 찾아옵니다 (안내창에 보여주기 위함)
+    const order = orders.find(o => o.id === orderId)
+    const businessName = order?.businessName || '알 수 없는 현장'
+
+    // 무엇을 바꿀지 저장하고, 확인창을 화면에 띄웁니다.
+    setPendingToggle({ orderId, newCategory, businessName })
+    setToggleConfirmOpen(true)
+  }, [orders])
+
+  /**
+   * [정산구분 변경 확정]
+   * 사용자가 '예쁜 창'에서 [변경하기] 버튼을 눌렀을 때만 실행되는 진짜 저장 함수입니다.
+   */
+  const confirmToggleCategory = async () => {
+    if (!pendingToggle) return
+
+    // 1. 서버(데이터베이스)에 저장합니다.
+    const ok = await updateSettlementCategory(pendingToggle.orderId, pendingToggle.newCategory)
+
+    // 2. 저장이 성공했다면 화면의 파란색/회색 뱃지를 바꿔줍니다.
     if (ok) {
-      // 로컬 상태 즉시 반영 (전체 데이터 리로드 안 하고 해당 건만 업데이트)
       setOrders(prev => prev.map(o =>
-        o.id === orderId ? { ...o, settlementCategory: newCategory } : o
+        o.id === pendingToggle.orderId ? { ...o, settlementCategory: pendingToggle.newCategory } : o
       ))
+      // 작업이 끝났으니 확인창을 닫습니다.
+      setToggleConfirmOpen(false)
     }
-  }, [])
+  }
 
   /** AS 정산 필터링 (선택한 월 + 정산대기 또는 정산완료 상태) */
   const filteredASRequests = useMemo(() => {
@@ -1192,6 +1239,47 @@ export default function SettlementsPage() {
     }, { subtotal: 0, vat: 0, total: 0 })
   }, [filteredOrders])
 
+  /** 사업자별 정산 요약 (우측 대시보드 표시용) */
+  const businessBreakdown = useMemo(() => {
+    const map: Record<string, number> = {}
+
+    // 1. 설치건 (신규/이전)
+    filteredOrders.forEach(o => {
+      const aff = o.affiliate || '기타'
+      const cat = getSettlementCategory(o)
+      const bName = o.businessName || '알 수 없음'
+      const key = `${aff} ${cat} - ${bName}`
+      if (!map[key]) map[key] = 0
+      map[key] += calcOrderAmounts(o).grandTotal
+    })
+
+    // 2. AS건
+    filteredASRequests.forEach(req => {
+      const aff = req.affiliate || '기타'
+      const bName = req.businessName || '알 수 없음'
+      const key = `${aff} AS - ${bName}`
+      const asRaw = (req.totalAmount || 0)
+      const truncate = Math.floor(asRaw / 1000) * 1000
+      const vat = Math.floor(truncate * 0.1)
+      if (!map[key]) map[key] = 0
+      map[key] += (truncate + vat)
+    })
+
+    // 객체를 배열로 변환하고 사용자 지정 순서로 정렬
+    const affiliateOrder = ['구몬', 'Wells 영업', 'Wells 서비스', '교육플랫폼', '기타']
+
+    return Object.entries(map)
+      .map(([label, amount]) => ({ label, amount }))
+      .sort((a, b) => {
+        const aAff = affiliateOrder.find(aff => a.label.startsWith(aff)) || '기타'
+        const bAff = affiliateOrder.find(aff => b.label.startsWith(aff)) || '기타'
+        const aIdx = affiliateOrder.indexOf(aAff)
+        const bIdx = affiliateOrder.indexOf(bAff)
+
+        if (aIdx !== bIdx) return aIdx - bIdx
+        return a.label.localeCompare(b.label) // 같은 계열사인 경우 이름순 정렬
+      })
+  }, [filteredOrders, filteredASRequests, getSettlementCategory])
 
   return (
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
@@ -1283,133 +1371,83 @@ export default function SettlementsPage() {
                 </div>
               </div>
 
-              {/* 우측: 상호 확인 입력 파트 (가로형 컴팩트 디자인 - 로컬 UI) */}
-              <div className="lg:col-span-2 p-6 relative flex flex-col justify-center">
-                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
-                  <div>
-                    <h3 className="text-base font-bold text-slate-800">정산 상호 확인</h3>
-                    <p className="text-xs text-slate-500 mt-1">양측 담당자의 확인금액이 일치해야 마감됩니다.</p>
+              {/* 우측: 사업자별 요약 리스트 및 상호확인 (로컬 UI) */}
+              <div className="lg:col-span-2 p-6 flex flex-col md:flex-row gap-6 bg-white/50">
+
+                {/* 1. 사업자별 상세 요약 */}
+                <div className="flex-1 flex flex-col">
+                  <h3 className="text-sm font-bold text-slate-800 mb-3 border-b border-slate-200 pb-2">사업자별 정산 요약</h3>
+                  <div className="max-h-[160px] overflow-y-auto pr-2 space-y-2 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:bg-slate-200 [&::-webkit-scrollbar-thumb]:rounded-full">
+                    {businessBreakdown.length > 0 ? (
+                      businessBreakdown.map((item, idx) => (
+                        <div key={idx} className="flex justify-between items-center text-xs">
+                          <span className="text-slate-600 font-medium">· {item.label}</span>
+                          <span className="font-bold tabular-nums text-slate-800">{item.amount.toLocaleString('ko-KR')}원</span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-slate-400 py-4 text-center">조회된 정산 데이터가 없습니다.</p>
+                    )}
                   </div>
-                  {confirmation?.melleeaConfirmedAt && confirmation?.kyowonConfirmedAt && (
-                    <div className={`px-2.5 py-1.5 rounded-md text-xs font-bold shadow-sm whitespace-nowrap ${confirmation.melleeaAmount === confirmation.kyowonAmount
-                      ? 'bg-olive-500 text-white'
-                      : 'bg-brick-500 text-white'
-                      }`}>
-                      {confirmation.melleeaAmount === confirmation.kyowonAmount
-                        ? '✨ 상호 확인 완료'
-                        : `차액 확인 필요 (${Math.abs((confirmation.melleeaAmount || 0) - (confirmation.kyowonAmount || 0)).toLocaleString('ko-KR')}원)`
-                      }
-                    </div>
-                  )}
                 </div>
 
-                <div className="space-y-3">
-                  {/* 멜레아 결재칸 */}
-                  <div className={`rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row ${confirmation?.melleeaConfirmedAt
-                    ? 'border-olive-300 bg-olive-50/40'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}>
-                    <div className={`px-4 py-2.5 sm:w-32 flex items-center justify-center sm:justify-start text-xs font-bold border-b sm:border-b-0 sm:border-r ${confirmation?.melleeaConfirmedAt ? 'bg-olive-100/50 border-olive-200 text-olive-800' : 'bg-slate-50/80 border-slate-100 text-slate-600'}`}>
-                      멜레아
-                    </div>
-                    <div className="p-2.5 flex-1 flex items-center min-h-[52px]">
+                {/* 2. 상호 확인 (부가기능 느낌으로 축소) */}
+                <div className="w-full md:w-[280px] bg-slate-50/70 rounded-xl border border-slate-200 p-4 shrink-0 flex flex-col self-start">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                      <CheckCircle2 className="w-4 h-4 text-slate-400" />
+                      정산 상호 확인
+                    </h3>
+                    {confirmation?.melleeaConfirmedAt && confirmation?.kyowonConfirmedAt && (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-bold ${confirmation.melleeaAmount === confirmation.kyowonAmount ? 'bg-olive-100 text-olive-700' : 'bg-brick-100 text-brick-700'}`}>
+                        {confirmation.melleeaAmount === confirmation.kyowonAmount ? '완료' : '차액 확인'}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    {/* 멜레아 */}
+                    <div className={`p-2.5 rounded-lg border text-xs ${confirmation?.melleeaConfirmedAt ? 'bg-olive-50/50 border-olive-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-bold text-slate-700 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">멜레아</span>
+                        {confirmation?.melleeaConfirmedAt && <span className="text-[10px] text-slate-400 ml-auto">{confirmation.melleeaConfirmedBy}</span>}
+                      </div>
                       {confirmation?.melleeaConfirmedAt ? (
-                        <div className="flex flex-1 items-center justify-between px-2">
-                          <p className="text-lg font-black tabular-nums text-olive-700">
-                            {(confirmation.melleeaAmount || 0).toLocaleString('ko-KR')}<span className="text-xs font-bold ml-1">원</span>
-                          </p>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className="text-xs font-semibold text-slate-700">{confirmation.melleeaConfirmedBy}</p>
-                              <p className="text-[10px] text-slate-400">{new Date(confirmation.melleeaConfirmedAt).toLocaleDateString()}</p>
-                            </div>
-                            <button onClick={() => handleClearConfirmation('mellea')} className="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-brick-500 transition-colors shadow-sm">
-                              수정
-                            </button>
-                          </div>
+                        <div className="flex justify-between items-center px-0.5">
+                          <span className="font-bold text-olive-700 text-sm tracking-tight">{(confirmation.melleeaAmount || 0).toLocaleString('ko-KR')}원</span>
+                          <button onClick={() => handleClearConfirmation('mellea')} className="text-[10px] text-slate-400 hover:text-brick-500 underline underline-offset-2">수정</button>
                         </div>
                       ) : (
-                        <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={melleeaInput}
-                            onChange={e => setMelleeaInput(e.target.value.replace(/[^0-9]/g, ''))}
-                            placeholder="최종 확인금액입력"
-                            className="w-full sm:w-1/2 border border-slate-200 rounded-md px-3 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-1 focus:ring-olive-300 bg-slate-50/50 focus:bg-white transition-colors"
-                          />
-                          <input
-                            type="text"
-                            value={melleeaName}
-                            onChange={e => setMelleeaName(e.target.value)}
-                            placeholder="서명"
-                            className="flex-1 min-w-[80px] border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-olive-300 bg-slate-50/50 focus:bg-white transition-colors"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmAmount('mellea')}
-                            disabled={!melleeaInput || !melleeaName.trim()}
-                            className="h-8 px-4 bg-slate-800 hover:bg-olive-600 text-white rounded-md shadow-sm text-xs"
-                          >
-                            확인
-                          </Button>
+                        <div className="flex gap-1.5">
+                          <input type="text" value={melleeaInput} onChange={e => setMelleeaInput(e.target.value.replace(/[^0-9]/g, ''))} placeholder="금액" className="w-[75px] px-2 py-1 text-xs border border-slate-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-olive-400 tabular-nums" />
+                          <input type="text" value={melleeaName} onChange={e => setMelleeaName(e.target.value)} placeholder="서명" className="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-olive-400" />
+                          <button onClick={() => handleConfirmAmount('mellea')} disabled={!melleeaInput || !melleeaName.trim()} className="px-2 py-1 bg-slate-800 text-white rounded text-[10px] font-bold hover:bg-olive-600 disabled:opacity-50 break-keep min-w-[36px] transition-colors">확인</button>
                         </div>
                       )}
                     </div>
-                  </div>
 
-                  {/* 교원 결재칸 */}
-                  <div className={`rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row ${confirmation?.kyowonConfirmedAt
-                    ? 'border-teal-300 bg-teal-50/40'
-                    : 'border-slate-200 hover:border-slate-300 bg-white'
-                    }`}>
-                    <div className={`px-4 py-2.5 sm:w-32 flex items-center justify-center sm:justify-start text-xs font-bold border-b sm:border-b-0 sm:border-r ${confirmation?.kyowonConfirmedAt ? 'bg-teal-100/50 border-teal-200 text-teal-800' : 'bg-slate-50/80 border-slate-100 text-slate-600'}`}>
-                      교원그룹
-                    </div>
-                    <div className="p-2.5 flex-1 flex items-center min-h-[52px]">
+                    {/* 교원 */}
+                    <div className={`p-2.5 rounded-lg border text-xs ${confirmation?.kyowonConfirmedAt ? 'bg-teal-50/50 border-teal-200' : 'bg-white border-slate-200'}`}>
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-bold text-slate-700 text-[10px] bg-slate-100 px-1.5 py-0.5 rounded">교원그룹</span>
+                        {confirmation?.kyowonConfirmedAt && <span className="text-[10px] text-slate-400 ml-auto">{confirmation.kyowonConfirmedBy}</span>}
+                      </div>
                       {confirmation?.kyowonConfirmedAt ? (
-                        <div className="flex flex-1 items-center justify-between px-2">
-                          <p className="text-lg font-black tabular-nums text-teal-700">
-                            {(confirmation.kyowonAmount || 0).toLocaleString('ko-KR')}<span className="text-xs font-bold ml-1">원</span>
-                          </p>
-                          <div className="flex items-center gap-3">
-                            <div className="text-right">
-                              <p className="text-xs font-semibold text-slate-700">{confirmation.kyowonConfirmedBy}</p>
-                              <p className="text-[10px] text-slate-400">{new Date(confirmation.kyowonConfirmedAt).toLocaleDateString()}</p>
-                            </div>
-                            <button onClick={() => handleClearConfirmation('kyowon')} className="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-brick-500 transition-colors shadow-sm">
-                              수정
-                            </button>
-                          </div>
+                        <div className="flex justify-between items-center px-0.5">
+                          <span className="font-bold text-teal-700 text-sm tracking-tight">{(confirmation.kyowonAmount || 0).toLocaleString('ko-KR')}원</span>
+                          <button onClick={() => handleClearConfirmation('kyowon')} className="text-[10px] text-slate-400 hover:text-brick-500 underline underline-offset-2">수정</button>
                         </div>
                       ) : (
-                        <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
-                          <input
-                            type="text"
-                            value={kyowonInput}
-                            onChange={e => setKyowonInput(e.target.value.replace(/[^0-9]/g, ''))}
-                            placeholder="최종 확인금액입력"
-                            className="w-full sm:w-1/2 border border-slate-200 rounded-md px-3 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-1 focus:ring-teal-300 bg-slate-50/50 focus:bg-white transition-colors"
-                          />
-                          <input
-                            type="text"
-                            value={kyowonName}
-                            onChange={e => setKyowonName(e.target.value)}
-                            placeholder="서명"
-                            className="flex-1 min-w-[80px] border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-300 bg-slate-50/50 focus:bg-white transition-colors"
-                          />
-                          <Button
-                            size="sm"
-                            onClick={() => handleConfirmAmount('kyowon')}
-                            disabled={!kyowonInput || !kyowonName.trim()}
-                            className="h-8 px-4 bg-slate-800 hover:bg-teal-600 text-white rounded-md shadow-sm text-xs"
-                          >
-                            확인
-                          </Button>
+                        <div className="flex gap-1.5">
+                          <input type="text" value={kyowonInput} onChange={e => setKyowonInput(e.target.value.replace(/[^0-9]/g, ''))} placeholder="금액" className="w-[75px] px-2 py-1 text-xs border border-slate-200 rounded text-right focus:outline-none focus:ring-1 focus:ring-teal-400 tabular-nums" />
+                          <input type="text" value={kyowonName} onChange={e => setKyowonName(e.target.value)} placeholder="서명" className="flex-1 min-w-0 px-2 py-1 text-xs border border-slate-200 rounded focus:outline-none focus:ring-1 focus:ring-teal-400" />
+                          <button onClick={() => handleConfirmAmount('kyowon')} disabled={!kyowonInput || !kyowonName.trim()} className="px-2 py-1 bg-slate-800 text-white rounded text-[10px] font-bold hover:bg-teal-600 disabled:opacity-50 break-keep min-w-[36px] transition-colors">확인</button>
                         </div>
                       )}
                     </div>
                   </div>
                 </div>
+
               </div>
             </div>
           </div>
@@ -1612,6 +1650,43 @@ export default function SettlementsPage() {
         onOpenChange={setQuoteDialogOpen}
         readOnly
       />
+
+      {/* 
+          이미지 가운데 뜨는 '예쁜 확인창' (AlertDialog)
+          사용자님이 요청하신 대로 상단의 밋밋한 문구가 아닌, 
+          화면 중앙에 선명하고 세련되게 나타납니다.
+      */}
+      <AlertDialog open={toggleConfirmOpen} onOpenChange={setToggleConfirmOpen}>
+        <AlertDialogContent className="max-w-[400px] border-2 border-teal-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-teal-100 p-1.5 rounded-full">
+                <RefreshCw className="h-4 w-4 text-teal-600" />
+              </div>
+              정산구분 변경
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-3 pb-2">
+              <p className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3">
+                현장: {pendingToggle?.businessName}
+              </p>
+              이 건의 정산구분을 <span className="text-teal-600 font-bold text-base">[{pendingToggle?.newCategory}]</span>(으)로 변경하시겠습니까?
+              <br />
+              <span className="text-[11px] text-slate-400 mt-2 block italic">※ 확인 시 통계 수치가 즉시 재계산됩니다.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0">
+            <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-50 font-semibold">
+              아니요, 취소할게요
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmToggleCategory}
+              className="bg-teal-600 hover:bg-teal-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95"
+            >
+              네, 변경하겠습니다
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

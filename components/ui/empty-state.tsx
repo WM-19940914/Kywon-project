@@ -23,7 +23,7 @@ interface EmptyStateProps {
 
 export function EmptyState({ icon: Icon, title, description, actionLabel, onAction }: EmptyStateProps) {
   return (
-    <div className="flex flex-col items-center justify-center py-20">
+    <div className="flex flex-col items-center justify-center py-20 animate-in fade-in zoom-in-95 duration-500">
       <div className="bg-slate-100 rounded-2xl p-5 mb-4">
         <Icon className="h-8 w-8 text-slate-400" />
       </div>

@@ -45,6 +45,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from '@/components/ui/sheet'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { priceTable, type PriceTableRow } from '@/lib/price-table'
 import {
   ShoppingCart,
@@ -77,6 +87,15 @@ export default function PrepurchasePage() {
 
   // 필터
   const [affiliateFilter, setAffiliateFilter] = useState('all')
+
+  // === 삭제 확인창 상태 ===
+  // 1. 선구매 건 리스트 전체 삭제용
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null)
+
+  // 2. 개별 사용 기록 삭제용
+  const [usageDeleteConfirmOpen, setUsageDeleteConfirmOpen] = useState(false)
+  const [pendingUsageDelete, setPendingUsageDelete] = useState<PrepurchaseUsage | null>(null)
 
   // === 데이터 로드 ===
   useEffect(() => {
@@ -125,12 +144,19 @@ export default function PrepurchasePage() {
     }
   }
 
-  // === 삭제 ===
-  const handleDelete = async (id: string) => {
-    if (!window.confirm('이 선구매 건을 삭제하시겠습니까? 사용 기록도 함께 삭제됩니다.')) return
-    const success = await deletePrepurchaseEquipment(id)
+  // === 삭제 (선구매 장비 전체) ===
+  const handleDeleteTarget = (id: string) => {
+    setPendingDeleteId(id)
+    setDeleteConfirmOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!pendingDeleteId) return
+
+    setDeleteConfirmOpen(false)
+    const success = await deletePrepurchaseEquipment(pendingDeleteId)
     if (success) {
-      setItems(prev => prev.filter(i => i.id !== id))
+      setItems(prev => prev.filter(i => i.id !== pendingDeleteId))
       setExpandedId(null)
       showAlert('삭제되었습니다.', 'success')
     } else {
@@ -170,18 +196,25 @@ export default function PrepurchasePage() {
   }
 
   // === 사용기록 삭제 ===
-  const handleDeleteUsage = async (usage: PrepurchaseUsage) => {
-    if (!window.confirm('이 사용 기록을 삭제하시겠습니까?')) return
-    const success = await deletePrepurchaseUsage(usage.id, usage.prepurchaseId, usage.usedQuantity)
+  const handleDeleteUsageTarget = (usage: PrepurchaseUsage) => {
+    setPendingUsageDelete(usage)
+    setUsageDeleteConfirmOpen(true)
+  }
+
+  const confirmDeleteUsage = async () => {
+    if (!pendingUsageDelete) return
+
+    setUsageDeleteConfirmOpen(false)
+    const success = await deletePrepurchaseUsage(pendingUsageDelete.id, pendingUsageDelete.prepurchaseId, pendingUsageDelete.usedQuantity)
     if (success) {
       setUsageMap(prev => ({
         ...prev,
-        [usage.prepurchaseId]: (prev[usage.prepurchaseId] || []).filter(u => u.id !== usage.id),
+        [pendingUsageDelete.prepurchaseId]: (prev[pendingUsageDelete.prepurchaseId] || []).filter(u => u.id !== pendingUsageDelete.id),
       }))
       setItems(prev =>
         prev.map(i =>
-          i.id === usage.prepurchaseId
-            ? { ...i, usedQuantity: Math.max(0, i.usedQuantity - usage.usedQuantity) }
+          i.id === pendingUsageDelete.prepurchaseId
+            ? { ...i, usedQuantity: Math.max(0, i.usedQuantity - pendingUsageDelete.usedQuantity) }
             : i
         )
       )
@@ -402,7 +435,7 @@ export default function PrepurchasePage() {
                             className="text-xs text-brick-500 hover:text-brick-600 hover:bg-brick-50 rounded-lg"
                             onClick={(e) => {
                               e.stopPropagation()
-                              handleDelete(item.id)
+                              handleDeleteTarget(item.id)
                             }}
                           >
                             <Trash2 className="h-3.5 w-3.5 mr-1" />
@@ -453,7 +486,7 @@ export default function PrepurchasePage() {
                                 className="text-slate-300 hover:text-brick-500 transition-colors p-1"
                                 onClick={(e) => {
                                   e.stopPropagation()
-                                  handleDeleteUsage(usage)
+                                  handleDeleteUsageTarget(usage)
                                 }}
                               >
                                 <Trash2 className="h-3.5 w-3.5" />
@@ -485,6 +518,76 @@ export default function PrepurchasePage() {
         target={usageTarget}
         onSubmit={handleAddUsage}
       />
+
+      {/* 
+          [삭제 알림창 1] 선구매 장비 삭제 (전체 삭제) 
+          실수로 장비를 삭제하는 것을 막아주는 예쁜 빨간색 알림창입니다.
+      */}
+      <AlertDialog open={deleteConfirmOpen} onOpenChange={setDeleteConfirmOpen}>
+        <AlertDialogContent className="max-w-[420px] border-2 border-brick-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-brick-100 p-1.5 rounded-full">
+                <Trash2 className="h-5 w-5 text-brick-600" />
+              </div>
+              선구매 장비 삭제
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-3 pb-2 text-base text-slate-600">
+              정말로 이 <span className="font-bold text-brick-600">선구매 건을 삭제</span>하시겠습니까?
+              <br /><br />
+              이 장비에 등록된 <span className="text-brick-600 font-semibold underline decoration-brick-300 underline-offset-4">과거 사용 기록들도 모두 함께 삭제</span>되어 복구할 수 없습니다.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
+            <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-50 font-semibold h-11">
+              아니요, 취소할게요
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDelete}
+              className="bg-brick-600 hover:bg-brick-700 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 h-11"
+            >
+              네, 삭제하겠습니다
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 
+          [삭제 알림창 2] 단일 사용 기록 삭제
+          어디서 얼마나 사용했는지 기록한 '내역 1줄'만 지울 때 나오는 알림창입니다.
+      */}
+      <AlertDialog open={usageDeleteConfirmOpen} onOpenChange={setUsageDeleteConfirmOpen}>
+        <AlertDialogContent className="max-w-[400px] border-2 border-brick-100">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-900 flex items-center gap-2">
+              <div className="bg-brick-100 p-1.5 rounded-full">
+                <Trash2 className="h-5 w-5 text-brick-600" />
+              </div>
+              사용 기록 삭제
+            </AlertDialogTitle>
+            <AlertDialogDescription className="pt-3 pb-2 text-base text-slate-600">
+              <span className="font-semibold text-slate-700 bg-slate-50 p-2 rounded-lg border border-slate-100 mb-3 block">
+                현장명: {pendingUsageDelete?.siteName} ({pendingUsageDelete?.usedQuantity}대)
+              </span>
+              해당 현장에 사용된 기록을 <span className="text-brick-600 font-bold">삭제</span>하시겠습니까?
+              <br />
+              <span className="text-[12px] text-slate-400 mt-2 block italic">※ 삭제하시면 메인 장비의 '사용 수량'이 즉시 이전으로 되돌아갑니다.</span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
+            <AlertDialogCancel className="rounded-xl border-slate-200 hover:bg-slate-50 font-semibold h-11">
+              아니요, 놔둘게요
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteUsage}
+              className="bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl shadow-md transition-all active:scale-95 h-11"
+            >
+              네, 삭제하겠습니다
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
     </div>
   )
 }
