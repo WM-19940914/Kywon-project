@@ -571,7 +571,7 @@ export default function PrepurchasePage() {
               </span>
               해당 현장에 사용된 기록을 <span className="text-brick-600 font-bold">삭제</span>하시겠습니까?
               <br />
-              <span className="text-[12px] text-slate-400 mt-2 block italic">※ 삭제하시면 메인 장비의 '사용 수량'이 즉시 이전으로 되돌아갑니다.</span>
+              <span className="text-[12px] text-slate-400 mt-2 block italic">※ 삭제하시면 메인 장비의 &apos;사용 수량&apos;이 즉시 이전으로 되돌아갑니다.</span>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-2 sm:gap-0 mt-2">
