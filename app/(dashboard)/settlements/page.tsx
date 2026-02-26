@@ -25,7 +25,7 @@ import {
 import type { SettlementCategory } from '@/types/order'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Receipt, ChevronDown, ChevronLeft, ChevronRight as ChevronRightIcon, PlusCircle, ArrowRightLeft, Archive, Trash2, Package, RotateCcw, FileText, Wrench, RefreshCw } from 'lucide-react'
+import { FileText, ChevronDown, PlusCircle, ArrowRightLeft, Wrench, RefreshCw, ChevronRightIcon, CircleDollarSign, Archive, Trash2, Package, RotateCcw, Receipt, ChevronLeft } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportSettlementExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn, SettlementSheetData } from '@/lib/excel-export'
@@ -34,15 +34,6 @@ import { formatShortDate } from '@/lib/delivery-utils'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
 import { QuoteCreateDialog } from '@/components/quotes/quote-create-dialog'
 import { SitePhotoViewer } from '@/components/schedule/site-photo-viewer'
-
-/** 계열사별 색상 (가로 스택 바 + 범례용) */
-const AFFILIATE_COLORS: Record<string, string> = {
-  '구몬': 'bg-teal-500',
-  'Wells 영업': 'bg-olive-500',
-  'Wells 서비스': 'bg-gold-500',
-  '교육플랫폼': 'bg-teal-500',
-  '기타': 'bg-gray-400',
-}
 
 /** 작업종류 아이콘 매핑 */
 const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
@@ -154,25 +145,22 @@ function AffiliateGroup({
     <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && orders.length > 0 ? 'ring-1 ring-teal-200 shadow-md' : ''}`}>
       {/* 계열사 헤더 (아코디언 토글) */}
       <button
-        className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
-          orders.length > 0
-            ? (isOpen ? 'bg-teal-50/60' : 'hover:bg-slate-50')
-            : ''
-        }`}
+        className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${orders.length > 0
+          ? (isOpen ? 'bg-teal-50/60' : 'hover:bg-slate-50')
+          : ''
+          }`}
         onClick={() => orders.length > 0 && setIsOpen(prev => !prev)}
         disabled={orders.length === 0}
       >
         <div className="flex items-center gap-3">
-          <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${
-            orders.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
-          }`} />
+          <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${orders.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
+            }`} />
           <h3 className="text-lg font-bold text-slate-800">{affiliateName}</h3>
           {categoryLabel && (
-            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${
-              categoryLabel === '신규설치'
-                ? 'bg-teal-50 text-teal-700 border-teal-200'
-                : 'bg-slate-100 text-slate-600 border-slate-200'
-            }`}>
+            <span className={`text-xs font-semibold px-2 py-0.5 rounded-full border ${categoryLabel === '신규설치'
+              ? 'bg-teal-50 text-teal-700 border-teal-200'
+              : 'bg-slate-100 text-slate-600 border-slate-200'
+              }`}>
               {categoryLabel}
             </span>
           )}
@@ -319,13 +307,12 @@ function AffiliateGroup({
                             return (
                               <button
                                 onClick={() => onToggleCategory(order.id, newCat)}
-                                className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 transition-colors ${
-                                  isAuto
-                                    ? 'border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600'
-                                    : (currentCat === '신규설치'
-                                      ? 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100'
-                                      : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100')
-                                }`}
+                                className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 transition-colors ${isAuto
+                                  ? 'border-dashed border-slate-300 text-slate-400 hover:border-slate-400 hover:text-slate-600'
+                                  : (currentCat === '신규설치'
+                                    ? 'border-teal-300 bg-teal-50 text-teal-700 hover:bg-teal-100'
+                                    : 'border-slate-300 bg-slate-50 text-slate-600 hover:bg-slate-100')
+                                  }`}
                                 title={isAuto ? '자동판별 (클릭하여 변경)' : '수동 설정됨 (클릭하여 변경)'}
                               >
                                 <RefreshCw className="h-3 w-3" />
@@ -359,8 +346,8 @@ function AffiliateGroup({
 
                       {/* 견적서 상세 (아코디언) */}
                       {expandedIds.has(order.id) && (
-                      <tr>
-                        <td colSpan={12} className="p-0">
+                        <tr>
+                          <td colSpan={12} className="p-0">
                             <div className="mx-4 my-3">
                               <div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
                                 {/* 견적서 헤더 — gradient + 현장명 */}
@@ -537,13 +524,12 @@ function AffiliateGroup({
                         return (
                           <button
                             onClick={(e) => { e.stopPropagation(); onToggleCategory(order.id, newCat) }}
-                            className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 ${
-                              isAuto
-                                ? 'border-dashed border-slate-300 text-slate-400'
-                                : (currentCat === '신규설치'
-                                  ? 'border-teal-300 bg-teal-50 text-teal-700'
-                                  : 'border-slate-300 bg-slate-50 text-slate-600')
-                            }`}
+                            className={`inline-flex items-center gap-1 text-[11px] font-medium border rounded-lg px-1.5 py-0.5 ${isAuto
+                              ? 'border-dashed border-slate-300 text-slate-400'
+                              : (currentCat === '신규설치'
+                                ? 'border-teal-300 bg-teal-50 text-teal-700'
+                                : 'border-slate-300 bg-slate-50 text-slate-600')
+                              }`}
                           >
                             <RefreshCw className="h-3 w-3" />
                             {currentCat === '신규설치' ? '신규' : '이전'}
@@ -593,7 +579,7 @@ function AffiliateGroup({
 
                   {/* 견적서 상세 (아코디언) */}
                   {expandedIds.has(order.id) && (
-                  <div className="mx-3 mb-3 border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
+                    <div className="mx-3 mb-3 border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
                       <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
                         <Receipt className="h-4 w-4 text-white" />
                         <span className="text-sm font-bold text-white tracking-wide">견적서</span>
@@ -678,7 +664,7 @@ function AffiliateGroup({
                           </div>
                         </div>
                       </div>
-                  </div>
+                    </div>
                   )}
                 </div>
               )
@@ -716,18 +702,16 @@ function ASAffiliateGroup({
     <div className={`bg-white rounded-xl border border-slate-200 shadow-sm transition-all ${isOpen && requests.length > 0 ? 'ring-1 ring-carrot-200 shadow-md' : ''}`}>
       {/* AS 계열사 헤더 */}
       <button
-        className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${
-          requests.length > 0
-            ? (isOpen ? 'bg-carrot-50/60' : 'hover:bg-slate-50')
-            : ''
-        }`}
+        className={`w-full flex items-center justify-between px-6 py-4 rounded-t-xl transition-colors ${requests.length > 0
+          ? (isOpen ? 'bg-carrot-50/60' : 'hover:bg-slate-50')
+          : ''
+          }`}
         onClick={() => requests.length > 0 && setIsOpen(prev => !prev)}
         disabled={requests.length === 0}
       >
         <div className="flex items-center gap-3">
-          <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${
-            requests.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
-          }`} />
+          <ChevronDown className={`h-4 w-4 text-slate-500 transition-transform ${requests.length === 0 ? 'opacity-30' : (isOpen ? '' : '-rotate-90')
+            }`} />
           <Wrench className="h-4 w-4 text-carrot-500" />
           <h3 className="text-lg font-bold text-slate-800">{affiliateName} AS</h3>
           <span className="text-sm text-slate-500">({requests.length}건)</span>
@@ -1244,319 +1228,209 @@ export default function SettlementsPage() {
         </div>
       </div>
 
-      {/* 통계 요약 */}
-      <div className="mb-10 space-y-4">
-        {/* ── 최종 정산금액 히어로 ── */}
-        {(() => {
-          const asVatTotal = asTotalAmount + Math.floor(asTotalAmount * 0.1)
-          const finalTotal = grandTotals.total + asVatTotal
-          return (
-            <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-teal-700 via-teal-600 to-teal-800 px-6 py-6 shadow-lg">
-              {/* 장식 원 */}
-              <div className="pointer-events-none absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/5" />
-              <div className="pointer-events-none absolute -left-6 -bottom-6 h-24 w-24 rounded-full bg-white/5" />
-              <div className="relative flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div className="text-center md:text-left">
-                  <p className="text-teal-200 text-xs font-medium tracking-wide uppercase mb-2">
-                    {selectedYear}년 {selectedMonth}월 최종 정산금액
-                  </p>
-                  <p className="text-4xl md:text-5xl font-black tabular-nums text-white tracking-tight">
+      {/* 엑셀 다운로드 (우측 상단 전체로 이동 - 최신 버전 반영) */}
+      <div className="flex justify-end mb-3">
+        <ExcelExportButton
+          onClick={handleExcelExport}
+          disabled={filteredOrders.length === 0 && filteredASRequests.length === 0}
+        />
+      </div>
+
+      {/* 리뉴얼된 정산 요약 대시보드 (로컬 UI) */}
+      {(() => {
+        const asVatTotal = asTotalAmount + Math.floor(asTotalAmount * 0.1)
+        const finalTotal = grandTotals.total + asVatTotal
+
+        return (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm mb-10 overflow-hidden">
+            <div className="grid grid-cols-1 lg:grid-cols-3">
+
+              {/* 좌측: 요약 파트 */}
+              <div className="p-6 lg:border-r border-slate-100 bg-slate-50/40 flex flex-col justify-center">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-teal-50 text-teal-700 text-[11px] font-bold rounded-full mb-4 border border-teal-100 self-start">
+                  <span className="w-1.5 h-1.5 rounded-full bg-teal-500" />
+                  {selectedYear}년 {selectedMonth}월 종합
+                </div>
+
+                <h3 className="text-xs font-semibold text-slate-500 mb-1">총 정산 대상 <span className="text-[10px] font-normal text-slate-400">(VAT 포함)</span></h3>
+                <div className="flex items-baseline gap-1 mb-6">
+                  <p className="text-3xl lg:text-4xl font-black text-slate-900 tracking-tight tabular-nums">
                     {finalTotal.toLocaleString('ko-KR')}
-                    <span className="text-xl font-bold text-teal-200 ml-1">원</span>
                   </p>
-                  <div className="flex flex-wrap items-center justify-center md:justify-start gap-x-4 gap-y-1 mt-3">
-                    <span className="inline-flex items-center gap-1.5 text-sm text-teal-100 tabular-nums">
-                      <span className="w-1.5 h-1.5 rounded-full bg-teal-300 inline-block" />
-                      설치 <span className="font-semibold text-white">{totalCount}</span>건
-                      <span className="font-bold text-white">{grandTotals.total.toLocaleString('ko-KR')}</span>원
-                    </span>
-                    <span className="text-teal-400">+</span>
-                    <span className="inline-flex items-center gap-1.5 text-sm text-teal-100 tabular-nums">
-                      <span className="w-1.5 h-1.5 rounded-full bg-orange-300 inline-block" />
-                      AS <span className="font-semibold text-white">{filteredASRequests.length}</span>건
-                      <span className="font-bold text-white">{asVatTotal.toLocaleString('ko-KR')}</span>원
-                    </span>
-                    <span className="text-teal-400 text-xs">(VAT포함)</span>
+                  <span className="text-lg font-bold text-slate-400">원</span>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-xs border-b border-slate-200/60 pb-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="bg-white p-1 rounded border border-slate-100">
+                        <CircleDollarSign className="w-3.5 h-3.5 text-teal-500" />
+                      </div>
+                      <span className="font-medium text-slate-700">설치 정산 <span className="text-slate-400 text-[10px] font-normal ml-0.5">({totalCount}건)</span></span>
+                    </div>
+                    <span className="font-bold text-slate-800 tabular-nums">{grandTotals.total.toLocaleString('ko-KR')}원</span>
+                  </div>
+
+                  <div className="flex justify-between items-center text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <div className="bg-white p-1 rounded border border-slate-100">
+                        <Wrench className="w-3.5 h-3.5 text-carrot-500" />
+                      </div>
+                      <span className="font-medium text-slate-700">AS 정산 <span className="text-slate-400 text-[10px] font-normal ml-0.5">({filteredASRequests.length}건)</span></span>
+                    </div>
+                    <span className="font-bold text-slate-800 tabular-nums">{asVatTotal.toLocaleString('ko-KR')}원</span>
                   </div>
                 </div>
-                <div className="flex justify-center md:justify-end shrink-0">
-                  <ExcelExportButton
-                    onClick={handleExcelExport}
-                    disabled={filteredOrders.length === 0 && filteredASRequests.length === 0}
-                  />
+              </div>
+
+              {/* 우측: 상호 확인 입력 파트 (가로형 컴팩트 디자인 - 로컬 UI) */}
+              <div className="lg:col-span-2 p-6 relative flex flex-col justify-center">
+                <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-5">
+                  <div>
+                    <h3 className="text-base font-bold text-slate-800">정산 상호 확인</h3>
+                    <p className="text-xs text-slate-500 mt-1">양측 담당자의 확인금액이 일치해야 마감됩니다.</p>
+                  </div>
+                  {confirmation?.melleeaConfirmedAt && confirmation?.kyowonConfirmedAt && (
+                    <div className={`px-2.5 py-1.5 rounded-md text-xs font-bold shadow-sm whitespace-nowrap ${confirmation.melleeaAmount === confirmation.kyowonAmount
+                      ? 'bg-olive-500 text-white'
+                      : 'bg-brick-500 text-white'
+                      }`}>
+                      {confirmation.melleeaAmount === confirmation.kyowonAmount
+                        ? '✨ 상호 확인 완료'
+                        : `차액 확인 필요 (${Math.abs((confirmation.melleeaAmount || 0) - (confirmation.kyowonAmount || 0)).toLocaleString('ko-KR')}원)`
+                      }
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-3">
+                  {/* 멜레아 결재칸 */}
+                  <div className={`rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row ${confirmation?.melleeaConfirmedAt
+                    ? 'border-olive-300 bg-olive-50/40'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}>
+                    <div className={`px-4 py-2.5 sm:w-32 flex items-center justify-center sm:justify-start text-xs font-bold border-b sm:border-b-0 sm:border-r ${confirmation?.melleeaConfirmedAt ? 'bg-olive-100/50 border-olive-200 text-olive-800' : 'bg-slate-50/80 border-slate-100 text-slate-600'}`}>
+                      멜레아
+                    </div>
+                    <div className="p-2.5 flex-1 flex items-center min-h-[52px]">
+                      {confirmation?.melleeaConfirmedAt ? (
+                        <div className="flex flex-1 items-center justify-between px-2">
+                          <p className="text-lg font-black tabular-nums text-olive-700">
+                            {(confirmation.melleeaAmount || 0).toLocaleString('ko-KR')}<span className="text-xs font-bold ml-1">원</span>
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="text-xs font-semibold text-slate-700">{confirmation.melleeaConfirmedBy}</p>
+                              <p className="text-[10px] text-slate-400">{new Date(confirmation.melleeaConfirmedAt).toLocaleDateString()}</p>
+                            </div>
+                            <button onClick={() => handleClearConfirmation('mellea')} className="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-brick-500 transition-colors shadow-sm">
+                              수정
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
+                          <input
+                            type="text"
+                            value={melleeaInput}
+                            onChange={e => setMelleeaInput(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder="최종 확인금액입력"
+                            className="w-full sm:w-1/2 border border-slate-200 rounded-md px-3 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-1 focus:ring-olive-300 bg-slate-50/50 focus:bg-white transition-colors"
+                          />
+                          <input
+                            type="text"
+                            value={melleeaName}
+                            onChange={e => setMelleeaName(e.target.value)}
+                            placeholder="서명"
+                            className="flex-1 min-w-[80px] border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-olive-300 bg-slate-50/50 focus:bg-white transition-colors"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleConfirmAmount('mellea')}
+                            disabled={!melleeaInput || !melleeaName.trim()}
+                            className="h-8 px-4 bg-slate-800 hover:bg-olive-600 text-white rounded-md shadow-sm text-xs"
+                          >
+                            확인
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* 교원 결재칸 */}
+                  <div className={`rounded-xl border transition-all duration-200 overflow-hidden flex flex-col sm:flex-row ${confirmation?.kyowonConfirmedAt
+                    ? 'border-teal-300 bg-teal-50/40'
+                    : 'border-slate-200 hover:border-slate-300 bg-white'
+                    }`}>
+                    <div className={`px-4 py-2.5 sm:w-32 flex items-center justify-center sm:justify-start text-xs font-bold border-b sm:border-b-0 sm:border-r ${confirmation?.kyowonConfirmedAt ? 'bg-teal-100/50 border-teal-200 text-teal-800' : 'bg-slate-50/80 border-slate-100 text-slate-600'}`}>
+                      교원그룹
+                    </div>
+                    <div className="p-2.5 flex-1 flex items-center min-h-[52px]">
+                      {confirmation?.kyowonConfirmedAt ? (
+                        <div className="flex flex-1 items-center justify-between px-2">
+                          <p className="text-lg font-black tabular-nums text-teal-700">
+                            {(confirmation.kyowonAmount || 0).toLocaleString('ko-KR')}<span className="text-xs font-bold ml-1">원</span>
+                          </p>
+                          <div className="flex items-center gap-3">
+                            <div className="text-right">
+                              <p className="text-xs font-semibold text-slate-700">{confirmation.kyowonConfirmedBy}</p>
+                              <p className="text-[10px] text-slate-400">{new Date(confirmation.kyowonConfirmedAt).toLocaleDateString()}</p>
+                            </div>
+                            <button onClick={() => handleClearConfirmation('kyowon')} className="text-xs px-2 py-1 rounded bg-white border border-slate-200 text-slate-500 hover:text-brick-500 transition-colors shadow-sm">
+                              수정
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex flex-1 flex-wrap sm:flex-nowrap items-center gap-2">
+                          <input
+                            type="text"
+                            value={kyowonInput}
+                            onChange={e => setKyowonInput(e.target.value.replace(/[^0-9]/g, ''))}
+                            placeholder="최종 확인금액입력"
+                            className="w-full sm:w-1/2 border border-slate-200 rounded-md px-3 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-1 focus:ring-teal-300 bg-slate-50/50 focus:bg-white transition-colors"
+                          />
+                          <input
+                            type="text"
+                            value={kyowonName}
+                            onChange={e => setKyowonName(e.target.value)}
+                            placeholder="서명"
+                            className="flex-1 min-w-[80px] border border-slate-200 rounded-md px-3 py-1.5 text-sm focus:outline-none focus:ring-1 focus:ring-teal-300 bg-slate-50/50 focus:bg-white transition-colors"
+                          />
+                          <Button
+                            size="sm"
+                            onClick={() => handleConfirmAmount('kyowon')}
+                            disabled={!kyowonInput || !kyowonName.trim()}
+                            className="h-8 px-4 bg-slate-800 hover:bg-teal-600 text-white rounded-md shadow-sm text-xs"
+                          >
+                            확인
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
-          )
-        })()}
-
-        {/* ── 계열사별 정산 요약 (3-카드 그리드) ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* 신규설치 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-teal-500 to-teal-600 px-4 py-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-                <PlusCircle className="h-4 w-4" />신규설치
-              </span>
-              {(() => {
-                const cnt = affiliateGroups.filter(g => g.category === '신규설치').reduce((s, g) => s + g.orders.length, 0)
-                const amt = affiliateGroups.filter(g => g.category === '신규설치').reduce((s, g) => s + g.orders.reduce((s2, o) => s2 + calcOrderAmounts(o).grandTotal, 0), 0)
-                return (
-                  <span className="text-xs font-semibold text-teal-100 tabular-nums">
-                    {cnt}건 · {amt.toLocaleString('ko-KR')}원
-                  </span>
-                )
-              })()}
-            </div>
-            <div className="divide-y divide-slate-100">
-              {AFFILIATE_OPTIONS.map(aff => {
-                const group = affiliateGroups.find(g => g.name === aff && g.category === '신규설치')
-                const count = group?.orders.length || 0
-                const total = group?.orders.reduce((s, o) => s + calcOrderAmounts(o).grandTotal, 0) || 0
-                return (
-                  <div key={aff} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/80 transition-colors">
-                    <span className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className={`w-2 h-2 rounded-full ${AFFILIATE_COLORS[aff] || 'bg-gray-400'} shrink-0`} />
-                      {aff}
-                    </span>
-                    {count > 0 ? (
-                      <span className="text-sm tabular-nums">
-                        <span className="text-slate-500">{count}건</span>
-                        <span className="font-semibold text-slate-800 ml-2">{total.toLocaleString('ko-KR')}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-300">-</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
           </div>
+        )
+      })()}
 
-          {/* 이전설치 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-blue-500 to-blue-600 px-4 py-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-                <ArrowRightLeft className="h-4 w-4" />이전설치
-              </span>
-              {(() => {
-                const cnt = affiliateGroups.filter(g => g.category === '이전설치').reduce((s, g) => s + g.orders.length, 0)
-                const amt = affiliateGroups.filter(g => g.category === '이전설치').reduce((s, g) => s + g.orders.reduce((s2, o) => s2 + calcOrderAmounts(o).grandTotal, 0), 0)
-                return (
-                  <span className="text-xs font-semibold text-blue-100 tabular-nums">
-                    {cnt}건 · {amt.toLocaleString('ko-KR')}원
-                  </span>
-                )
-              })()}
-            </div>
-            <div className="divide-y divide-slate-100">
-              {AFFILIATE_OPTIONS.map(aff => {
-                const group = affiliateGroups.find(g => g.name === aff && g.category === '이전설치')
-                const count = group?.orders.length || 0
-                const total = group?.orders.reduce((s, o) => s + calcOrderAmounts(o).grandTotal, 0) || 0
-                return (
-                  <div key={aff} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/80 transition-colors">
-                    <span className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className={`w-2 h-2 rounded-full ${AFFILIATE_COLORS[aff] || 'bg-gray-400'} shrink-0`} />
-                      {aff}
-                    </span>
-                    {count > 0 ? (
-                      <span className="text-sm tabular-nums">
-                        <span className="text-slate-500">{count}건</span>
-                        <span className="font-semibold text-slate-800 ml-2">{total.toLocaleString('ko-KR')}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-300">-</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-
-          {/* AS 카드 */}
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
-            <div className="bg-gradient-to-r from-orange-400 to-orange-500 px-4 py-3 flex items-center justify-between">
-              <span className="inline-flex items-center gap-1.5 text-sm font-bold text-white">
-                <Wrench className="h-4 w-4" />AS
-              </span>
-              {(() => {
-                const asVatTotal = asTotalAmount + Math.floor(asTotalAmount * 0.1)
-                return (
-                  <span className="text-xs font-semibold text-orange-100 tabular-nums">
-                    {filteredASRequests.length}건 · {asVatTotal.toLocaleString('ko-KR')}원
-                  </span>
-                )
-              })()}
-            </div>
-            <div className="divide-y divide-slate-100">
-              {AFFILIATE_OPTIONS.map(aff => {
-                const asGroup = asAffiliateGroups.find(g => g.name === aff)
-                const count = asGroup?.requests.length || 0
-                const raw = asGroup?.requests.reduce((s, r) => s + (r.totalAmount || 0), 0) || 0
-                const truncated = Math.floor(raw / 1000) * 1000
-                const withVat = truncated + Math.floor(truncated * 0.1)
-                return (
-                  <div key={aff} className="flex items-center justify-between px-4 py-2.5 hover:bg-slate-50/80 transition-colors">
-                    <span className="flex items-center gap-2 text-sm text-slate-600">
-                      <span className={`w-2 h-2 rounded-full ${AFFILIATE_COLORS[aff] || 'bg-gray-400'} shrink-0`} />
-                      {aff}
-                    </span>
-                    {count > 0 ? (
-                      <span className="text-sm tabular-nums">
-                        <span className="text-slate-500">{count}건</span>
-                        <span className="font-semibold text-slate-800 ml-2">{withVat.toLocaleString('ko-KR')}</span>
-                      </span>
-                    ) : (
-                      <span className="text-xs text-slate-300">-</span>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          </div>
-        </div>
-
-        {/* ── 정산 확인 ── */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden p-5">
-          <p className="text-xs font-bold text-slate-700 mb-3">{selectedYear}년 {selectedMonth}월 정산 확인</p>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {/* 멜레아 확인 */}
-            <div className={`rounded-xl border-2 p-3 ${confirmation?.melleeaConfirmedAt ? 'border-olive-300 bg-olive-50/50' : 'border-slate-200 bg-slate-50'}`}>
-              <p className="text-xs font-semibold text-slate-600 mb-2">멜레아 확인금액</p>
-              {confirmation?.melleeaConfirmedAt ? (
-                <div>
-                  <p className="text-lg font-black tabular-nums text-olive-700">
-                    {(confirmation.melleeaAmount || 0).toLocaleString('ko-KR')}원
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    담당: <span className="font-semibold text-slate-600">{confirmation.melleeaConfirmedBy || '-'}</span>
-                    {' · '}
-                    {new Date(confirmation.melleeaConfirmedAt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  <button
-                    onClick={() => handleClearConfirmation('mellea')}
-                    className="text-[10px] text-brick-400 hover:text-brick-600 mt-1 underline"
-                  >
-                    초기화
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={melleeaName}
-                      onChange={e => setMelleeaName(e.target.value)}
-                      placeholder="담당자명"
-                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-olive-300"
-                    />
-                    <input
-                      type="text"
-                      value={melleeaInput}
-                      onChange={e => setMelleeaInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="금액 입력"
-                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-olive-300"
-                    />
-                    <span className="text-xs text-slate-500">원</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleConfirmAmount('mellea')}
-                    disabled={!melleeaInput || !melleeaName.trim()}
-                    className="w-full bg-olive-600 hover:bg-olive-700 text-white text-xs rounded-lg"
-                  >
-                    확인
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* 교원 확인 */}
-            <div className={`rounded-xl border-2 p-3 ${confirmation?.kyowonConfirmedAt ? 'border-teal-300 bg-teal-50/50' : 'border-slate-200 bg-slate-50'}`}>
-              <p className="text-xs font-semibold text-slate-600 mb-2">교원 확인금액</p>
-              {confirmation?.kyowonConfirmedAt ? (
-                <div>
-                  <p className="text-lg font-black tabular-nums text-teal-700">
-                    {(confirmation.kyowonAmount || 0).toLocaleString('ko-KR')}원
-                  </p>
-                  <p className="text-[10px] text-slate-400 mt-1">
-                    담당: <span className="font-semibold text-slate-600">{confirmation.kyowonConfirmedBy || '-'}</span>
-                    {' · '}
-                    {new Date(confirmation.kyowonConfirmedAt).toLocaleString('ko-KR', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                  </p>
-                  <button
-                    onClick={() => handleClearConfirmation('kyowon')}
-                    className="text-[10px] text-brick-400 hover:text-brick-600 mt-1 underline"
-                  >
-                    초기화
-                  </button>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={kyowonName}
-                      onChange={e => setKyowonName(e.target.value)}
-                      placeholder="담당자명"
-                      className="w-20 border border-slate-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-teal-300"
-                    />
-                    <input
-                      type="text"
-                      value={kyowonInput}
-                      onChange={e => setKyowonInput(e.target.value.replace(/[^0-9]/g, ''))}
-                      placeholder="금액 입력"
-                      className="flex-1 border border-slate-200 rounded-lg px-2 py-1.5 text-sm tabular-nums text-right focus:outline-none focus:ring-2 focus:ring-teal-300"
-                    />
-                    <span className="text-xs text-slate-500">원</span>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleConfirmAmount('kyowon')}
-                    disabled={!kyowonInput || !kyowonName.trim()}
-                    className="w-full bg-teal-600 hover:bg-teal-700 text-white text-xs rounded-lg"
-                  >
-                    확인
-                  </Button>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* 양측 모두 확인 완료 시 일치/불일치 표시 */}
-          {confirmation?.melleeaConfirmedAt && confirmation?.kyowonConfirmedAt && (
-            <div className={`mt-3 rounded-xl px-3 py-2 text-center text-sm font-bold ${
-              confirmation.melleeaAmount === confirmation.kyowonAmount
-                ? 'bg-olive-100 text-olive-800'
-                : 'bg-brick-100 text-brick-800'
-            }`}>
-              {confirmation.melleeaAmount === confirmation.kyowonAmount
-                ? '양측 금액 일치 -- 정산 확인 완료'
-                : `차액 ${Math.abs((confirmation.melleeaAmount || 0) - (confirmation.kyowonAmount || 0)).toLocaleString('ko-KR')}원 -- 확인 필요`
-              }
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* 계열사/정산구분 필터 버튼 */}
+      {/* 계열사/정산구분 필터 버튼 (최신 버전 반영) */}
       {!isLoading && (
         <div className="mb-6">
           <div className="flex flex-wrap items-center gap-2">
             {/* 전체보기 버튼 */}
             <button
               onClick={() => setAffiliateFilter('all')}
-              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                affiliateFilter === 'all'
-                  ? 'bg-teal-600 text-white shadow-sm'
-                  : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-              } w-full sm:w-auto`}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition-colors ${affiliateFilter === 'all'
+                ? 'bg-teal-600 text-white shadow-sm'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                } w-full sm:w-auto`}
             >
               전체보기
-              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] ${
-                affiliateFilter === 'all' ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500'
-              }`}>
+              <span className={`ml-1.5 px-1.5 py-0.5 rounded-full text-[11px] ${affiliateFilter === 'all' ? 'bg-teal-500 text-white' : 'bg-slate-100 text-slate-500'
+                }`}>
                 {filteredOrders.length + filteredASRequests.length}
               </span>
             </button>
@@ -1578,47 +1452,43 @@ export default function SettlementsPage() {
               return (
                 <div
                   key={aff}
-                  className={`flex items-center gap-1 bg-slate-50 rounded-lg border border-slate-200 px-2 py-1.5 ${
-                    isDisabled ? 'opacity-40' : ''
-                  }`}
+                  className={`flex items-center gap-1 bg-slate-50 rounded-lg border border-slate-200 px-2 py-1.5 ${isDisabled ? 'opacity-40' : ''
+                    }`}
                 >
                   <span className="text-xs font-semibold text-slate-700 mr-1 whitespace-nowrap">{aff}</span>
                   <button
                     onClick={() => setAffiliateFilter(newKey)}
                     disabled={newCount === 0}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                      affiliateFilter === newKey
-                        ? 'bg-teal-600 text-white shadow-sm'
-                        : newCount > 0
-                          ? 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700'
-                          : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                    }`}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${affiliateFilter === newKey
+                      ? 'bg-teal-600 text-white shadow-sm'
+                      : newCount > 0
+                        ? 'bg-white text-slate-600 border border-slate-200 hover:bg-teal-50 hover:text-teal-700'
+                        : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                      }`}
                   >
                     신규<span className="ml-0.5 tabular-nums">{newCount}</span>
                   </button>
                   <button
                     onClick={() => setAffiliateFilter(moveKey)}
                     disabled={moveCount === 0}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                      affiliateFilter === moveKey
-                        ? 'bg-slate-700 text-white shadow-sm'
-                        : moveCount > 0
-                          ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-                          : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                    }`}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${affiliateFilter === moveKey
+                      ? 'bg-slate-700 text-white shadow-sm'
+                      : moveCount > 0
+                        ? 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                        : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                      }`}
                   >
                     이전<span className="ml-0.5 tabular-nums">{moveCount}</span>
                   </button>
                   <button
                     onClick={() => setAffiliateFilter(asKey)}
                     disabled={asCount === 0}
-                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${
-                      affiliateFilter === asKey
-                        ? 'bg-carrot-500 text-white shadow-sm'
-                        : asCount > 0
-                          ? 'bg-white text-slate-600 border border-slate-200 hover:bg-carrot-50 hover:text-carrot-700'
-                          : 'bg-slate-100 text-slate-300 cursor-not-allowed'
-                    }`}
+                    className={`px-2 py-1 rounded text-[11px] font-medium transition-colors whitespace-nowrap ${affiliateFilter === asKey
+                      ? 'bg-carrot-500 text-white shadow-sm'
+                      : asCount > 0
+                        ? 'bg-white text-slate-600 border border-slate-200 hover:bg-carrot-50 hover:text-carrot-700'
+                        : 'bg-slate-100 text-slate-300 cursor-not-allowed'
+                      }`}
                   >
                     AS<span className="ml-0.5 tabular-nums">{asCount}</span>
                   </button>
