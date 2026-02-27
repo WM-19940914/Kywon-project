@@ -19,12 +19,14 @@ import {
   fetchExpenseReport,
   saveExpenseReport,
   updateExpenseReportWithItems,
+  finalizeExpenseReport, // ✅ 마감 함수 추가
 } from '@/lib/supabase/dal'
 import type { ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
-import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X } from 'lucide-react'
+import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, GripVertical, Lock, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
+import { toast } from 'sonner' // ✅ 예쁜 알림창 라이브러리 추가
 
 interface DetailedExpenseReportTabProps {
   orders: Order[]
@@ -104,6 +106,9 @@ export function DetailedExpenseReportTab({
   const [isEditing, setIsEditing] = useState(false)
   const [editItems, setEditItems] = useState<ExpenseReportItem[]>([])
   const [isSaving, setIsSaving] = useState(false)
+
+  // 드래그 앤 드롭 상태
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null)
 
   // ─── 월 변경 시 저장된 지출결의서 조회 ───
   useEffect(() => {
@@ -299,12 +304,13 @@ export function DetailedExpenseReportTab({
       if (success) {
         const report = await fetchExpenseReport(selectedYear, selectedMonth)
         setSavedReport(report)
+        toast.success(`${selectedMonth}월 지출결의서가 생성되었습니다.`)
       } else {
-        alert('지출결의서 저장에 실패했습니다.')
+        toast.error('지출결의서 저장에 실패했습니다.')
       }
     } catch (err) {
       console.error('지출결의서 생성 실패:', err)
-      alert('지출결의서 생성 중 오류가 발생했습니다.')
+      toast.error('지출결의서 생성 중 오류가 발생했습니다.')
     } finally {
       setIsGenerating(false)
     }
@@ -315,12 +321,14 @@ export function DetailedExpenseReportTab({
     if (!savedReport) return
     setEditItems(savedReport.items.map(item => ({ ...item })))
     setIsEditing(true)
+    toast.info('엑셀 편집 모드가 활성화되었습니다.')
   }
 
   /** 수정 취소 */
   const handleCancelEdit = () => {
     setIsEditing(false)
     setEditItems([])
+    toast.message('편집이 취소되었습니다.')
   }
 
   /** 편집 필드 변경 → 파생값 자동 재계산 */
@@ -333,24 +341,101 @@ export function DetailedExpenseReportTab({
     })
   }
 
+  /** 새로운 행 추가 (엑셀처럼 한 줄 추가) */
+  const handleAddRow = () => {
+    const newRow: ExpenseReportItem = {
+      sortOrder: editItems.length,
+      businessName: '',
+      affiliate: '기타',
+      supplier: '삼성전자',
+      itemType: '신규설치 장비',
+      specification: '',
+      quantity: 1,
+      listPrice: 0,
+      discountRate: 0,
+      optionItem: '',
+      purchaseUnitPrice: 0,
+      purchaseTotalPrice: 0,
+      mgRate: 0,
+      salesUnitPrice: 0,
+      salesTotalPrice: 0,
+      frontMarginUnit: 0,
+      frontMarginTotal: 0,
+      incentiveGradeRebRate: 0,
+      incentiveGradeReb: 0,
+      incentiveItemReb: 0,
+      totalMargin: 0,
+      sourceType: 'manual',
+    }
+    setEditItems([...editItems, newRow])
+    toast.success('새로운 행이 추가되었습니다.', { icon: <Plus className="h-4 w-4" /> })
+  }
+
+  /** 특정 행 삭제 */
+  const handleDeleteRow = (index: number) => {
+    // 구식 confirm 대신 toast의 action을 활용하거나 즉시 삭제 후 취소 버튼 제공
+    const itemToDelete = editItems[index]
+    const originalItems = [...editItems]
+    
+    setEditItems(prev => prev.filter((_, i) => i !== index))
+    
+    toast('행을 삭제했습니다.', {
+      action: {
+        label: '되돌리기',
+        onClick: () => setEditItems(originalItems)
+      },
+      icon: <Trash2 className="h-4 w-4 text-red-500" />
+    })
+  }
+
+  /** 행 이동 (드래그 앤 드롭 - 실시간 위치 변경 방식) */
+  const handleDragStart = (idx: number) => {
+    setDraggedIdx(idx)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault() // 드롭 가능하게 함
+  }
+
+  // 마우스가 다른 행 위로 진입했을 때 실시간으로 순서를 바꿈
+  const handleDragEnter = (targetIdx: number) => {
+    if (draggedIdx === null || draggedIdx === targetIdx) return
+
+    setEditItems(prev => {
+      const next = [...prev]
+      const [draggedItem] = next.splice(draggedIdx, 1)
+      next.splice(targetIdx, 0, draggedItem)
+      return next
+    })
+    
+    // 현재 드래그 중인 인덱스를 타겟 인덱스로 업데이트하여 실시간 추적
+    setDraggedIdx(targetIdx)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null)
+  }
+
   /** 수정 저장 */
   const handleSaveEdit = async () => {
     if (!savedReport) return
     setIsSaving(true)
     try {
       const totals = calcTotals(editItems)
-      const success = await updateExpenseReportWithItems(savedReport.id, editItems, totals)
+      // 마감 상태 기능이 삭제되었으므로 항상 false 또는 기존 값을 무시하고 저장
+      const success = await updateExpenseReportWithItems(savedReport.id, editItems, totals, false)
       if (success) {
         const report = await fetchExpenseReport(selectedYear, selectedMonth)
         setSavedReport(report)
         setIsEditing(false)
         setEditItems([])
+        toast.success('변경사항이 성공적으로 저장되었습니다.')
       } else {
-        alert('저장에 실패했습니다.')
+        toast.error('저장에 실패했습니다.')
       }
     } catch (err) {
       console.error('수정 저장 실패:', err)
-      alert('저장 중 오류가 발생했습니다.')
+      toast.error('저장 중 오류가 발생했습니다.')
     } finally {
       setIsSaving(false)
     }
@@ -466,6 +551,7 @@ export function DetailedExpenseReportTab({
 
   // ─── 확정본 표시 ───
   const displayItems = isEditing ? editItems : savedReport.items
+
   const totals = isEditing ? calcTotals(editItems) : {
     totalPurchase: savedReport.totalPurchase,
     totalSales: savedReport.totalSales,
@@ -486,6 +572,16 @@ export function DetailedExpenseReportTab({
     />
   )
 
+  /** 텍스트 입력 셀 (수정모드) */
+  const textInput = (idx: number, field: string, val: string, align: 'left' | 'center' = 'left') => (
+    <input
+      type="text"
+      className={`w-full bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] focus:outline-none focus:ring-1 focus:ring-yellow-400 ${align === 'center' ? 'text-center' : 'text-left'}`}
+      value={val || ''}
+      onChange={e => handleFieldChange(idx, field, e.target.value)}
+    />
+  )
+
   return (
     <div className="space-y-4">
       {/* 상단 액션 바 */}
@@ -494,7 +590,7 @@ export function DetailedExpenseReportTab({
           {isEditing ? (
             <div className="flex items-center gap-1.5 text-yellow-700 bg-yellow-50 px-3 py-1.5 rounded-lg border border-yellow-300">
               <Pencil className="h-4 w-4" />
-              <span className="text-xs font-semibold">수정 중</span>
+              <span className="text-xs font-semibold">수정 중 (엑셀 편집 모드)</span>
             </div>
           ) : (
             <div className="flex items-center gap-1.5 text-olive-600 bg-olive-50 px-3 py-1.5 rounded-lg border border-olive-200">
@@ -509,6 +605,9 @@ export function DetailedExpenseReportTab({
         <div className="flex gap-2">
           {isEditing ? (
             <>
+              <Button size="sm" variant="outline" className="gap-1.5 bg-white text-blue-600 border-blue-200 hover:bg-blue-50" onClick={handleAddRow}>
+                <Plus className="h-3.5 w-3.5" />행 추가
+              </Button>
               <Button variant="outline" size="sm" onClick={handleCancelEdit} className="gap-1.5">
                 <X className="h-3.5 w-3.5" />취소
               </Button>
@@ -533,16 +632,19 @@ export function DetailedExpenseReportTab({
         </div>
       </div>
 
-      {/* 데스크톱 테이블 */}
+      {/* 데스크톱 테이블 (마감 상태여도 편집 기능 모두 유지) */}
       <div className="hidden lg:block bg-white rounded-xl border-2 border-slate-300 shadow-lg overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse" style={{ minWidth: '1850px' }}>
+          <table className="w-full border-collapse" style={{ minWidth: '1900px' }}>
             <thead>
               {/* 1행 헤더 */}
               <tr className="bg-slate-100">
-                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-left" style={{ width: '130px' }}>구분</th>
+                {isEditing && <th className="border border-slate-300 px-1 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '40px' }}>이동</th>}
+                {isEditing && <th className="border border-slate-300 px-1 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '40px' }}>삭제</th>}
+                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-left" style={{ width: '130px' }}>사업자명</th>
+                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '85px' }}>계열사</th>
                 <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '85px' }}>매입처</th>
-                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '75px' }}>품목</th>
+                <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '85px' }}>품목</th>
                 <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-left" style={{ width: '130px' }}>규격</th>
                 <th className="border border-slate-300 px-1 py-2 text-[10px] font-bold text-slate-700 text-center" style={{ width: '40px' }}>수량</th>
                 <th className="border border-slate-300 px-2 py-2 text-[10px] font-bold text-slate-700 text-right" style={{ width: '85px' }}>반출가</th>
@@ -557,7 +659,9 @@ export function DetailedExpenseReportTab({
               </tr>
               {/* 2행 서브헤더 */}
               <tr className="bg-slate-50">
-                <th colSpan={8} className="border border-slate-300"></th>
+                {isEditing && <th className="border border-slate-300"></th>}
+                {isEditing && <th className="border border-slate-300"></th>}
+                <th colSpan={9} className="border border-slate-300"></th>
                 <th className="border border-slate-300 px-1 py-1 text-[9px] text-slate-500" style={{ width: '80px' }}>단가</th>
                 <th className="border border-slate-300 px-1 py-1 text-[9px] text-slate-500" style={{ width: '90px' }}>금액</th>
                 <th className="border border-slate-300"></th>
@@ -574,21 +678,71 @@ export function DetailedExpenseReportTab({
 
             <tbody>
               {displayItems.map((row, idx) => (
-                <tr key={row.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-teal-50/30'}`}>
-                  {/* 구분 */}
+                <tr 
+                  key={row.id || idx} 
+                  className={`transition-all duration-200 ${
+                    isEditing ? 'bg-yellow-50/10' : 'hover:bg-teal-50/30'
+                  } ${
+                    draggedIdx === idx 
+                      ? 'bg-blue-50/80 border-2 border-blue-400 shadow-xl opacity-60 scale-[0.99] z-50' 
+                      : ''
+                  }`}
+                  onDragOver={isEditing ? handleDragOver : undefined}
+                  onDragEnter={isEditing ? () => handleDragEnter(idx) : undefined}
+                  onDragEnd={isEditing ? handleDragEnd : undefined}
+                >
+                  {/* 드래그 핸들 (수정 모드에서만 표시) */}
+                  {isEditing && (
+                    <td 
+                      className="border border-slate-200 px-1 py-1 text-center cursor-grab active:cursor-grabbing hover:bg-blue-100/50 group"
+                      draggable
+                      onDragStart={() => handleDragStart(idx)}
+                    >
+                      <div className="flex justify-center text-slate-400 group-hover:text-blue-500 transition-colors">
+                        <GripVertical className="h-4 w-4" />
+                      </div>
+                    </td>
+                  )}
+                  {/* 삭제 버튼 (수정 모드에서만 표시) */}
+                  {isEditing && (
+                    <td className="border border-slate-200 px-1 py-1 text-center">
+                      <button 
+                        onClick={() => handleDeleteRow(idx)}
+                        className="p-1 text-red-400 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        title="행 삭제"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                    </td>
+                  )}
+                  {/* 사업자명 */}
                   <td className="border border-slate-200 px-2 py-1.5 text-[10px]">
-                    <div className="font-semibold truncate">{row.businessName}</div>
-                    <div className="text-slate-400 truncate">{row.affiliate}</div>
+                    {isEditing ? (
+                      textInput(idx, 'businessName', row.businessName)
+                    ) : (
+                      <div className="font-semibold truncate">{row.businessName}</div>
+                    )}
+                  </td>
+                  {/* 계열사 */}
+                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center">
+                    {isEditing ? (
+                      <select
+                        className="w-full bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[9px] focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                        value={row.affiliate}
+                        onChange={e => handleFieldChange(idx, 'affiliate', e.target.value)}
+                      >
+                        {['구몬', 'Wells 영업', 'Wells 서비스', '교육플랫폼', '기타'].map(opt => (
+                          <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-slate-500">{row.affiliate}</span>
+                    )}
                   </td>
                   {/* 매입처 */}
                   <td className="border border-slate-200 px-1 py-1 text-[10px] text-center">
                     {isEditing ? (
-                      <input
-                        type="text"
-                        className="w-full bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[9px] text-center focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                        value={row.supplier}
-                        onChange={e => handleFieldChange(idx, 'supplier', e.target.value)}
-                      />
+                      textInput(idx, 'supplier', row.supplier, 'center')
                     ) : (
                       <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-semibold ${
                         row.supplier === '삼성전자' ? 'bg-teal-100 text-teal-700'
@@ -598,9 +752,21 @@ export function DetailedExpenseReportTab({
                     )}
                   </td>
                   {/* 품목 */}
-                  <td className="border border-slate-200 px-1 py-1.5 text-[10px] text-center">{row.itemType}</td>
+                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center">
+                    {isEditing ? (
+                      textInput(idx, 'itemType', row.itemType, 'center')
+                    ) : (
+                      row.itemType
+                    )}
+                  </td>
                   {/* 규격 */}
-                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] truncate">{row.specification}</td>
+                  <td className="border border-slate-200 px-2 py-1.5 text-[10px] truncate">
+                    {isEditing ? (
+                      textInput(idx, 'specification', row.specification)
+                    ) : (
+                      row.specification
+                    )}
+                  </td>
                   {/* 수량 */}
                   <td className="border border-slate-200 px-1 py-1 text-[10px] text-center tabular-nums">
                     {isEditing
@@ -619,7 +785,7 @@ export function DetailedExpenseReportTab({
                       <input
                         type="number"
                         className="w-full max-w-[40px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-yellow-400"
-                        value={Math.round(row.discountRate * 100)}
+                        value={Math.round((row.discountRate || 0) * 100)}
                         onChange={e => handleFieldChange(idx, 'discountRate', (Number(e.target.value) || 0) / 100)}
                       />
                     ) : (
@@ -627,7 +793,9 @@ export function DetailedExpenseReportTab({
                     )}
                   </td>
                   {/* 옵션 */}
-                  <td className="border border-slate-200 px-1 py-1.5 text-[10px] text-center text-slate-400">{row.optionItem || ''}</td>
+                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center text-slate-400">
+                    {isEditing ? textInput(idx, 'optionItem', row.optionItem || '', 'center') : (row.optionItem || '')}
+                  </td>
                   {/* 매입 단가 */}
                   <td className="border border-slate-200 px-2 py-1 text-[10px] text-right tabular-nums text-slate-600">
                     {isEditing
@@ -675,8 +843,17 @@ export function DetailedExpenseReportTab({
                     )}
                   </td>
                   {/* 장려금 품목Reb */}
-                  <td className="border border-slate-200 px-1 py-1.5 text-[10px] text-center tabular-nums text-brick-400">
-                    0
+                  <td className="border border-slate-200 px-1 py-1 text-[10px] text-center tabular-nums text-brick-400">
+                    {isEditing ? (
+                      <input
+                        type="number"
+                        className="w-full max-w-[60px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-right focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                        value={row.incentiveItemReb || 0}
+                        onChange={e => handleFieldChange(idx, 'incentiveItemReb', Number(e.target.value) || 0)}
+                      />
+                    ) : (
+                      row.incentiveItemReb > 0 ? row.incentiveItemReb.toLocaleString('ko-KR') : '0'
+                    )}
                   </td>
                   {/* 장려금 금액 */}
                   <td className="border border-slate-200 px-2 py-1.5 text-[10px] text-right tabular-nums text-brick-600 font-semibold">
@@ -688,12 +865,28 @@ export function DetailedExpenseReportTab({
                   </td>
                 </tr>
               ))}
+
+              {/* 수정 모드일 때 테이블 내부에 행 추가 버튼 한 번 더 배치 */}
+              {isEditing && (
+                <tr className="bg-blue-50/30">
+                  <td colSpan={22} className="border border-slate-200 p-2 text-center">
+                    <button 
+                      onClick={handleAddRow}
+                      className="inline-flex items-center gap-2 text-sm text-blue-600 font-semibold hover:text-blue-800 transition-colors"
+                    >
+                      <Plus className="h-4 w-4" />여기에 새로운 행 추가 (엑셀 줄 추가)
+                    </button>
+                  </td>
+                </tr>
+              )}
             </tbody>
 
             <tfoot>
               {/* 합계 행 */}
               <tr className="bg-slate-700 text-white">
-                <td colSpan={8} className="border border-slate-600 px-3 py-2 text-xs font-bold">합계</td>
+                {isEditing && <td className="border border-slate-600"></td>}
+                {isEditing && <td className="border border-slate-600"></td>}
+                <td colSpan={9} className="border border-slate-600 px-3 py-2 text-xs font-bold">합계</td>
                 <td colSpan={2} className="border border-slate-600 px-2 py-2 text-xs text-right tabular-nums font-bold">
                   {totals.totalPurchase.toLocaleString('ko-KR')}
                 </td>
@@ -715,7 +908,9 @@ export function DetailedExpenseReportTab({
               </tr>
               {/* VAT 포함 — 제안가 합계 아래에 표시 */}
               <tr className="bg-slate-50">
-                <td colSpan={11} className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-right text-slate-500">
+                {isEditing && <td className="border border-slate-300"></td>}
+                {isEditing && <td className="border border-slate-300"></td>}
+                <td colSpan={12} className="border border-slate-300 px-3 py-2 text-[11px] font-semibold text-right text-slate-500">
                   부가세 포함 (VAT+)
                 </td>
                 <td colSpan={2} className="border border-slate-300 px-2 py-2 text-sm text-right tabular-nums font-bold text-teal-700">

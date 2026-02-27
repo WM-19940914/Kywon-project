@@ -1785,6 +1785,7 @@ export interface ExpenseReport {
   totalFrontMargin: number
   totalIncentive: number
   totalMargin: number
+  isFinalized: boolean
   createdAt: string
   items: ExpenseReportItem[]
 }
@@ -1831,6 +1832,7 @@ export async function fetchExpenseReport(year: number, month: number): Promise<E
     totalFrontMargin: report.total_front_margin,
     totalIncentive: report.total_incentive,
     totalMargin: report.total_margin,
+    isFinalized: report.is_finalized || false,
     createdAt: report.created_at,
     items: (items || []).map((item: any) => ({
       id: item.id,
@@ -1860,6 +1862,23 @@ export async function fetchExpenseReport(year: number, month: number): Promise<E
       orderDate: item.order_date,
     })),
   }
+}
+
+/**
+ * 지출결의서 최종 마감 상태 업데이트
+ */
+export async function finalizeExpenseReport(reportId: string, isFinalized: boolean): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('expense_reports')
+    .update({ is_finalized: isFinalized })
+    .eq('id', reportId)
+
+  if (error) {
+    console.error('지출결의서 마감 처리 실패:', error.message)
+    return false
+  }
+  return true
 }
 
 /**
@@ -1968,7 +1987,8 @@ export async function deleteExpenseReport(year: number, month: number): Promise<
 export async function updateExpenseReportWithItems(
   reportId: string,
   items: ExpenseReportItem[],
-  totals: { totalPurchase: number; totalSales: number; totalFrontMargin: number; totalIncentive: number; totalMargin: number }
+  totals: { totalPurchase: number; totalSales: number; totalFrontMargin: number; totalIncentive: number; totalMargin: number },
+  isFinalized: boolean = false
 ): Promise<boolean> {
   const supabase = createClient()
 
@@ -2020,7 +2040,7 @@ export async function updateExpenseReportWithItems(
     return false
   }
 
-  // 헤더 합계 업데이트
+  // 헤더 업데이트
   const { error: updateError } = await supabase
     .from('expense_reports')
     .update({
@@ -2029,6 +2049,7 @@ export async function updateExpenseReportWithItems(
       total_front_margin: totals.totalFrontMargin,
       total_incentive: totals.totalIncentive,
       total_margin: totals.totalMargin,
+      is_finalized: isFinalized
     })
     .eq('id', reportId)
 
