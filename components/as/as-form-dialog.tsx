@@ -4,11 +4,15 @@
  * 교원그룹에서 AS 요청이 들어오면 이 폼으로 접수합니다.
  * 접수 정보만 입력 (관리 정보는 상세 다이얼로그에서 입력)
  *
- * 섹션 구조:
- *   1) 기본 정보 — 접수일, 계열사
- *   2) 현장 정보 — 사업자명, 주소
- *   3) 담당자 — 이름, 연락처
- *   4) AS 내용 — 사유, 모델명, 실외기 위치
+ * 입력 순서 (중요도순):
+ *   1) 계열사 버튼 그룹 — 빠른 선택
+ *   2) 사업자명 (필수)
+ *   3) AS 사유 (가장 중요!) — 크게 표시
+ *   4) 현장주소 (필수)
+ *   5) 담당자 이름 + 연락처 (한 행)
+ *   6) 모델명 + 실외기 위치 (선택)
+ *   7) 메모 (선택)
+ *   8) 접수일 (기본: 오늘)
  */
 
 'use client'
@@ -24,16 +28,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
 import { AFFILIATE_OPTIONS } from '@/types/order'
 import type { ASRequest } from '@/types/as'
-import { ClipboardPlus, Building2, MapPin, User, Phone, AlertTriangle, Box, Fan, Search } from 'lucide-react'
+import { ClipboardPlus, MapPin, Phone, Box, Fan, Search } from 'lucide-react'
 
 /** Props */
 interface ASFormDialogProps {
@@ -42,7 +39,6 @@ interface ASFormDialogProps {
   onSubmit: (data: Omit<ASRequest, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
 }
 
-/** 오늘 날짜 (YYYY-MM-DD) */
 /** 전화번호 자동 하이픈 (010-XXXX-XXXX) */
 function formatPhoneNumber(value: string): string {
   const nums = value.replace(/[^0-9]/g, '').slice(0, 11)
@@ -51,6 +47,7 @@ function formatPhoneNumber(value: string): string {
   return `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7)}`
 }
 
+/** 오늘 날짜 (YYYY-MM-DD) */
 function getTodayStr(): string {
   const d = new Date()
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -61,8 +58,8 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
   const [receptionDate, setReceptionDate] = useState(getTodayStr())
   const [affiliate, setAffiliate] = useState('')
   const [businessName, setBusinessName] = useState('')
-  const [address, setAddress] = useState('')          // 기본주소 (카카오 검색 결과)
-  const [detailAddress, setDetailAddress] = useState('') // 상세주소 (수동 입력)
+  const [address, setAddress] = useState('')
+  const [detailAddress, setDetailAddress] = useState('')
   const [contactName, setContactName] = useState('')
   const [contactPhone, setContactPhone] = useState('')
   const [asReason, setAsReason] = useState('')
@@ -113,7 +110,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
 
   /** 제출 — 기본주소 + 상세주소 따로 저장 */
   const handleSubmit = async () => {
-    if (!affiliate || !businessName || !address) return
+    if (!affiliate || !businessName || !address || !asReason) return
 
     setIsSubmitting(true)
     try {
@@ -141,13 +138,13 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
     }
   }
 
-  /** 필수값 미입력 여부 */
-  const isValid = affiliate && businessName && address
+  /** 필수값 미입력 여부 (계열사 + 사업자명 + 주소 + AS사유) */
+  const isValid = affiliate && businessName && address && asReason
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto p-0">
-        {/* 헤더 — 파란 배경 */}
+        {/* 헤더 — teal 배경 */}
         <div className="bg-teal-600 text-white px-6 py-4 rounded-t-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 text-white text-lg">
@@ -158,185 +155,154 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
           <p className="text-teal-100 text-xs mt-1">교원그룹 AS 요청 정보를 입력해주세요</p>
         </div>
 
-        <div className="px-6 pb-6 pt-2 space-y-5">
+        <div className="px-6 pb-6 pt-5 space-y-4">
 
-          {/* ── 1. 기본 정보 ── */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label htmlFor="as-date" className="text-xs text-gray-500 font-medium">접수일</Label>
-              <Input
-                id="as-date"
-                type="date"
-                value={receptionDate}
-                onChange={e => setReceptionDate(e.target.value)}
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="as-affiliate" className="text-xs text-gray-500 font-medium">
-                계열사 <span className="text-brick-500">*</span>
-              </Label>
-              <Select value={affiliate} onValueChange={setAffiliate}>
-                <SelectTrigger id="as-affiliate" className="h-9">
-                  <SelectValue placeholder="선택하세요" />
-                </SelectTrigger>
-                <SelectContent>
-                  {AFFILIATE_OPTIONS.map(opt => (
-                    <SelectItem key={opt} value={opt}>{opt}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          {/* ── 1. 계열사 버튼 그룹 ── */}
+          <div className="space-y-2">
+            <Label className="text-xs text-gray-500 font-medium">
+              계열사 <span className="text-brick-500">*</span>
+            </Label>
+            <div className="flex flex-wrap gap-2">
+              {AFFILIATE_OPTIONS.map(opt => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={() => setAffiliate(opt)}
+                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors
+                    ${affiliate === opt
+                      ? 'bg-teal-600 text-white border-teal-600'
+                      : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
+                    }`}
+                >
+                  {opt}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* 구분선 */}
-          <div className="border-t" />
+          {/* ── 2. 사업자명 ── */}
+          <div className="space-y-1.5">
+            <Label htmlFor="as-business" className="text-xs text-gray-500 font-medium">
+              사업자명 <span className="text-brick-500">*</span>
+            </Label>
+            <Input
+              id="as-business"
+              placeholder="예: 구몬 화곡지국"
+              value={businessName}
+              onChange={e => setBusinessName(e.target.value)}
+              className="h-9"
+            />
+          </div>
 
-          {/* ── 2. 현장 정보 ── */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <Building2 className="h-3.5 w-3.5" /> 현장 정보
-            </h4>
-            <div className="space-y-1.5">
-              <Label htmlFor="as-business" className="text-xs text-gray-500 font-medium">
-                사업자명 <span className="text-brick-500">*</span>
-              </Label>
+          {/* ── 3. AS 사유 (가장 중요!) ── */}
+          <div className="space-y-1.5">
+            <Label htmlFor="as-reason" className="text-xs text-gray-500 font-medium">
+              AS 사유 <span className="text-brick-500">*</span>
+            </Label>
+            <Textarea
+              id="as-reason"
+              placeholder="어떤 증상인지 자세히 적어주세요 (예: 실외기 소음, 냉방 안됨)"
+              value={asReason}
+              onChange={e => setAsReason(e.target.value)}
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+
+          {/* ── 4. 현장주소 ── */}
+          <div className="space-y-1.5">
+            <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
+              <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
+            </Label>
+            <div className="flex gap-2">
               <Input
-                id="as-business"
-                placeholder="예: 구몬 화곡지국"
-                value={businessName}
-                onChange={e => setBusinessName(e.target.value)}
-                className="h-9"
+                readOnly
+                placeholder="주소 검색 버튼을 눌러주세요"
+                value={address}
+                className="h-9 flex-1 bg-gray-50 cursor-pointer"
+                onClick={handleSearchAddress}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
-              </Label>
-              <div className="flex gap-2">
-                <Input
-                  readOnly
-                  placeholder="주소 검색 버튼을 눌러주세요"
-                  value={address}
-                  className="h-9 flex-1 bg-gray-50 cursor-pointer"
-                  onClick={handleSearchAddress}
-                />
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSearchAddress}
-                  className="h-9 px-3 shrink-0"
-                >
-                  <Search className="h-4 w-4 mr-1" />
-                  주소 검색
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleSearchAddress}
+                className="h-9 px-3 shrink-0"
+              >
+                <Search className="h-4 w-4 mr-1" />
+                주소 검색
+              </Button>
             </div>
             {/* 상세주소 — 기본주소 선택 후 표시 */}
             {address && (
-              <div className="space-y-1.5">
-                <Label htmlFor="as-detail-addr" className="text-xs text-gray-500 font-medium">
-                  상세주소
-                </Label>
-                <Input
-                  id="as-detail-addr"
-                  placeholder="예: 3층 301호"
-                  value={detailAddress}
-                  onChange={e => setDetailAddress(e.target.value)}
-                  className="h-9"
-                />
-              </div>
+              <Input
+                placeholder="상세주소 (예: 3층 301호)"
+                value={detailAddress}
+                onChange={e => setDetailAddress(e.target.value)}
+                className="h-9 mt-1.5"
+              />
             )}
           </div>
 
-          {/* 구분선 */}
-          <div className="border-t" />
-
-          {/* ── 3. 담당자 정보 ── */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <User className="h-3.5 w-3.5" /> 담당자
-            </h4>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="as-contact" className="text-xs text-gray-500 font-medium">이름</Label>
-                <Input
-                  id="as-contact"
-                  placeholder="성함"
-                  value={contactName}
-                  onChange={e => setContactName(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="as-phone" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                  <Phone className="h-3 w-3" /> 연락처
-                </Label>
-                <Input
-                  id="as-phone"
-                  placeholder="010-0000-0000"
-                  value={contactPhone}
-                  onChange={e => setContactPhone(formatPhoneNumber(e.target.value))}
-                  className="h-9"
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* 구분선 */}
-          <div className="border-t" />
-
-          {/* ── 4. AS 내용 ── */}
-          <div className="space-y-3">
-            <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-              <AlertTriangle className="h-3.5 w-3.5" /> AS 내용
-            </h4>
+          {/* ── 5. 담당자 이름 + 연락처 (한 행) ── */}
+          <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5">
-              <Label htmlFor="as-reason" className="text-xs text-gray-500 font-medium">AS 사유</Label>
-              <Textarea
-                id="as-reason"
-                placeholder="예: 실외기 소음 발생, 냉방 안됨 등"
-                value={asReason}
-                onChange={e => setAsReason(e.target.value)}
-                rows={2}
-                className="resize-none"
+              <Label htmlFor="as-contact" className="text-xs text-gray-500 font-medium">담당자 이름</Label>
+              <Input
+                id="as-contact"
+                placeholder="성함"
+                value={contactName}
+                onChange={e => setContactName(e.target.value)}
+                className="h-9"
               />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="as-model" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                  <Box className="h-3 w-3" /> 모델명
-                </Label>
-                <Input
-                  id="as-model"
-                  placeholder="예: AR-WF07"
-                  value={modelName}
-                  onChange={e => setModelName(e.target.value)}
-                  className="h-9"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="as-outdoor" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                  <Fan className="h-3 w-3" /> 실외기 위치
-                </Label>
-                <Input
-                  id="as-outdoor"
-                  placeholder="예: 옥상, 1층 뒤편"
-                  value={outdoorUnitLocation}
-                  onChange={e => setOutdoorUnitLocation(e.target.value)}
-                  className="h-9"
-                />
-              </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="as-phone" className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                <Phone className="h-3 w-3" /> 연락처
+              </Label>
+              <Input
+                id="as-phone"
+                placeholder="010-0000-0000"
+                value={contactPhone}
+                onChange={e => setContactPhone(formatPhoneNumber(e.target.value))}
+                className="h-9"
+              />
             </div>
           </div>
 
-          {/* 구분선 */}
-          <div className="border-t" />
+          {/* ── 6. 모델명 + 실외기 위치 (선택) ── */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="as-model" className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                <Box className="h-3 w-3" /> 모델명 <span className="text-gray-400 font-normal">(선택)</span>
+              </Label>
+              <Input
+                id="as-model"
+                placeholder="예: AR-WF07"
+                value={modelName}
+                onChange={e => setModelName(e.target.value)}
+                className="h-9"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="as-outdoor" className="text-xs text-gray-500 font-medium flex items-center gap-1">
+                <Fan className="h-3 w-3" /> 실외기 위치 <span className="text-gray-400 font-normal">(선택)</span>
+              </Label>
+              <Input
+                id="as-outdoor"
+                placeholder="예: 옥상, 1층 뒤편"
+                value={outdoorUnitLocation}
+                onChange={e => setOutdoorUnitLocation(e.target.value)}
+                className="h-9"
+              />
+            </div>
+          </div>
 
-          {/* ── 5. 메모 ── */}
+          {/* ── 7. 메모 (선택) ── */}
           <div className="space-y-1.5">
-            <Label htmlFor="as-notes" className="text-xs text-gray-500 font-medium">메모 (특이사항)</Label>
+            <Label htmlFor="as-notes" className="text-xs text-gray-500 font-medium">
+              메모 <span className="text-gray-400 font-normal">(선택)</span>
+            </Label>
             <Textarea
               id="as-notes"
               placeholder="예: 주차 불가, 사다리차 필요, 오전 방문 요청 등"
@@ -344,6 +310,18 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
               onChange={e => setNotes(e.target.value)}
               rows={2}
               className="resize-none"
+            />
+          </div>
+
+          {/* ── 8. 접수일 (기본: 오늘) ── */}
+          <div className="space-y-1.5">
+            <Label htmlFor="as-date" className="text-xs text-gray-500 font-medium">접수일</Label>
+            <Input
+              id="as-date"
+              type="date"
+              value={receptionDate}
+              onChange={e => setReceptionDate(e.target.value)}
+              className="h-9 w-[180px]"
             />
           </div>
 

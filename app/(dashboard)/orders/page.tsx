@@ -1,8 +1,10 @@
 /**
- * 발주 목록 페이지 (칸반보드 3단계 형태)
+ * 발주 관리 페이지 (칸반보드 + 과거내역/취소 탭 전환)
  *
- * 진행상태별로 3개 컬럼을 나누어 한눈에 보기 쉽게!
- * 접수중 → 진행중 → 완료 순서로 표시됩니다.
+ * 컴팩트 1줄 툴바 + 3가지 뷰 탭:
+ * - 진행중: 3컬럼 칸반보드 (신규접수 / 설치예정 / 설치완료)
+ * - 과거내역: 전체 너비 그리드 (정산완료 건)
+ * - 취소: 전체 너비 그리드 (취소 건)
  */
 
 'use client'
@@ -19,7 +21,7 @@ import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { ClipboardList, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportMultiSheetExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
@@ -30,7 +32,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
-import { Badge } from '@/components/ui/badge'
 import {
   Select,
   SelectContent,
@@ -40,11 +41,15 @@ import {
 } from '@/components/ui/select'
 import { AFFILIATE_OPTIONS } from '@/types/order'
 
+/** 뷰 탭 타입 */
+type ViewTab = 'active' | 'history' | 'cancelled'
+
 export default function OrdersPage() {
   const { showAlert } = useAlert()
 
   const [searchTerm, setSearchTerm] = useState('')
   const [isDialogOpen, setIsDialogOpen] = useState(false)
+  const [viewTab, setViewTab] = useState<ViewTab>('active')
 
   // URL에 ?action=new 가 있으면 신규 발주 다이얼로그 자동 오픈
   useEffect(() => {
@@ -220,7 +225,7 @@ export default function OrdersPage() {
     }
   }
 
-  /** 필터링 + 정렬 */
+  /** 필터링 + 정렬 (진행중 칸반용) */
   const filteredOrders = orders
     .filter((order) => {
       const kanbanStatus = computeKanbanStatus(order)
@@ -255,7 +260,6 @@ export default function OrdersPage() {
 
   /** 엑셀 다운로드 — 활성 발주 + 과거내역 + 발주취소 3시트 */
   const handleExcelExport = () => {
-    // 공통 컬럼 (활성/과거내역 공용)
     const baseColumns: ExcelColumn<Order>[] = [
       { header: '문서번호', key: 'documentNumber', width: 16 },
       { header: '진행상태', getValue: (o) => {
@@ -273,14 +277,12 @@ export default function OrdersPage() {
       { header: '연락처', key: 'contactPhone', width: 14 },
     ]
 
-    // 발주취소 전용 컬럼 (취소사유, 취소일 추가)
     const cancelledColumns: ExcelColumn<Order>[] = [
       ...baseColumns,
       { header: '취소사유', getValue: (o) => o.cancelReason ?? '', width: 20 },
       { header: '취소일', getValue: (o) => o.cancelledAt ? o.cancelledAt.slice(0, 10) : '', width: 12 },
     ]
 
-    // 상태별 데이터 분류
     const settledOrders = orders.filter(o => computeKanbanStatus(o) === 'settled')
     const cancelledOrders = orders.filter(o => computeKanbanStatus(o) === 'cancelled')
 
@@ -309,20 +311,21 @@ export default function OrdersPage() {
   // 스켈레톤 로딩
   if (isLoading) {
     return (
-      <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6 space-y-6">
-        <div className="space-y-2">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-5 w-64" />
+      <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6 space-y-4">
+        {/* 툴바 스켈레톤 */}
+        <div className="flex items-center gap-3">
+          <Skeleton className="h-7 w-24" />
+          <Skeleton className="h-5 w-10" />
+          <Skeleton className="h-8 w-56 rounded-lg" />
+          <div className="flex-1" />
+          <Skeleton className="h-9 w-48" />
         </div>
-        <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6 space-y-3">
-          <Skeleton className="h-10 w-full" />
-          <Skeleton className="h-10 w-full" />
-        </div>
-        <div className="flex gap-4">
+        {/* 칸반 스켈레톤 */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[...Array(3)].map((_, i) => (
-            <div key={i} className="w-72 space-y-2">
-              <Skeleton className="h-8 w-full rounded-xl" />
-              {[...Array(3)].map((_, j) => <Skeleton key={j} className="h-24 w-full rounded-xl" />)}
+            <div key={i} className="bg-muted/40 rounded-xl p-3 space-y-2">
+              <Skeleton className="h-6 w-full" />
+              {[...Array(3)].map((_, j) => <Skeleton key={j} className="h-20 w-full rounded-lg" />)}
             </div>
           ))}
         </div>
@@ -330,101 +333,114 @@ export default function OrdersPage() {
     )
   }
 
+  /** 뷰 탭 버튼 */
+  const tabItems: { key: ViewTab; label: string }[] = [
+    { key: 'active', label: '진행중' },
+    { key: 'history', label: '과거내역' },
+    { key: 'cancelled', label: '취소' },
+  ]
+
   return (
     <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
-      {/* 페이지 헤더 */}
-      <div className="flex items-center gap-4 mb-6">
-        <div className="bg-teal-50 text-teal-600 p-2.5 rounded-xl">
-          <ClipboardList className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">발주 관리</h1>
-          <p className="text-muted-foreground mt-0.5">진행상태별로 한눈에 확인하세요</p>
-        </div>
-      </div>
+      {/* 컴팩트 1줄 툴바 */}
+      <div className="flex items-center gap-3 flex-wrap mb-4">
+        {/* 좌측: 제목 + 건수 */}
+        <h1 className="text-lg font-bold tracking-tight">발주 관리</h1>
+        {viewTab === 'active' && (
+          <span className="text-sm text-muted-foreground">{totalOrders}건</span>
+        )}
 
-      {/* 검색 + 필터 영역 */}
-      <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-5 mb-6 space-y-4">
-        {/* 검색창 */}
-        <div className="relative max-w-lg">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <Input
-            placeholder="주소, 문서번호, 계열사, 사업자명으로 검색..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 rounded-lg bg-white border-slate-200"
-          />
-        </div>
-
-        {/* 필터/정렬/등록 */}
-        <div className="flex items-center gap-3 flex-wrap">
-          <Select value={affiliateFilter} onValueChange={setAffiliateFilter}>
-            <SelectTrigger className="w-[160px] rounded-lg">
-              <SelectValue placeholder="계열사" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">전체 계열사</SelectItem>
-              {AFFILIATE_OPTIONS.map((affiliate) => (
-                <SelectItem key={affiliate} value={affiliate}>{affiliate}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select value={sortOrder} onValueChange={setSortOrder}>
-            <SelectTrigger className="w-[140px] rounded-lg">
-              <SelectValue placeholder="정렬" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="latest">최신순</SelectItem>
-              <SelectItem value="oldest">오래된순</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex-1" />
-
-          <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
-
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="rounded-lg">+ 신규 발주</Button>
-            </DialogTrigger>
-            <DialogContent
-              className="max-w-3xl max-h-[90vh] overflow-y-auto"
-              onInteractOutside={(e) => e.preventDefault()}
+        {/* 뷰 탭 (pill 형태) */}
+        <div className="flex bg-muted rounded-lg p-0.5 ml-2">
+          {tabItems.map((tab) => (
+            <button
+              key={tab.key}
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+                ${viewTab === tab.key
+                  ? 'bg-white text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'}`}
+              onClick={() => setViewTab(tab.key)}
             >
-              <DialogHeader>
-                <DialogTitle>신규 발주 등록</DialogTitle>
-              </DialogHeader>
-              <OrderForm
-                onSubmit={handleSubmit}
-                onCancel={() => setIsDialogOpen(false)}
-                isSubmitting={isSubmitting}
-                storedEquipment={storedEquipment}
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex-1" />
+
+        {/* 우측: 검색 + 필터 + 버튼 (진행중 탭에서만) */}
+        {viewTab === 'active' && (
+          <>
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                placeholder="검색..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-8 w-48 h-9 text-sm"
               />
-            </DialogContent>
-          </Dialog>
-        </div>
+            </div>
 
-        {/* 검색 결과 개수 */}
-        <p className="text-sm text-slate-500">
-          총 {totalOrders}건의 발주
-          {(searchTerm || affiliateFilter !== 'all') && (
-            <span className="text-teal-600 font-medium ml-2">
-              (필터링: {filteredOrders.length}건)
-            </span>
-          )}
-        </p>
+            <Select value={affiliateFilter} onValueChange={setAffiliateFilter}>
+              <SelectTrigger className="w-[130px] h-9 text-sm">
+                <SelectValue placeholder="계열사" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">전체 계열사</SelectItem>
+                {AFFILIATE_OPTIONS.map((affiliate) => (
+                  <SelectItem key={affiliate} value={affiliate}>{affiliate}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+
+            <Select value={sortOrder} onValueChange={setSortOrder}>
+              <SelectTrigger className="w-[110px] h-9 text-sm">
+                <SelectValue placeholder="정렬" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="latest">최신순</SelectItem>
+                <SelectItem value="oldest">오래된순</SelectItem>
+              </SelectContent>
+            </Select>
+
+            <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+              <DialogTrigger asChild>
+                <Button className="h-9 text-sm">+ 신규 발주</Button>
+              </DialogTrigger>
+              <DialogContent
+                className="max-w-3xl max-h-[90vh] overflow-y-auto"
+                onInteractOutside={(e) => e.preventDefault()}
+              >
+                <DialogHeader>
+                  <DialogTitle>신규 발주 등록</DialogTitle>
+                </DialogHeader>
+                <OrderForm
+                  onSubmit={handleSubmit}
+                  onCancel={() => setIsDialogOpen(false)}
+                  isSubmitting={isSubmitting}
+                  storedEquipment={storedEquipment}
+                />
+              </DialogContent>
+            </Dialog>
+          </>
+        )}
       </div>
 
-      {/* 칸반보드 + 과거내역 */}
-      <div className="flex gap-4 overflow-x-auto pb-4">
-        <div className="flex gap-4 flex-shrink-0">
-          <KanbanColumn title="접수중" status="received" orders={groupedOrders['received']} onCardClick={handleCardClick} />
-          <KanbanColumn title="진행중" status="in-progress" orders={groupedOrders['in-progress']} onCardClick={handleCardClick} />
-          <KanbanColumn title="완료 (금월 정산대기중)" status="completed" orders={groupedOrders['completed']} onCardClick={handleCardClick} />
+      {/* 탭 기반 뷰 전환 */}
+      {viewTab === 'active' ? (
+        /* 진행중: 3컬럼 칸반보드 */
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <KanbanColumn title="신규접수" status="received" orders={groupedOrders['received']} onCardClick={handleCardClick} />
+          <KanbanColumn title="설치예정" status="in-progress" orders={groupedOrders['in-progress']} onCardClick={handleCardClick} />
+          <KanbanColumn title="설치완료" status="completed" orders={groupedOrders['completed']} onCardClick={handleCardClick} subtitle="아직 정산이 되지 않은 건입니다" />
         </div>
-        <SettledHistoryPanel orders={orders} onCardClick={handleCardClick} />
-      </div>
+      ) : viewTab === 'history' ? (
+        <SettledHistoryPanel orders={orders} onCardClick={handleCardClick} mode="history" />
+      ) : (
+        <SettledHistoryPanel orders={orders} onCardClick={handleCardClick} mode="cancelled" />
+      )}
 
       {/* 상세보기 모달 */}
       <OrderDetailDialog
@@ -487,38 +503,66 @@ export default function OrdersPage() {
   )
 }
 
-/** 칸반 컬럼 */
+/** 칸반 컬럼 (상태별 색상 뱃지 + 컬러 보더) */
 interface KanbanColumnProps {
   title: string
   status: OrderStatus
   orders: Order[]
   onCardClick: (order: Order) => void
+  subtitle?: string
 }
 
-function KanbanColumn({ title, status, orders, onCardClick }: KanbanColumnProps) {
-  const columnStyles: Record<OrderStatus, { bg: string; stripe: string }> = {
-    'received': { bg: 'bg-gold-50/50', stripe: 'border-t-4 border-t-gold-400' },
-    'in-progress': { bg: 'bg-carrot-50/50', stripe: 'border-t-4 border-t-carrot-400' },
-    'completed': { bg: 'bg-teal-50/50', stripe: 'border-t-4 border-t-teal-500' },
-    'settled': { bg: 'bg-olive-50/50', stripe: 'border-t-4 border-t-olive-400' },
-    'cancelled': { bg: 'bg-brick-50/50', stripe: 'border-t-4 border-t-brick-500' },
+/** 컬럼별 스타일 (뱃지 색상, 상단 보더, 배경 틴트) */
+const COLUMN_STYLES: Record<string, { badge: string; border: string; bg: string; countBg: string }> = {
+  'received': {
+    badge: 'bg-amber-100 text-amber-700 border border-amber-200',
+    border: 'border-t-2 border-t-amber-400',
+    bg: 'bg-amber-50/30',
+    countBg: 'bg-amber-100 text-amber-700',
+  },
+  'in-progress': {
+    badge: 'bg-blue-100 text-blue-700 border border-blue-200',
+    border: 'border-t-2 border-t-blue-400',
+    bg: 'bg-blue-50/30',
+    countBg: 'bg-blue-100 text-blue-700',
+  },
+  'completed': {
+    badge: 'bg-emerald-100 text-emerald-700 border border-emerald-200',
+    border: 'border-t-2 border-t-emerald-400',
+    bg: 'bg-emerald-50/30',
+    countBg: 'bg-emerald-100 text-emerald-700',
+  },
+}
+
+function KanbanColumn({ title, status, orders, onCardClick, subtitle }: KanbanColumnProps) {
+  const style = COLUMN_STYLES[status] || {
+    badge: 'bg-gray-100 text-gray-600',
+    border: 'border-t-2 border-t-gray-300',
+    bg: 'bg-muted/40',
+    countBg: 'bg-gray-100 text-gray-600',
   }
 
-  const style = columnStyles[status]
-
   return (
-    <div className={`flex-shrink-0 w-72 ${style.bg} ${style.stripe} rounded-xl shadow-sm p-3`}>
-      <div className="flex items-center justify-between mb-3">
-        <h2 className="font-semibold text-sm">{title}</h2>
-        <Badge variant="outline" className="bg-white text-xs">
-          {orders.length}건
-        </Badge>
+    <div className={`${style.bg} ${style.border} rounded-xl p-3 min-h-[200px]`}>
+      {/* 컬럼 헤더: 컬러 뱃지 + 건수 */}
+      <div className="mb-3">
+        <div className="flex items-center gap-2">
+          <span className={`px-2.5 py-1 rounded-md text-xs font-bold ${style.badge}`}>
+            {title}
+          </span>
+          <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[28px] text-center ${style.countBg}`}>
+            {orders.length}
+          </span>
+        </div>
+        {subtitle && (
+          <p className="text-[11px] text-muted-foreground mt-1.5 pl-0.5">{subtitle}</p>
+        )}
       </div>
-      <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+
+      {/* 카드 목록 */}
+      <div className="space-y-2.5 max-h-[calc(100vh-200px)] overflow-y-auto kanban-scroll">
         {orders.length === 0 ? (
-          <p className="text-sm text-slate-400 text-center py-8">
-            발주가 없습니다
-          </p>
+          <p className="text-xs text-muted-foreground text-center py-8">발주가 없습니다</p>
         ) : (
           orders.map((order) => (
             <OrderCard key={order.id} order={order} onClick={onCardClick} />

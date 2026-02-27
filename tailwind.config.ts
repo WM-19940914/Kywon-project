@@ -10,7 +10,8 @@ const config: Config = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sans: ['Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'Roboto', 'sans-serif'],
+  			sans: ['Inter', 'Pretendard Variable', 'Pretendard', '-apple-system', 'BlinkMacSystemFont', 'system-ui', 'sans-serif'],
+  			heading: ['GmarketSans', 'Inter', 'Pretendard Variable', 'Pretendard', 'sans-serif'],
   		},
   		colors: {
   			/* ── 5색 커스텀 팔레트 ── */

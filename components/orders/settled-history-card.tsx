@@ -1,88 +1,68 @@
 /**
  * 정산완료 과거내역 카드 컴포넌트
  *
- * 기존 OrderCard보다 작고 간단하게!
- * 과거 정산내역을 컴팩트하게 보여줘요:
- * 1. 계열사 (작게)
- * 2. 사업자명 (강조)
- * 3. 정산일 (초록색)
- * 4. 발주요약 (예: "신규설치 2대 외 1건")
+ * 좌측 emerald 보더 + 계열사/발주일 강조:
+ * 1. 계열사 칩 + 발주일
+ * 2. 사업자명 (bold)
+ * 3. 작업요약 (예: "신규설치 2대 외 1건")
+ * 4. 정산 완료 표시
  */
 
 'use client'
 
-import { Card, CardContent } from '@/components/ui/card'
 import type { Order } from '@/types/order'
 
-/**
- * 컴포넌트가 받을 Props
- */
+/** 컴포넌트 Props */
 interface SettledHistoryCardProps {
-  order: Order                           // 발주 정보
-  onClick?: (order: Order) => void       // 카드 클릭 시 (상세보기 모달 열기)
+  order: Order
+  onClick?: (order: Order) => void
 }
 
-/**
- * 발주내역 요약 자동 생성
- * 예: "신규설치 2대 외 1건" (요청건 제외!)
- */
+/** 발주내역 요약 생성: "신규설치 2대 외 1건" */
 function generateOrderSummary(order: Order): string {
   if (order.items.length === 0) return '작업내역 없음'
-
   const firstItem = order.items[0]
   const firstItemText = `${firstItem.workType} ${firstItem.quantity}대`
-
-  if (order.items.length === 1) {
-    // 항목이 1개만 있으면: "신규설치 2대"
-    return firstItemText
-  } else {
-    // 여러 항목이 있으면: "신규설치 2대 외 1건"
-    return `${firstItemText} 외 ${order.items.length - 1}건`
-  }
+  if (order.items.length === 1) return firstItemText
+  return `${firstItemText} 외 ${order.items.length - 1}건`
 }
 
-/**
- * 정산완료 과거내역 카드 컴포넌트
- */
+/** 정산완료 과거내역 카드 */
 export function SettledHistoryCard({ order, onClick }: SettledHistoryCardProps) {
-  // 날짜 포맷팅 (2024-01-25 → 24년 1월, 파싱 실패 시 원본 반환)
-  const formatDate = (dateString: string) => {
-    const parts = dateString.split('-')
-    const year = parts[0]
-    const month = parts[1] ? parseInt(parts[1]) : NaN
-    if (!year || year.length < 2 || isNaN(month)) return dateString
-    return `${year.slice(2)}년 ${month}월`
-  }
-
   return (
-    <Card
-      className="hover:shadow-md hover:border-border transition-all duration-200 cursor-pointer border-border/60"
+    <div
+      className="bg-white rounded-lg border border-border/50 border-l-[3px] border-l-emerald-300
+                 p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-border/80
+                 transition-all duration-150 cursor-pointer space-y-1.5"
       onClick={() => onClick?.(order)}
     >
-      <CardContent className="p-3 space-y-1">
-        {/* 계열사 + 발주일 */}
-        <div className="flex items-center justify-between text-xs text-gray-500 tracking-tight">
-          <span>{order.affiliate}</span>
-          <span>발주일: {order.orderDate?.replace(/-/g, '.') || '-'}</span>
-        </div>
+      {/* 계열사 칩 + 발주일 */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+          {order.affiliate}
+        </span>
+        <span className="text-[11px] text-slate-500 font-medium">
+          {order.orderDate?.replace(/-/g, '.') || '-'}
+        </span>
+        <span className="text-[10px] text-emerald-600 font-medium bg-emerald-50 px-1.5 py-0.5 rounded shrink-0 ml-auto">
+          정산완료
+        </span>
+      </div>
 
-        {/* 사업자명 (강조) - 1줄로 자르고 ... 표시 */}
-        <h4 className="font-semibold text-xs text-gray-900 truncate tracking-tight" title={order.businessName}>
-          {order.businessName}
-        </h4>
+      {/* 사업자명 */}
+      <h4 className="font-bold text-[13px] text-foreground truncate leading-snug" title={order.businessName}>
+        {order.businessName}
+      </h4>
 
-        {/* 정산월 (회색 톤다운) */}
-        <p className="text-xs text-gray-600">
-          {order.s1SettlementMonth
-            ? `${formatDate(order.s1SettlementMonth)} 정산완료`
-            : '정산월 미등록'}
-        </p>
+      {/* 작업요약 */}
+      <p className="text-xs text-slate-500">
+        {generateOrderSummary(order)}
+      </p>
 
-        {/* 발주요약 */}
-        <p className="text-xs text-gray-500">
-          {generateOrderSummary(order)}
-        </p>
-      </CardContent>
-    </Card>
+      {/* 주소 */}
+      <p className="text-[11px] text-slate-400 truncate" title={order.address}>
+        {order.address}
+      </p>
+    </div>
   )
 }

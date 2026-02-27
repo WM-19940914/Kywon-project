@@ -16,10 +16,8 @@ import {
 } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Separator } from '@/components/ui/separator'
 import {
   ORDER_STATUS_LABELS,
-  ORDER_STATUS_COLORS,
   type Order,
   type StoredEquipment,
   type ContactPerson,
@@ -36,10 +34,29 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
-import { ClipboardList, Package, MessageSquare, CalendarDays, AlertTriangle, Edit, Trash2, XCircle, User, Phone, Calendar, FileText } from 'lucide-react'
+import { AlertTriangle, Edit, Trash2, XCircle, Phone, FileText } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { useState, useEffect } from 'react'
 import { countInventoryEvents } from '@/lib/supabase/dal'
+
+/** 상태 뱃지 스타일 — Tailwind 기본 색상 체계 */
+const STATUS_BADGE_STYLES: Record<string, string> = {
+  'received':    'bg-amber-100 text-amber-700 border border-amber-200',
+  'in-progress': 'bg-blue-100 text-blue-700 border border-blue-200',
+  'completed':   'bg-emerald-100 text-emerald-700 border border-emerald-200',
+  'settled':     'bg-slate-100 text-slate-600 border border-slate-200',
+  'cancelled':   'bg-red-100 text-red-600 border border-red-200',
+}
+
+/** 작업종류별 좌측 컬러보더 */
+const WORK_TYPE_BORDER_COLORS: Record<string, string> = {
+  '신규설치': 'border-l-amber-400',
+  '이전설치': 'border-l-blue-400',
+  '철거보관': 'border-l-slate-400',
+  '철거폐기': 'border-l-slate-400',
+  '재고설치': 'border-l-violet-400',
+  '반납폐기': 'border-l-rose-400',
+}
 
 /**
  * 컴포넌트가 받을 Props
@@ -142,119 +159,128 @@ export function OrderDetailDialog({
     onOpenChange(false)  // 상세 모달 닫기
   }
 
+  // ─── 담당자/건물관리인 fallback 로직 (JSX 밖에서 계산) ───
+  const contactList: ContactPerson[] = (order.contacts && order.contacts.length > 0)
+    ? order.contacts
+    : (order.contactName || order.contactPhone)
+      ? [{ name: order.contactName || '', phone: order.contactPhone || '' }]
+      : []
+  const managerList: BuildingManager[] = (order.buildingManagers && order.buildingManagers.length > 0)
+    ? order.buildingManagers
+    : order.buildingManagerPhone
+      ? [{ name: '', phone: order.buildingManagerPhone }]
+      : []
+  const hasContacts = contactList.length > 0 || managerList.length > 0
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
-        {/* 헤더 */}
+
+        {/* ─── 헤더: 사업자명 대제목 + 서브라인 + 우측 아이콘 버튼 ─── */}
         <DialogHeader>
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <DialogTitle>발주 상세</DialogTitle>
-              <Badge className={ORDER_STATUS_COLORS[kanbanStatus]}>
-                {ORDER_STATUS_LABELS[kanbanStatus]}
-              </Badge>
-              {order.isPreliminaryQuote && (
-                <Badge className="bg-brick-50 text-brick-600 border-brick-200">
-                  사전견적건
-                </Badge>
-              )}
+          <div className="flex items-start justify-between gap-2">
+            <div className="min-w-0 flex-1">
+              <DialogTitle className="text-xl font-bold text-foreground truncate font-heading">
+                {order.businessName}
+              </DialogTitle>
+              <DialogDescription asChild>
+                <div className="flex items-center gap-2 mt-1.5 flex-wrap">
+                  <span className="text-xs text-muted-foreground tabular-nums">{order.documentNumber}</span>
+                  <span className="text-muted-foreground/40">·</span>
+                  <span className="text-xs text-muted-foreground">{order.affiliate}</span>
+                  <Badge className={`text-[11px] px-2 py-0.5 ${STATUS_BADGE_STYLES[kanbanStatus] || 'bg-slate-100 text-slate-600'}`}>
+                    {ORDER_STATUS_LABELS[kanbanStatus]}
+                  </Badge>
+                  {order.isPreliminaryQuote && (
+                    <Badge className="text-[11px] px-2 py-0.5 bg-brick-50 text-brick-600 border-brick-200">
+                      사전견적건
+                    </Badge>
+                  )}
+                </div>
+              </DialogDescription>
             </div>
           </div>
-          <DialogDescription>
-            문서번호: {order.documentNumber}
-          </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-6">
-          {/* 기본 정보 섹션 */}
-          <div>
-            <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-              <ClipboardList className="h-4 w-4 text-muted-foreground" /> 기본 정보
-            </h3>
-            <div className="bg-muted/50 p-4 rounded-xl space-y-2">
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500">계열사</span>
-                <span className="col-span-2 font-medium">{order.affiliate}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500">사업자명</span>
-                <span className="col-span-2 font-medium">{order.businessName}</span>
-              </div>
-              <Separator />
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500">주소</span>
-                <span className="col-span-2">{order.address}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500">발주일</span>
-                <span className="col-span-2">{formatDate(order.orderDate)}</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <span className="text-sm text-gray-500 flex items-center gap-1">
-                  <Calendar className="h-3.5 w-3.5" />설치요청일
-                </span>
-                <span className="col-span-2">{formatDate(order.requestedInstallDate)}</span>
-              </div>
+        <div className="space-y-0">
 
-              {/* 담당자 정보 — contacts 배열 우선, 없으면 레거시 필드 fallback */}
-              {(() => {
-                const contactList: ContactPerson[] = (order.contacts && order.contacts.length > 0)
-                  ? order.contacts
-                  : (order.contactName || order.contactPhone)
-                    ? [{ name: order.contactName || '', phone: order.contactPhone || '' }]
-                    : []
-                const managerList: BuildingManager[] = (order.buildingManagers && order.buildingManagers.length > 0)
-                  ? order.buildingManagers
-                  : order.buildingManagerPhone
-                    ? [{ name: '', phone: order.buildingManagerPhone }]
-                    : []
-                const hasAny = contactList.length > 0 || managerList.length > 0
-                if (!hasAny) return null
-                return (
-                  <>
-                    <Separator />
-                    {contactList.map((c, idx) => (
-                      <div key={idx} className="grid grid-cols-3 gap-2">
-                        <span className="text-sm text-gray-500 flex items-center gap-1">
-                          <User className="h-3.5 w-3.5" />담당자{contactList.length > 1 ? ` ${idx + 1}` : ''}
-                        </span>
-                        <span className="col-span-2">
-                          <span className="font-medium">{c.name || '-'}</span>
-                          {c.phone && <span className="ml-2 text-gray-600">{c.phone}</span>}
-                          {c.memo && <span className="ml-2 text-xs text-gray-400">({c.memo})</span>}
-                        </span>
-                      </div>
-                    ))}
-                    {managerList.map((m, idx) => (
-                      <div key={idx} className="grid grid-cols-3 gap-2">
-                        <span className="text-sm text-gray-500 flex items-center gap-1">
-                          <Phone className="h-3.5 w-3.5" />건물관리인{managerList.length > 1 ? ` ${idx + 1}` : ''}
-                        </span>
-                        <span className="col-span-2">
-                          {m.name && <span className="font-medium">{m.name} </span>}
-                          <span>{m.phone}</span>
-                        </span>
-                      </div>
-                    ))}
-                  </>
-                )
-              })()}
+          {/* ─── 기본 정보: 컴팩트 키-밸류 스택 ─── */}
+          <div className="border-t border-border/50 pt-4 pb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">발주일</div>
+                <div className="text-sm font-medium text-foreground mt-0.5">{formatDate(order.orderDate)}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">설치요청일</div>
+                <div className="text-sm font-medium text-foreground mt-0.5">{formatDate(order.requestedInstallDate)}</div>
+              </div>
+              <div>
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">계열사</div>
+                <div className="text-sm font-medium text-foreground mt-0.5">{order.affiliate}</div>
+              </div>
+              <div className="col-span-full">
+                <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">주소</div>
+                <div className="text-sm font-medium text-foreground mt-0.5">{order.address}</div>
+              </div>
             </div>
           </div>
 
-          {/* 발주내역 섹션 */}
-          <div>
-            <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-              <Package className="h-4 w-4 text-muted-foreground" /> 발주내역
-            </h3>
+          {/* ─── 담당자: 카드형 + tel: 링크 ─── */}
+          {hasContacts && (
+            <div className="border-t border-border/50 pt-4 pb-4">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">담당자</div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {contactList.map((c, idx) => (
+                  <div key={`contact-${idx}`} className="bg-slate-50 rounded-lg px-3 py-2">
+                    <div className="text-sm font-medium text-foreground">
+                      {c.name || '담당자'}{contactList.length > 1 ? ` ${idx + 1}` : ''}
+                    </div>
+                    {c.phone && (
+                      <a
+                        href={`tel:${c.phone}`}
+                        className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-0.5"
+                      >
+                        <Phone className="h-3 w-3" />
+                        {c.phone}
+                      </a>
+                    )}
+                    {c.memo && (
+                      <div className="text-[11px] text-slate-400 mt-0.5">{c.memo}</div>
+                    )}
+                  </div>
+                ))}
+                {managerList.map((m, idx) => (
+                  <div key={`manager-${idx}`} className="bg-slate-50 rounded-lg px-3 py-2">
+                    <div className="text-sm font-medium text-foreground">
+                      {m.name || '건물관리인'}{managerList.length > 1 ? ` ${idx + 1}` : ''}
+                    </div>
+                    {m.phone && (
+                      <a
+                        href={`tel:${m.phone}`}
+                        className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1 mt-0.5"
+                      >
+                        <Phone className="h-3 w-3" />
+                        {m.phone}
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* ─── 발주내역: 작업종류별 좌측 컬러보더 ─── */}
+          <div className="border-t border-border/50 pt-4 pb-4">
+            <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">발주내역</div>
 
             {order.isPreliminaryQuote ? (
-              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                <p className="text-sm font-semibold text-yellow-800 flex items-center gap-2">
+              <div className="bg-amber-50/60 border border-amber-100 rounded-lg p-4">
+                <p className="text-sm font-semibold text-amber-800 flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4" />
                   사전견적 요청건 (현장 확인 후 장비 선택 예정)
                 </p>
-                <p className="text-xs text-gray-600 mt-2">
+                <p className="text-xs text-slate-500 mt-2">
                   설치기사님 현장 방문 후 적합한 장비를 선택하여 견적을 받는 발주입니다.
                 </p>
               </div>
@@ -265,45 +291,33 @@ export function OrderDetailDialog({
                   const linkedEquip = item.storedEquipmentId
                     ? storedEquipment.find(e => e.id === item.storedEquipmentId)
                     : null
+                  const borderColor = WORK_TYPE_BORDER_COLORS[item.workType] || 'border-l-slate-300'
 
                   return (
                     <div
                       key={item.id}
-                      className="border border-gray-200 rounded-lg p-3 bg-white hover:bg-gray-50 transition-colors"
+                      className={`border border-border/60 rounded-lg p-3 bg-white hover:bg-slate-50/50 transition-colors border-l-[3px] ${borderColor}`}
                     >
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          {/* 작업종류 - 신규설치는 파란색, 재고설치는 보라색으로 강조 */}
-                          <Badge
-                            variant="outline"
-                            className={`font-normal ${
-                              item.workType === '신규설치'
-                                ? 'bg-teal-100 text-teal-700 border-teal-300 font-semibold'
-                                : item.workType === '재고설치'
-                                  ? 'bg-teal-100 text-teal-700 border-teal-300 font-semibold'
-                                  : ''
-                            }`}
-                          >
-                            {item.workType}
-                          </Badge>
-                          {/* 품목 */}
-                          <span className="font-medium">{item.category}</span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-slate-500 font-medium">{item.workType}</span>
+                          <span className="text-slate-300">·</span>
+                          <span className="text-sm font-medium text-foreground">{item.category}</span>
                         </div>
-                        {/* 수량 */}
-                        <span className="text-lg font-bold text-teal-600">
+                        <span className="text-base font-bold text-foreground">
                           {item.quantity}대
                         </span>
                       </div>
-                      <div className="mt-2 text-sm text-gray-600 flex gap-4">
-                        <span>모델명: <span className="font-mono">{item.model}</span></span>
+                      <div className="mt-1.5 text-sm text-slate-600 font-medium">
+                        {item.model}
                       </div>
                       {/* 재고설치: 철거 현장 + 제조 정보 */}
                       {linkedEquip && (
-                        <div className="mt-2 text-xs bg-teal-50 border border-teal-200 rounded-md px-3 py-2 space-y-0.5">
-                          <p className="font-semibold text-teal-800">
+                        <div className="mt-2 text-xs text-muted-foreground space-y-0.5">
+                          <p className="font-medium text-foreground">
                             {linkedEquip.affiliate && !linkedEquip.siteName.startsWith(linkedEquip.affiliate) ? `${linkedEquip.affiliate} · ` : ''}{linkedEquip.siteName} 철거 장비
                           </p>
-                          <div className="flex gap-3 text-teal-500 flex-wrap">
+                          <div className="flex gap-3 flex-wrap">
                             {linkedEquip.removalDate && <span>철거일: {linkedEquip.removalDate.replace(/-/g, '.')}</span>}
                             {linkedEquip.manufacturer && <span>제조사: {linkedEquip.manufacturer}</span>}
                             {linkedEquip.manufacturingDate && <span>{linkedEquip.manufacturingDate}년식</span>}
@@ -317,41 +331,37 @@ export function OrderDetailDialog({
             )}
           </div>
 
-          {/* 특이사항 섹션 */}
+          {/* ─── 특이사항: 부드러운 amber ─── */}
           {order.notes && (
-            <div>
-              <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-                <MessageSquare className="h-4 w-4 text-muted-foreground" /> 특이사항
-              </h3>
-              <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
-                <p className="text-sm">{order.notes}</p>
+            <div className="border-t border-border/50 pt-4 pb-4">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">특이사항</div>
+              <div className="bg-amber-50/60 border border-amber-100 p-3 rounded-lg">
+                <p className="text-sm text-amber-900 leading-relaxed">{order.notes}</p>
               </div>
             </div>
           )}
 
-          {/* 완료/정산 정보 (있을 경우만) */}
+          {/* ─── 완료/정산 정보 (있을 경우만) ─── */}
           {(order.completionDate || order.settlementDate) && (
-            <div>
-              <h3 className="font-semibold text-base mb-3 flex items-center gap-2">
-                <CalendarDays className="h-4 w-4 text-muted-foreground" /> 완료/정산 정보
-              </h3>
-              <div className="bg-muted/50 p-4 rounded-xl space-y-2">
+            <div className="border-t border-border/50 pt-4 pb-4">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">완료/정산</div>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-6 gap-y-3">
                 {order.completionDate && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <span className="text-sm text-gray-500">설치완료일</span>
-                    <span className="col-span-2">{formatDate(order.completionDate)}</span>
+                  <div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">설치완료일</div>
+                    <div className="text-sm font-medium text-foreground mt-0.5">{formatDate(order.completionDate)}</div>
                   </div>
                 )}
                 {order.settlementDate && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <span className="text-sm text-gray-500">정산처리일</span>
-                    <span className="col-span-2">{formatDate(order.settlementDate)}</span>
+                  <div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">정산처리일</div>
+                    <div className="text-sm font-medium text-foreground mt-0.5">{formatDate(order.settlementDate)}</div>
                   </div>
                 )}
                 {order.settlementMonth && (
-                  <div className="grid grid-cols-3 gap-2">
-                    <span className="text-sm text-gray-500">정산월</span>
-                    <span className="col-span-2">{order.settlementMonth}</span>
+                  <div>
+                    <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400">정산월</div>
+                    <div className="text-sm font-medium text-foreground mt-0.5">{order.settlementMonth}</div>
                   </div>
                 )}
               </div>
@@ -359,50 +369,54 @@ export function OrderDetailDialog({
           )}
         </div>
 
-        {/* 하단 버튼 (수동 상태 전환 버튼 제거 — 자동 분류!) */}
-        <div className="flex justify-between items-center pt-6 border-t mt-6">
-          {/* 왼쪽: 삭제 + 수정 */}
-          <div className="flex gap-2">
-            {(onDelete || onCancelOrder) && (
+        {/* ─── 하단: 수정/삭제(좌) + 견적서/닫기(우) ─── */}
+        <div className="flex justify-between items-center gap-2 pt-4 border-t border-border/50">
+          {/* 좌측: 수정/삭제 */}
+          <div className="flex items-center gap-1">
+            {onEdit && (
               <Button
-                variant="destructive"
-                onClick={handleDeleteClick}
-                className="gap-1"
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                onClick={handleEdit}
               >
-                <Trash2 className="h-4 w-4" />
-                삭제
+                <Edit className="h-4 w-4" />
               </Button>
             )}
-            {onEdit && (
-              <Button variant="secondary" onClick={handleEdit} className="gap-1">
-                <Edit className="h-4 w-4" />
-                수정
+            {(onDelete || onCancelOrder) && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                onClick={handleDeleteClick}
+              >
+                <Trash2 className="h-4 w-4" />
               </Button>
             )}
           </div>
-
-          {/* 오른쪽: 견적서 + 닫기 */}
-          <div className="flex gap-2">
-            {onQuoteView && (
-              order.customerQuote?.items?.length ? (
-                <Button
-                  variant="outline"
-                  className="gap-1 text-teal-600 border-teal-300 hover:bg-teal-50"
-                  onClick={() => { onQuoteView(order); onOpenChange(false) }}
-                >
-                  <FileText className="h-4 w-4" />
-                  견적서 보기
-                </Button>
-              ) : (
-                <Button variant="outline" className="gap-1" disabled>
-                  <FileText className="h-4 w-4" />
-                  견적서 미작성
-                </Button>
-              )
-            )}
-            <Button variant="outline" onClick={() => onOpenChange(false)}>
-              닫기
-            </Button>
+          {/* 우측: 견적서 + 닫기 */}
+          <div className="flex items-center gap-2">
+          {onQuoteView && (
+            order.customerQuote?.items?.length ? (
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1 text-emerald-600 border-emerald-300 hover:bg-emerald-50"
+                onClick={() => { onQuoteView(order); onOpenChange(false) }}
+              >
+                <FileText className="h-4 w-4" />
+                견적서 보기
+              </Button>
+            ) : (
+              <Button variant="outline" size="sm" className="gap-1" disabled>
+                <FileText className="h-4 w-4" />
+                견적서 미작성
+              </Button>
+            )
+          )}
+          <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>
+            닫기
+          </Button>
           </div>
         </div>
       </DialogContent>

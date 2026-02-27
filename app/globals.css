@@ -1,4 +1,27 @@
+/* ── 웹폰트 로드 ── */
+/* 본문: Inter(영어/숫자) + Pretendard(한글) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css');
+
+/* 제목: G마켓 산스 */
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansLight.woff') format('woff');
+  font-weight: 300;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansMedium.woff') format('woff');
+  font-weight: 500;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'GmarketSans';
+  src: url('https://cdn.jsdelivr.net/gh/projectnoonnu/noonfonts_2001@1.1/GmarketSansBold.woff') format('woff');
+  font-weight: 700;
+  font-display: swap;
+}
 
 @tailwind base;
 @tailwind components;
@@ -139,6 +162,22 @@ button:active:not(:disabled) {
   outline: 2px solid hsl(160 22% 46%);
   outline-offset: 2px;
   border-radius: 4px;
+}
+
+/* 칸반 컬럼 전용 스크롤바 (슬림, 컬럼 배경에 어울리게) */
+.kanban-scroll::-webkit-scrollbar {
+  width: 5px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: transparent;
+  margin: 4px 0;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.08);
+  border-radius: 10px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.15);
 }
 
 /* 사이드바 전용 스크롤바 (6px, 어두운 톤) */

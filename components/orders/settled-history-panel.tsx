@@ -1,217 +1,232 @@
 /**
- * 과거 정산내역 패널 컴포넌트
+ * 과거내역 / 취소내역 뷰 컴포넌트
  *
- * 칸반보드 오른쪽에 표시되는 과거내역 전체 영역:
- * 1. 월별 필터 (최근 12개월)
- * 2. 검색 기능 (사업자명, 계열사, 주소)
- * 3. 정산완료 카드 리스트 (스크롤 가능)
+ * - mode='history': 정산완료 건을 월별 그룹으로 표시
+ * - mode='cancelled': 취소 건을 월별 그룹으로 표시
+ * - 년도 필터 + 검색 + 월별 섹션 헤더 + 반응형 카드 그리드
  */
 
 'use client'
 
 import { useState, useMemo } from 'react'
 import { Input } from '@/components/ui/input'
+import { Search, Calendar } from 'lucide-react'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { SettledHistoryCard } from './settled-history-card'
-import { Badge } from '@/components/ui/badge'
-import { Archive } from 'lucide-react'
 import type { Order } from '@/types/order'
 import { computeKanbanStatus } from '@/lib/order-status-utils'
 
-/**
- * 컴포넌트가 받을 Props
- */
+/** 컴포넌트 Props */
 interface SettledHistoryPanelProps {
-  orders: Order[]                        // 전체 발주 목록
-  onCardClick: (order: Order) => void    // 카드 클릭 핸들러
+  orders: Order[]
+  onCardClick: (order: Order) => void
+  mode: 'history' | 'cancelled'
 }
 
-/**
- * 과거 정산내역 패널 컴포넌트
- */
-export function SettledHistoryPanel({ orders, onCardClick }: SettledHistoryPanelProps) {
-  // 상태 관리 (칸반보드와 독립적!)
-  const [selectedYear, setSelectedYear] = useState<string>('all') // 선택된 년도
-  const [selectedMonth, setSelectedMonth] = useState<string>('all') // 선택된 월
-  const [searchTerm, setSearchTerm] = useState('') // 검색어
+/** 주문에서 년월 키 추출 (정산월 또는 취소일 기준) */
+function getMonthKey(order: Order): string {
+  if (order.s1SettlementMonth) return order.s1SettlementMonth
+  if (order.cancelledAt) {
+    const d = new Date(order.cancelledAt)
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
+  }
+  return 'unknown'
+}
 
-  // 년도 목록 생성 (정산월 / 취소일 기준)
+/** 월 키를 보기 좋은 라벨로 변환: "2026-02" → "2026년 2월" */
+function formatMonthLabel(key: string): string {
+  if (key === 'unknown') return '날짜 미등록'
+  const parts = key.split('-')
+  return `${parts[0]}년 ${parseInt(parts[1])}월`
+}
+
+/** 취소 내역 카드 */
+function CancelledHistoryCard({ order, onClick }: { order: Order; onClick: (order: Order) => void }) {
+  return (
+    <div
+      className="bg-white rounded-lg border border-border/50 border-l-[3px] border-l-red-300
+                 p-3 shadow-[0_1px_3px_rgba(0,0,0,0.04)] hover:shadow-md hover:border-border/80
+                 transition-all duration-150 cursor-pointer space-y-1.5"
+      onClick={() => onClick(order)}
+    >
+      {/* 계열사 + 발주일 + 취소 뱃지 */}
+      <div className="flex items-center gap-1.5">
+        <span className="text-[10px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+          {order.affiliate}
+        </span>
+        <span className="text-[11px] text-slate-500 font-medium">
+          {order.orderDate?.replace(/-/g, '.') || '-'}
+        </span>
+        <span className="text-[10px] text-red-600 font-medium bg-red-50 px-1.5 py-0.5 rounded shrink-0 ml-auto">
+          취소
+        </span>
+      </div>
+
+      {/* 사업자명 */}
+      <p className="font-bold text-[13px] text-foreground truncate leading-snug" title={order.businessName}>
+        {order.businessName}
+      </p>
+
+      {/* 주소 */}
+      <p className="text-[11px] text-slate-400 truncate" title={order.address}>
+        {order.address}
+      </p>
+
+      {/* 취소사유 */}
+      {order.cancelReason && (
+        <p className="text-xs text-red-400 truncate" title={`사유: ${order.cancelReason}`}>
+          사유: {order.cancelReason}
+        </p>
+      )}
+
+      {/* 취소일 */}
+      {order.cancelledAt && (
+        <p className="text-[10px] text-slate-400">
+          취소일: {new Date(order.cancelledAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' })}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/** 과거내역 / 취소내역 뷰 */
+export function SettledHistoryPanel({ orders, onCardClick, mode }: SettledHistoryPanelProps) {
+  const [selectedYear, setSelectedYear] = useState<string>('all')
+  const [searchTerm, setSearchTerm] = useState('')
+
+  // 대상 상태
+  const targetStatus = mode === 'history' ? 'settled' : 'cancelled'
+
+  // 년도 목록
   const years = useMemo(() => {
-    const historyOrders = orders.filter(o => {
-      const s = computeKanbanStatus(o)
-      return s === 'settled' || s === 'cancelled'
-    })
+    const historyOrders = orders.filter(o => computeKanbanStatus(o) === targetStatus)
     const yearSet = new Set<number>()
 
-    // 정산월(YYYY-MM) 또는 취소일에서 년도 추출
     historyOrders.forEach(order => {
       if (order.s1SettlementMonth) {
-        const year = parseInt(order.s1SettlementMonth.substring(0, 4))
-        yearSet.add(year)
+        yearSet.add(parseInt(order.s1SettlementMonth.substring(0, 4)))
       } else if (order.cancelledAt) {
-        const year = new Date(order.cancelledAt).getFullYear()
-        yearSet.add(year)
+        yearSet.add(new Date(order.cancelledAt).getFullYear())
       }
     })
 
     yearSet.add(new Date().getFullYear())
     return Array.from(yearSet).sort((a, b) => b - a)
-  }, [orders])
+  }, [orders, targetStatus])
 
-  // 월 목록 (1~12)
-  const months = Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, '0'))
-
-  /**
-   * 정산완료 건만 필터링 + 검색 + 년/월 필터
-   */
+  /** 필터링 로직 */
   const filteredOrders = useMemo(() => {
     return orders.filter((order) => {
       const status = computeKanbanStatus(order)
-      // 1. 정산완료 또는 취소 건만
-      if (status !== 'settled' && status !== 'cancelled') return false
+      if (status !== targetStatus) return false
 
-      // 2. 검색어 필터 (사업자명, 계열사, 주소)
+      // 검색어 필터
       if (searchTerm) {
+        const q = searchTerm.toLowerCase()
         const matchesSearch =
-          order.businessName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.affiliate.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          order.address.toLowerCase().includes(searchTerm.toLowerCase())
-
+          order.businessName.toLowerCase().includes(q) ||
+          order.affiliate.toLowerCase().includes(q) ||
+          order.address.toLowerCase().includes(q)
         if (!matchesSearch) return false
       }
 
-      // 3. 년/월 필터 (정산월 기준, 취소 건은 취소일 기준)
-      if (selectedYear !== 'all' || selectedMonth !== 'all') {
-        let year = '', month = ''
-        if (order.s1SettlementMonth) {
-          // 정산완료 건: 정산월(YYYY-MM) 기준
-          const parts = order.s1SettlementMonth.split('-')
-          year = parts[0]
-          month = parts[1]
-        } else if (order.cancelledAt) {
-          // 취소 건: 취소일 기준
-          const d = new Date(order.cancelledAt)
-          year = String(d.getFullYear())
-          month = String(d.getMonth() + 1).padStart(2, '0')
-        } else {
-          return false
-        }
-        if (selectedYear !== 'all' && year !== selectedYear) return false
-        if (selectedMonth !== 'all' && month !== selectedMonth) return false
+      // 년도 필터
+      if (selectedYear !== 'all') {
+        const monthKey = getMonthKey(order)
+        if (!monthKey.startsWith(selectedYear)) return false
       }
 
       return true
     })
-  }, [orders, searchTerm, selectedYear, selectedMonth])
+  }, [orders, searchTerm, selectedYear, targetStatus])
+
+  /** 월별 그룹화 (최신 월부터 정렬) */
+  const monthlyGroups = useMemo(() => {
+    const groups: Record<string, Order[]> = {}
+
+    filteredOrders.forEach(order => {
+      const key = getMonthKey(order)
+      if (!groups[key]) groups[key] = []
+      groups[key].push(order)
+    })
+
+    // 키를 최신순 정렬
+    return Object.entries(groups)
+      .sort(([a], [b]) => b.localeCompare(a))
+      .map(([key, items]) => ({
+        key,
+        label: formatMonthLabel(key),
+        orders: items,
+      }))
+  }, [filteredOrders])
+
+  const emptyMessage = searchTerm || selectedYear !== 'all'
+    ? '검색 결과가 없습니다'
+    : mode === 'history' ? '과거 내역이 없습니다' : '취소 내역이 없습니다'
 
   return (
-    <div className="flex-shrink-0 w-96 bg-muted/50 rounded-xl p-4 border border-border/60">
-      {/* 헤더 */}
-      <div className="mb-4">
-        <h2 className="font-semibold text-base text-muted-foreground tracking-tight flex items-center gap-2">
-          <Archive className="h-4 w-4" /> 과거내역 및 발주취소 내역
-        </h2>
-      </div>
-
-      {/* 년/월 선택 */}
-      <div className="flex gap-2 mb-3">
-        {/* 년도 */}
+    <div className="space-y-5">
+      {/* 필터 바 */}
+      <div className="flex items-center gap-3 flex-wrap">
         <Select value={selectedYear} onValueChange={setSelectedYear}>
-          <SelectTrigger className="bg-white text-xs flex-1">
+          <SelectTrigger className="w-[110px] h-9 text-sm">
             <SelectValue placeholder="년도" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
+            <SelectItem value="all">전체 년도</SelectItem>
             {years.map((year) => (
-              <SelectItem key={year} value={String(year)}>
-                {year}년
-              </SelectItem>
+              <SelectItem key={year} value={String(year)}>{year}년</SelectItem>
             ))}
           </SelectContent>
         </Select>
 
-        {/* 월 */}
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="bg-white text-xs flex-1">
-            <SelectValue placeholder="월" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">전체</SelectItem>
-            {months.map((month) => (
-              <SelectItem key={month} value={month}>
-                {parseInt(month)}월
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            placeholder="사업자명, 계열사, 주소 검색..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8 h-9 text-sm"
+          />
+        </div>
+
+        <span className="text-sm text-muted-foreground ml-auto">
+          총 {filteredOrders.length}건
+        </span>
       </div>
 
-      {/* 검색창 */}
-      <div className="mb-4">
-        <Input
-          placeholder="사업자명, 계열사, 주소 검색..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="bg-white text-xs"
-        />
-      </div>
+      {/* 월별 그룹 렌더링 */}
+      {filteredOrders.length === 0 ? (
+        <div className="text-center py-16">
+          <p className="text-sm text-muted-foreground">{emptyMessage}</p>
+        </div>
+      ) : (
+        <div className="space-y-6">
+          {monthlyGroups.map(({ key, label, orders: monthOrders }) => (
+            <div key={key}>
+              {/* 월 섹션 헤더 */}
+              <div className="flex items-center gap-2 mb-3">
+                <Calendar className="h-4 w-4 text-slate-400" />
+                <h3 className="text-sm font-bold text-foreground">{label}</h3>
+                <span className="text-[11px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full">
+                  {monthOrders.length}건
+                </span>
+                <div className="flex-1 h-px bg-border/60 ml-2" />
+              </div>
 
-      {/* 카드 리스트 (스크롤 가능) */}
-      <div className="space-y-2 max-h-[calc(100vh-450px)] overflow-y-auto">
-        {filteredOrders.length === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-xs text-gray-500">
-              {searchTerm || selectedYear !== 'all' || selectedMonth !== 'all'
-                ? '검색 결과가 없습니다'
-                : '과거 내역이 없습니다'}
-            </p>
-          </div>
-        ) : (
-          filteredOrders.map((order) => (
-            computeKanbanStatus(order) === 'cancelled' ? (
-              <CancelledHistoryCard
-                key={order.id}
-                order={order}
-                onClick={onCardClick}
-              />
-            ) : (
-              <SettledHistoryCard
-                key={order.id}
-                order={order}
-                onClick={onCardClick}
-              />
-            )
-          ))
-        )}
-      </div>
-    </div>
-  )
-}
-
-/** 취소 내역 카드 (간단하게) */
-function CancelledHistoryCard({ order, onClick }: { order: Order; onClick: (order: Order) => void }) {
-  return (
-    <div
-      className="bg-white rounded-lg border border-brick-100 p-3 cursor-pointer hover:shadow-sm transition-shadow"
-      onClick={() => onClick(order)}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <p className="font-medium text-sm text-gray-700 truncate" title={order.businessName}>{order.businessName}</p>
-        <Badge className="bg-brick-100 text-brick-700 border-brick-200 text-[10px] border ml-2 shrink-0">
-          취소
-        </Badge>
-      </div>
-      <div className="flex items-center justify-between text-xs text-gray-400">
-        <span className="truncate" title={order.address}>{order.address}</span>
-        <span className="shrink-0 ml-2">발주일: {order.orderDate?.replace(/-/g, '.') || '-'}</span>
-      </div>
-      {order.cancelReason && (
-        <p className="text-xs text-brick-500 mt-1 truncate" title={`사유: ${order.cancelReason}`}>사유: {order.cancelReason}</p>
-      )}
-      {order.cancelledAt && (
-        <p className="text-[10px] text-gray-400 mt-0.5">
-          취소날짜: {new Date(order.cancelledAt).toLocaleDateString('ko-KR', { year: 'numeric', month: 'numeric', day: 'numeric' })}
-        </p>
+              {/* 카드 그리드 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                {monthOrders.map((order) => (
+                  mode === 'cancelled' ? (
+                    <CancelledHistoryCard key={order.id} order={order} onClick={onCardClick} />
+                  ) : (
+                    <SettledHistoryCard key={order.id} order={order} onClick={onCardClick} />
+                  )
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )

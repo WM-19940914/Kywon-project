@@ -22,6 +22,7 @@ export interface ContactPerson {
 export interface BuildingManager {
   name: string    // 성함
   phone: string   // 연락처
+  memo?: string   // 메모
 }
 
 /**
