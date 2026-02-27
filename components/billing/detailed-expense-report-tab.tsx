@@ -19,10 +19,9 @@ import {
   fetchExpenseReport,
   saveExpenseReport,
   updateExpenseReportWithItems,
-  finalizeExpenseReport, // ✅ 마감 함수 추가
 } from '@/lib/supabase/dal'
 import type { ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
-import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, GripVertical, Lock, Trash2 } from 'lucide-react'
+import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, GripVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
@@ -373,8 +372,7 @@ export function DetailedExpenseReportTab({
 
   /** 특정 행 삭제 */
   const handleDeleteRow = (index: number) => {
-    // 구식 confirm 대신 toast의 action을 활용하거나 즉시 삭제 후 취소 버튼 제공
-    const itemToDelete = editItems[index]
+    // 삭제 전 데이터를 보관하여 '되돌리기' 기능을 제공합니다.
     const originalItems = [...editItems]
     
     setEditItems(prev => prev.filter((_, i) => i !== index))
