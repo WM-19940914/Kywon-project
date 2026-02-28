@@ -701,7 +701,7 @@ function ASAffiliateGroup({
   const [isOpen, setIsOpen] = useState(requests.length > 0)
 
   /** 계열사 AS 합계 (백원단위 절사 + 부가세 계산) */
-  const rawTotal = requests.reduce((sum, r) => sum + (r.totalAmount || 0), 0)
+  const rawTotal = requests.reduce((sum, r) => sum + (Number(r.asCost) || 0) + (Number(r.receptionFee) || 0), 0)
   const truncated = Math.floor(rawTotal / 1000) * 1000
   const truncationAmount = rawTotal - truncated
   const subtotal = truncated
@@ -801,7 +801,7 @@ function ASAffiliateGroup({
                     </td>
                     <td className="p-2.5"><p className="text-xs text-slate-500 truncate" title={req.processingDetails || ''}>{req.processingDetails || '-'}</p></td>
                     <td className="p-2.5 text-right text-xs font-bold tabular-nums text-slate-900 whitespace-nowrap">
-                      {req.totalAmount ? `${req.totalAmount.toLocaleString('ko-KR')}원` : '-'}
+                      {((Number(req.asCost) || 0) + (Number(req.receptionFee) || 0)).toLocaleString('ko-KR')}원
                     </td>
                   </tr>
                 ))}
@@ -1063,7 +1063,8 @@ export default function SettlementsPage() {
   const filteredASRequests = useMemo(() => {
     const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
     return asRequests.filter(req => {
-      // 정산대기(completed) + 정산완료(settled) 모두 표시
+      // 정산대기(completed) + 정산완료(settled) 건들만 정산 내역에 포함시킵니다.
+      // 처리중(in-progress) 단계는 아직 수리가 완료되지 않았으므로 제외합니다.
       if (req.status !== 'completed' && req.status !== 'settled') return false
       return req.settlementMonth === monthKey
     })
@@ -1151,7 +1152,7 @@ export default function SettlementsPage() {
         processingDetails: req.processingDetails || '',
         asCost: req.asCost || 0,
         receptionFee: req.receptionFee || 0,
-        totalAmount: req.totalAmount || 0,
+        totalAmount: (Number(req.asCost) || 0) + (Number(req.receptionFee) || 0),
       })
     })
 
@@ -1221,7 +1222,7 @@ export default function SettlementsPage() {
   /** AS 전체 합계 (계열사별 백원단위 절사 후 합산) */
   const asTotalAmount = useMemo(() => {
     return asAffiliateGroups.reduce((sum, group) => {
-      const rawGroupTotal = group.requests.reduce((s, r) => s + (r.totalAmount || 0), 0)
+      const rawGroupTotal = group.requests.reduce((s, r) => s + (Number(r.asCost) || 0) + (Number(r.receptionFee) || 0), 0)
       return sum + Math.floor(rawGroupTotal / 1000) * 1000
     }, 0)
   }, [asAffiliateGroups])
@@ -1258,7 +1259,7 @@ export default function SettlementsPage() {
       const aff = req.affiliate || '기타'
       const bName = req.businessName || '알 수 없음'
       const key = `${aff} AS - ${bName}`
-      const asRaw = (req.totalAmount || 0)
+      const asRaw = (Number(req.asCost) || 0) + (Number(req.receptionFee) || 0)
       const truncate = Math.floor(asRaw / 1000) * 1000
       const vat = Math.floor(truncate * 0.1)
       if (!map[key]) map[key] = 0

@@ -1,15 +1,8 @@
 /**
  * 사이드바 메뉴 구조 정의
- *
- * 역할(사용자 그룹) 기준으로 메뉴를 분류합니다.
- * - 교원그룹: 발주/AS 관리
- * - 교원·멜레아: 정산 관리
- * - 멜레아·에스원: 배송/설치비 관리
- * - 공통 정보: 단가표, 재고 관리
  */
 
 import {
-  Home,           // 대시보드
   ClipboardList,  // 발주 관리
   Wrench,         // AS 관리
   CreditCard,     // 정산 관리
@@ -23,8 +16,13 @@ import {
   Settings,       // 설정
   Server,         // 서버관리
   FolderArchive,  // 과거 자료
+  Briefcase,      // 운영 헤더
+  Package,        // 재고 헤더
+  ShieldCheck,    // 전용 헤더
+  LayoutDashboard, // 대시보드 아이콘
 } from 'lucide-react'
 import { LucideIcon } from 'lucide-react'
+import { UserRole } from './auth/roles'
 
 /** 메뉴 아이템 타입 */
 export interface MenuItem {
@@ -33,102 +31,96 @@ export interface MenuItem {
   icon: LucideIcon     // 아이콘
   disabled?: boolean   // 미구현 메뉴 여부 (true면 클릭 불가 + "준비중" 표시)
   badge?: string       // 메뉴 옆 마크 표시 (예: 'MeLEA')
+  roles?: UserRole[]   // 접근 가능한 역할 (없으면 모두 접근 가능)
 }
 
 /** 메뉴 그룹 타입 */
 export interface MenuGroup {
   title: string        // 그룹 이름
   items: MenuItem[]    // 메뉴 아이템 목록
+  icon?: LucideIcon    // 그룹 아이콘
 }
 
 /**
  * 메뉴 데이터
- * 역할(사용자 그룹) 기준으로 분류
+ * 사용 주체 및 업무 중요도 기준으로 재분류
  */
 export const menuItems: MenuGroup[] = [
-  // ── 대시보드 (최상단 단독) ──
+  // ── 대시보드 (최상단) ──
   {
     title: '',
     items: [
       {
-        title: '대시보드',
+        title: '발주 및 AS 접수',
         url: '/',
-        icon: Home,
+        icon: LayoutDashboard,
       },
     ],
   },
 
-  // ── 교원그룹 ──
+  // ── 교원 업무 ──
   {
-    title: '교원그룹',
+    title: '교원 업무',
+    icon: Briefcase,
     items: [
       {
-        title: '발주 관리',
+        title: '설치 발주 및 현황',
         url: '/orders',
         icon: ClipboardList,
       },
       {
-        title: 'AS 관리',
+        title: 'AS 접수 및 현황',
         url: '/as',
         icon: Wrench,
       },
       {
-        title: '철거보관 장비',
-        url: '/kyowon/stored-equipment',
-        icon: Archive,
+        title: '월별 정산내역',
+        url: '/settlements',
+        icon: CreditCard,
+        roles: ['admin', 'melea', 'kyowon'],
       },
       {
-        title: '단가표',
+        title: '기준 단가표',
         url: '/kyowon/price-table',
         icon: FileText,
       },
     ],
   },
 
-  // ── 교원 · 멜레아 ──
+  // ── 교원그룹 자산 ──
   {
-    title: '교원 · 멜레아',
+    title: '교원그룹 자산',
+    icon: Package,
     items: [
       {
-        title: '정산 관리',
-        url: '/settlements',
-        icon: CreditCard,
+        title: '철거장비 보관내역',
+        url: '/kyowon/stored-equipment',
+        icon: Archive,
       },
       {
-        title: '선구매 장비',
+        title: '선구매 자산',
         url: '/kyowon/prepurchase',
         icon: ShoppingCart,
       },
     ],
   },
 
-  // ── 멜레아 · 에스원 ──
+  // ── 에스원 설치/정산 ──
   {
-    title: '멜레아 · 에스원',
+    title: '에스원 설치/정산',
+    icon: Wrench,
     items: [
       {
-        title: '설치 관리/견적 관리',
+        title: '설치 일정/견적',
         url: '/mellea/schedule',
         icon: CalendarCheck,
         badge: 'S1ENG',
       },
       {
-        title: '에스원 정산관리',
+        title: '에스원 설치비 정산',
         url: '/mellea/s1-settlement',
         icon: Receipt,
         badge: 'S1ENG',
-      },
-      {
-        title: '배송 관리',
-        url: '/mellea/delivery',
-        icon: Truck,
-        badge: 'MeLEA',
-      },
-      {
-        title: '재고 관리',
-        url: '/mellea/inventory',
-        icon: Warehouse,
-        badge: 'MeLEA',
       },
       {
         title: '철거 보관 관리',
@@ -137,25 +129,58 @@ export const menuItems: MenuGroup[] = [
         badge: 'S1ENG',
       },
       {
-        title: '전국 설치팀 창고',
+        title: '재고현황',
+        url: '/mellea/inventory',
+        icon: Warehouse,
+        badge: 'MeLEA',
+      },
+      {
+        title: '설치팀 창고',
         url: '/mellea/warehouses',
         icon: Warehouse,
       },
     ],
   },
-  // ── 멜레아 전용 ──
+
+  // ── 멜레아 배송/재고 ──
   {
-    title: '멜레아 전용',
+    title: '멜레아 배송/재고',
+    icon: Truck,
     items: [
+      {
+        title: '배송관리',
+        url: '/mellea/delivery',
+        icon: Truck,
+        badge: 'MeLEA',
+      },
+      {
+        title: '재고현황',
+        url: '/mellea/inventory',
+        icon: Warehouse,
+        badge: 'MeLEA',
+      },
+      {
+        title: '설치팀 창고',
+        url: '/mellea/warehouses',
+        icon: Warehouse,
+      },
+    ],
+  },
+
+  // ── 멜레아 정산 ──
+  {
+    title: '멜레아 정산',
+    icon: ShieldCheck,
+    items: [
+      {
+        title: '멜레아 내부정산',
+        url: '/mellea/billing',
+        icon: CreditCard,
+      },
       {
         title: '연간 단가표',
         url: '/price-table',
         icon: FileText,
-      },
-      {
-        title: '멜레아 정산',
-        url: '/mellea/billing',
-        icon: CreditCard,
       },
     ],
   },

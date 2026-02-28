@@ -1,344 +1,286 @@
 /**
- * AS 접수 폼 다이얼로그
- *
- * 교원그룹에서 AS 요청이 들어오면 이 폼으로 접수합니다.
- * 접수 정보만 입력 (관리 정보는 상세 다이얼로그에서 입력)
- *
- * 입력 순서 (중요도순):
- *   1) 계열사 버튼 그룹 — 빠른 선택
- *   2) 사업자명 (필수)
- *   3) AS 사유 (가장 중요!) — 크게 표시
- *   4) 현장주소 (필수)
- *   5) 담당자 이름 + 연락처 (한 행)
- *   6) 모델명 + 실외기 위치 (선택)
- *   7) 메모 (선택)
- *   8) 접수일 (기본: 오늘)
+ * AS 접수 폼 다이얼로그 (실무 최적화 버전)
  */
 
 'use client'
 
 import { useState, useEffect } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { AFFILIATE_OPTIONS } from '@/types/order'
 import type { ASRequest } from '@/types/as'
-import { ClipboardPlus, MapPin, Phone, Box, Fan, Search } from 'lucide-react'
+import { User, Phone, MapPin, Wrench, Calendar, Info, Building2, Smartphone, Search, FileText } from 'lucide-react'
 
-/** Props */
 interface ASFormDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onSubmit: (data: Omit<ASRequest, 'id' | 'createdAt' | 'updatedAt'>) => Promise<void>
-}
-
-/** 전화번호 자동 하이픈 (010-XXXX-XXXX) */
-function formatPhoneNumber(value: string): string {
-  const nums = value.replace(/[^0-9]/g, '').slice(0, 11)
-  if (nums.length <= 3) return nums
-  if (nums.length <= 7) return `${nums.slice(0, 3)}-${nums.slice(3)}`
-  return `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7)}`
-}
-
-/** 오늘 날짜 (YYYY-MM-DD) */
-function getTodayStr(): string {
-  const d = new Date()
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+  onSubmit: (data: Omit<ASRequest, 'id' | 'createdAt' | 'updatedAt'>) => void
 }
 
 export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps) {
-  // 폼 상태
-  const [receptionDate, setReceptionDate] = useState(getTodayStr())
-  const [affiliate, setAffiliate] = useState('')
-  const [businessName, setBusinessName] = useState('')
-  const [address, setAddress] = useState('')
-  const [detailAddress, setDetailAddress] = useState('')
-  const [contactName, setContactName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [asReason, setAsReason] = useState('')
-  const [modelName, setModelName] = useState('')
-  const [outdoorUnitLocation, setOutdoorUnitLocation] = useState('')
-  const [notes, setNotes] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [formData, setFormData] = useState({
+    receptionDate: new Date().toISOString().split('T')[0],
+    affiliate: AFFILIATE_OPTIONS[0] as string,
+    businessName: '',
+    address: '',
+    detailAddress: '',
+    contactName: '',
+    contactPhone: '',
+    modelName: '',
+    asReason: '',
+    notes: '', // visitDate 대신 notes 사용
+    status: 'received' as const,
+  })
 
-  /** 다음 주소검색 스크립트 로드 */
+  // 카카오 주소 검색 서비스 로드 상태 확인
+  const [isDaumPostcodeLoaded, setIsDaumPostcodeLoaded] = useState(false)
+
   useEffect(() => {
-    const w = window as unknown as { daum?: { Postcode: unknown } }
-    if (w.daum?.Postcode) return
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.body.appendChild(script)
-    return () => {
-      document.body.removeChild(script)
+    const checkDaumScript = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).daum && (window as any).daum.Postcode) {
+        setIsDaumPostcodeLoaded(true)
+      } else {
+        const script = document.createElement('script')
+        script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+        script.async = true
+        script.onload = () => setIsDaumPostcodeLoaded(true)
+        document.body.appendChild(script)
+      }
     }
+    checkDaumScript()
   }, [])
 
-  /** 카카오 주소 검색 열기 */
-  const handleSearchAddress = () => {
-    const w = window as unknown as { daum?: { Postcode: new (opts: { oncomplete: (data: { roadAddress: string; jibunAddress: string }) => void }) => { open: () => void } } }
-    if (!w.daum?.Postcode) return
-    new w.daum.Postcode({
-      oncomplete: (data) => {
-        setAddress(data.roadAddress || data.jibunAddress)
-        setDetailAddress('')
+  const handleAddressSearch = () => {
+    if (!isDaumPostcodeLoaded) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    new (window as any).daum.Postcode({
+      oncomplete: (data: any) => {
+        setFormData(prev => ({
+          ...prev,
+          address: data.roadAddress || data.address,
+          businessName: prev.businessName || data.buildingName // 건물명이 있으면 사업자명 자동 제안
+        }))
       },
     }).open()
   }
 
-  /** 폼 초기화 */
-  const resetForm = () => {
-    setReceptionDate(getTodayStr())
-    setAffiliate('')
-    setBusinessName('')
-    setAddress('')
-    setDetailAddress('')
-    setContactName('')
-    setContactPhone('')
-    setAsReason('')
-    setModelName('')
-    setOutdoorUnitLocation('')
-    setNotes('')
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    onSubmit(formData)
+    onOpenChange(false)
+    setFormData({
+      receptionDate: new Date().toISOString().split('T')[0],
+      affiliate: AFFILIATE_OPTIONS[0],
+      businessName: '',
+      address: '',
+      detailAddress: '',
+      contactName: '',
+      contactPhone: '',
+      modelName: '',
+      asReason: '',
+      notes: '',
+      status: 'received',
+    })
   }
-
-  /** 제출 — 기본주소 + 상세주소 따로 저장 */
-  const handleSubmit = async () => {
-    if (!affiliate || !businessName || !address || !asReason) return
-
-    setIsSubmitting(true)
-    try {
-      await onSubmit({
-        receptionDate,
-        affiliate,
-        businessName,
-        address,
-        detailAddress,
-        contactName,
-        contactPhone,
-        asReason,
-        modelName,
-        outdoorUnitLocation,
-        notes,
-        status: 'received',
-        asCost: 0,
-        receptionFee: 0,
-        totalAmount: 0,
-      })
-      resetForm()
-      onOpenChange(false)
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
-
-  /** 필수값 미입력 여부 (계열사 + 사업자명 + 주소 + AS사유) */
-  const isValid = affiliate && businessName && address && asReason
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[560px] max-h-[90vh] overflow-y-auto p-0">
-        {/* 헤더 — teal 배경 */}
-        <div className="bg-teal-600 text-white px-6 py-4 rounded-t-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-white text-lg">
-              <ClipboardPlus className="h-5 w-5" />
-              AS 접수
-            </DialogTitle>
-          </DialogHeader>
-          <p className="text-teal-100 text-xs mt-1">교원그룹 AS 요청 정보를 입력해주세요</p>
-        </div>
+      <DialogContent className="max-w-[600px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
+        <DialogHeader className="bg-white px-8 py-4 border-b border-slate-100 flex-row items-center gap-2.5 space-y-0">
+          <Wrench className="h-4.5 w-4.5 text-[#E09520]" strokeWidth={3} />
+          <DialogTitle className="text-[17px] font-black tracking-tight text-slate-900">AS 접수</DialogTitle>
+        </DialogHeader>
 
-        <div className="px-6 pb-6 pt-5 space-y-4">
+        <form onSubmit={handleSubmit} className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar">
+          
+          {/* 섹션 1: 고객 및 계열사 정보 */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <Building2 className="h-4 w-4 text-[#E09520]" />
+              <h3 className="text-[15px] font-black text-slate-800">1. 고객 및 계열사 정보</h3>
+            </div>
+            
+            <div className="space-y-3">
+              <Label className="text-[13px] font-bold text-slate-500">소속 계열사 선택</Label>
+              <div className="flex flex-wrap gap-2">
+                {AFFILIATE_OPTIONS.map((opt) => (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => setFormData({ ...formData, affiliate: opt as string })}
+                    className={`px-4 py-2 rounded-xl text-sm font-bold border transition-all
+                      ${formData.affiliate === opt 
+                        ? 'bg-[#E09520] border-[#E09520] text-white shadow-md shadow-orange-100' 
+                        : 'bg-white border-slate-200 text-slate-500 hover:border-slate-300'}`}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            </div>
 
-          {/* ── 1. 계열사 버튼 그룹 ── */}
-          <div className="space-y-2">
-            <Label className="text-xs text-gray-500 font-medium">
-              계열사 <span className="text-brick-500">*</span>
-            </Label>
-            <div className="flex flex-wrap gap-2">
-              {AFFILIATE_OPTIONS.map(opt => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={() => setAffiliate(opt)}
-                  className={`px-3 py-1.5 rounded-full text-sm border transition-colors
-                    ${affiliate === opt
-                      ? 'bg-teal-600 text-white border-teal-600'
-                      : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
-                    }`}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[13px] font-bold text-slate-500">사업자명 (또는 지점명)</Label>
+                <div className="relative">
+                  <User className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    required 
+                    placeholder="예: 교원내외빌딩" 
+                    className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                    value={formData.businessName}
+                    onChange={e => setFormData({ ...formData, businessName: e.target.value })}
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[13px] font-bold text-slate-500">접수 일자</Label>
+                <div className="relative">
+                  <Calendar className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    type="date" 
+                    required 
+                    className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                    value={formData.receptionDate}
+                    onChange={e => setFormData({ ...formData, receptionDate: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500 text-slate-500 flex justify-between">
+                현장 주소
+                <button 
+                  type="button" 
+                  onClick={handleAddressSearch}
+                  className="text-orange-600 hover:text-orange-700 flex items-center gap-1 transition-colors"
                 >
-                  {opt}
+                  <Search className="h-3.5 w-3.5" />
+                  <span>주소 검색</span>
                 </button>
-              ))}
-            </div>
-          </div>
-
-          {/* ── 2. 사업자명 ── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="as-business" className="text-xs text-gray-500 font-medium">
-              사업자명 <span className="text-brick-500">*</span>
-            </Label>
-            <Input
-              id="as-business"
-              placeholder="예: 구몬 화곡지국"
-              value={businessName}
-              onChange={e => setBusinessName(e.target.value)}
-              className="h-9"
-            />
-          </div>
-
-          {/* ── 3. AS 사유 (가장 중요!) ── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="as-reason" className="text-xs text-gray-500 font-medium">
-              AS 사유 <span className="text-brick-500">*</span>
-            </Label>
-            <Textarea
-              id="as-reason"
-              placeholder="어떤 증상인지 자세히 적어주세요 (예: 실외기 소음, 냉방 안됨)"
-              value={asReason}
-              onChange={e => setAsReason(e.target.value)}
-              rows={3}
-              className="resize-none"
-            />
-          </div>
-
-          {/* ── 4. 현장주소 ── */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-              <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                readOnly
-                placeholder="주소 검색 버튼을 눌러주세요"
-                value={address}
-                className="h-9 flex-1 bg-gray-50 cursor-pointer"
-                onClick={handleSearchAddress}
-              />
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={handleSearchAddress}
-                className="h-9 px-3 shrink-0"
-              >
-                <Search className="h-4 w-4 mr-1" />
-                주소 검색
-              </Button>
-            </div>
-            {/* 상세주소 — 기본주소 선택 후 표시 */}
-            {address && (
-              <Input
-                placeholder="상세주소 (예: 3층 301호)"
-                value={detailAddress}
-                onChange={e => setDetailAddress(e.target.value)}
-                className="h-9 mt-1.5"
-              />
-            )}
-          </div>
-
-          {/* ── 5. 담당자 이름 + 연락처 (한 행) ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="as-contact" className="text-xs text-gray-500 font-medium">담당자 이름</Label>
-              <Input
-                id="as-contact"
-                placeholder="성함"
-                value={contactName}
-                onChange={e => setContactName(e.target.value)}
-                className="h-9"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="as-phone" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                <Phone className="h-3 w-3" /> 연락처
               </Label>
-              <Input
-                id="as-phone"
-                placeholder="010-0000-0000"
-                value={contactPhone}
-                onChange={e => setContactPhone(formatPhoneNumber(e.target.value))}
-                className="h-9"
+              <div className="space-y-2">
+                <div className="relative">
+                  <MapPin className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    required 
+                    readOnly
+                    placeholder="주소 검색을 이용해 주세요" 
+                    className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl cursor-pointer hover:bg-slate-100 transition-all"
+                    onClick={handleAddressSearch}
+                    value={formData.address}
+                  />
+                </div>
+                <Input 
+                  placeholder="상세 주소 (층, 호수 등)" 
+                  className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                  value={formData.detailAddress}
+                  onChange={e => setFormData({ ...formData, detailAddress: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-[13px] font-bold text-slate-500">현장 접수자</Label>
+                <Input 
+                  required 
+                  placeholder="성함 입력" 
+                  className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                  value={formData.contactName}
+                  onChange={e => setFormData({ ...formData, contactName: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-[13px] font-bold text-slate-500">접수자 연락처</Label>
+                <div className="relative">
+                  <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    required 
+                    placeholder="010-0000-0000" 
+                    className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                    value={formData.contactPhone}
+                    onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 섹션 2: 모델 및 AS 사유 */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <Smartphone className="h-4 w-4 text-[#E09520]" />
+              <h3 className="text-[15px] font-black text-slate-800">2. 장비 및 AS 사유</h3>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500">모델명</Label>
+              <Input 
+                placeholder="예: AP083BNPPBH1" 
+                className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                value={formData.modelName}
+                onChange={e => setFormData({ ...formData, modelName: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500">AS 요청 사유</Label>
+              <Textarea 
+                required 
+                placeholder="증상 및 불편 사항을 자세히 적어주세요." 
+                className="min-h-[100px] bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all resize-none p-4"
+                value={formData.asReason}
+                onChange={e => setFormData({ ...formData, asReason: e.target.value })}
               />
             </div>
           </div>
 
-          {/* ── 6. 모델명 + 실외기 위치 (선택) ── */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="as-model" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                <Box className="h-3 w-3" /> 모델명 <span className="text-gray-400 font-normal">(선택)</span>
-              </Label>
-              <Input
-                id="as-model"
-                placeholder="예: AR-WF07"
-                value={modelName}
-                onChange={e => setModelName(e.target.value)}
-                className="h-9"
-              />
+          {/* 섹션 3: 특이사항 (메모) */}
+          <div className="space-y-5">
+            <div className="flex items-center gap-2 pb-1 border-b border-slate-100">
+              <FileText className="h-4 w-4 text-[#E09520]" />
+              <h3 className="text-[15px] font-black text-slate-800">3. 특이사항 (메모)</h3>
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="as-outdoor" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                <Fan className="h-3 w-3" /> 실외기 위치 <span className="text-gray-400 font-normal">(선택)</span>
-              </Label>
-              <Input
-                id="as-outdoor"
-                placeholder="예: 옥상, 1층 뒤편"
-                value={outdoorUnitLocation}
-                onChange={e => setOutdoorUnitLocation(e.target.value)}
-                className="h-9"
+
+            <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500">메모 및 전달사항</Label>
+              <Textarea 
+                placeholder="특이사항 및 전달사항을 적어주세요." 
+                className="min-h-[80px] bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all resize-none p-4"
+                value={formData.notes}
+                onChange={e => setFormData({ ...formData, notes: e.target.value })}
               />
+              <div className="flex items-start gap-2 bg-orange-50/50 p-3 rounded-xl border border-orange-100/50">
+                <Info className="h-4 w-4 text-[#E09520] mt-0.5" />
+                <p className="text-[11.5px] text-orange-700/70 leading-relaxed font-medium">
+                  입력하신 메모는 내부 관리자 및 기사님 확인용으로 사용됩니다.
+                </p>
+              </div>
             </div>
           </div>
+        </form>
 
-          {/* ── 7. 메모 (선택) ── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="as-notes" className="text-xs text-gray-500 font-medium">
-              메모 <span className="text-gray-400 font-normal">(선택)</span>
-            </Label>
-            <Textarea
-              id="as-notes"
-              placeholder="예: 주차 불가, 사다리차 필요, 오전 방문 요청 등"
-              value={notes}
-              onChange={e => setNotes(e.target.value)}
-              rows={2}
-              className="resize-none"
-            />
-          </div>
-
-          {/* ── 8. 접수일 (기본: 오늘) ── */}
-          <div className="space-y-1.5">
-            <Label htmlFor="as-date" className="text-xs text-gray-500 font-medium">접수일</Label>
-            <Input
-              id="as-date"
-              type="date"
-              value={receptionDate}
-              onChange={e => setReceptionDate(e.target.value)}
-              className="h-9 w-[180px]"
-            />
-          </div>
-
-          {/* ── 하단 버튼 ── */}
-          <div className="flex justify-end gap-2 pt-3 border-t">
-            <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500">
-              취소
-            </Button>
-            <Button
-              onClick={handleSubmit}
-              disabled={!isValid || isSubmitting}
-              className="bg-teal-600 hover:bg-teal-700 px-6"
-            >
-              {isSubmitting ? '등록 중...' : 'AS 접수하기'}
-            </Button>
-          </div>
-        </div>
+        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-100">
+          <Button 
+            variant="ghost" 
+            onClick={() => onOpenChange(false)}
+            className="rounded-xl font-bold text-slate-500 h-12 px-6"
+          >
+            취소
+          </Button>
+          <Button 
+            onClick={handleSubmit} 
+            className="bg-[#E09520] hover:bg-[#c87d1a] text-white font-black rounded-xl h-12 px-10 shadow-lg shadow-orange-100 transition-all active:scale-95"
+          >
+            AS 접수하기
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   )

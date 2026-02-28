@@ -1,24 +1,11 @@
 /**
- * AS 상세/관리 다이얼로그
- *
- * 실시간 자동저장 (1초 디바운스)
- *
- * 상태별 다른 UI:
- *   AS접수 — 접수 정보(풀) + 메모만
- *   AS처리중 — 접수 정보(컴팩트) + 방문예정일 + 처리내역 + 비용
- *   정산대기 — 처리 요약 + 비용 확정 + 처리일/정산월
- *   정산완료 — 모든 정보 읽기 전용 (수정 불가)
+ * AS 상세 정보 다이얼로그 (단계별 정보 노출 최적화 및 가독성 극대화 버전)
  */
 
 'use client'
 
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react'
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog'
+import { useState, useEffect } from 'react'
+import { Dialog, DialogContent, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,29 +15,29 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import type { ASRequest, ASRequestStatus } from '@/types/as'
-import { AS_STATUS_LABELS } from '@/types/as'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { AFFILIATE_OPTIONS } from '@/types/order'
-import {
-  CalendarClock, ArrowRight, Undo2, Trash2, Calendar,
-  MapPin, Wrench, CircleDot, Clock, CreditCard, CheckCircle2,
-  Check, Loader2, Lock, Phone, Search, Box, Fan,
+import { Badge } from '@/components/ui/badge'
+import { 
+  Wrench, 
+  Banknote, 
+  Trash2, 
+  X,
+  ArrowRight,
+  CheckCircle2,
+  ClipboardList,
+  Search,
+  Edit,
+  RotateCcw,
+  Save,
 } from 'lucide-react'
+import type { ASRequest } from '@/types/as'
+import { AS_STATUS_LABELS } from '@/types/as'
+import { AFFILIATE_OPTIONS } from '@/types/order'
 
-/** Props */
 interface ASDetailDialogProps {
   request: ASRequest | null
   open: boolean
@@ -59,980 +46,475 @@ interface ASDetailDialogProps {
   onDelete: (id: string) => Promise<void>
 }
 
-/** 상태 변경 버튼 설정 (4단계) */
-const STATUS_TRANSITIONS: Record<ASRequestStatus, { next?: ASRequestStatus; prev?: ASRequestStatus }> = {
-  'received': { next: 'in-progress' },
-  'in-progress': { next: 'completed', prev: 'received' },
-  'completed': { next: 'settled', prev: 'in-progress' },
-  'settled': { prev: 'completed' },
-}
-
-/** 상태별 헤더 배경색 */
-const STATUS_HEADER_BG: Record<ASRequestStatus, string> = {
-  'received': 'bg-gray-600',
-  'in-progress': 'bg-carrot-500',
-  'completed': 'bg-teal-600',
-  'settled': 'bg-olive-600',
-}
-
-/** 상태별 아이콘 */
-const STATUS_ICONS: Record<ASRequestStatus, React.ReactNode> = {
-  'received': <CircleDot className="h-4 w-4" />,
-  'in-progress': <Clock className="h-4 w-4" />,
-  'completed': <CreditCard className="h-4 w-4" />,
-  'settled': <CheckCircle2 className="h-4 w-4" />,
-}
-
-/** 상태변경 버튼 색상 */
-const NEXT_STATUS_BUTTON_COLOR: Record<ASRequestStatus, string> = {
-  'received': 'bg-carrot-500 hover:bg-carrot-600',
-  'in-progress': 'bg-teal-600 hover:bg-teal-700',
-  'completed': 'bg-olive-600 hover:bg-olive-700',
-  'settled': '',
-}
-
-/** 스텝 인디케이터 — 4단계 진행 상태 레이블 */
-const STEPS = [
-  { label: 'AS접수', status: 'received' as ASRequestStatus },
-  { label: '처리중', status: 'in-progress' as ASRequestStatus },
-  { label: '정산대기', status: 'completed' as ASRequestStatus },
-  { label: '정산완료', status: 'settled' as ASRequestStatus },
-]
-
-/** 상태 → 스텝 인덱스 (0~3) */
-const STEP_INDEX: Record<ASRequestStatus, number> = {
-  'received': 0,
-  'in-progress': 1,
-  'completed': 2,
-  'settled': 3,
-}
-
-type SaveStatus = 'idle' | 'saving' | 'saved'
-
-/** 전화번호 자동 하이픈 (010-XXXX-XXXX) */
-function formatPhoneNumber(value: string): string {
-  const nums = value.replace(/[^0-9]/g, '').slice(0, 11)
-  if (nums.length <= 3) return nums
-  if (nums.length <= 7) return `${nums.slice(0, 3)}-${nums.slice(3)}`
-  return `${nums.slice(0, 3)}-${nums.slice(3, 7)}-${nums.slice(7)}`
-}
-
-/** 금액 포맷 */
 function formatAmount(amount?: number): string {
-  if (!amount || amount === 0) return '-'
+  if (!amount || amount === 0) return '0원'
   return `${amount.toLocaleString('ko-KR')}원`
 }
 
-/** 정산월 포맷 */
 function formatSettlementMonth(month?: string): string {
   if (!month) return '-'
   const parts = month.split('-')
-  if (parts.length < 2) return month
-  return `${parts[0]}년 ${parseInt(parts[1])}월`
+  return parts.length < 2 ? month : `${parts[0]}년 ${parseInt(parts[1])}월`
 }
 
 export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete }: ASDetailDialogProps) {
-  // 접수 정보 편집 상태 (AS접수 상태에서만 수정 가능)
-  const [receptionDate, setReceptionDate] = useState('')
-  const [affiliate, setAffiliate] = useState('')
-  const [businessName, setBusinessName] = useState('')
-  const [address, setAddress] = useState('')
-  const [detailAddress, setDetailAddress] = useState('')
-  const [contactName, setContactName] = useState('')
-  const [contactPhone, setContactPhone] = useState('')
-  const [asReason, setAsReason] = useState('')
-  const [modelName, setModelName] = useState('')
-  const [outdoorUnitLocation, setOutdoorUnitLocation] = useState('')
+  const [isEditing, setIsEditing] = useState(false)
+  const [formData, setFormData] = useState<Partial<ASRequest>>({})
+  const [isSaving, setIsSaving] = useState(false)
+  const [isDaumPostcodeLoaded, setIsDaumPostcodeLoaded] = useState(false)
 
-  // 관리 정보 편집 상태
-  const [visitDate, setVisitDate] = useState('')
-  const [samsungAsCenter, setSamsungAsCenter] = useState('')
-  const [technicianName, setTechnicianName] = useState('')
-  const [technicianPhone, setTechnicianPhone] = useState('')
-  const [processingDetails, setProcessingDetails] = useState('')
-  const [processedDate, setProcessedDate] = useState('')
-  const [asCost, setAsCost] = useState(0)
-  const [receptionFee, setReceptionFee] = useState(0)
-  const [notes, setNotes] = useState('')
+  // 커스텀 확인창 상태
+  const [confirmConfig, setConfirmConfig] = useState<{
+    open: boolean;
+    title: string;
+    description: string;
+    action: () => void;
+    variant?: 'default' | 'destructive';
+  }>({
+    open: false,
+    title: '',
+    description: '',
+    action: () => {},
+  })
 
-  // 자동저장 상태
-  const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle')
-  const debounceTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const isInitializing = useRef(true)
-
-  // 정산월 상태 — 마운트 시점 연/월 고정
-  const currentYearRef = useRef(new Date().getFullYear())
-  const currentMonthRef = useRef(new Date().getMonth() + 1)
-  const [settlementYear, setSettlementYear] = useState(currentYearRef.current)
-  const [settlementMonthNum, setSettlementMonthNum] = useState(currentMonthRef.current)
-
-  /** 다음 주소검색 스크립트 로드 */
   useEffect(() => {
-    const w = window as unknown as { daum?: { Postcode: unknown } }
-    if (w.daum?.Postcode) return
-    const script = document.createElement('script')
-    script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
-    script.async = true
-    document.body.appendChild(script)
-    return () => { document.body.removeChild(script) }
-  }, [])
+    if (request) {
+      setFormData(request)
+      setIsEditing(false)
+    }
+  }, [request, open])
 
-  /** 카카오 주소 검색 열기 */
-  const handleSearchAddress = () => {
-    const w = window as unknown as { daum?: { Postcode: new (opts: { oncomplete: (data: { roadAddress: string; jibunAddress: string }) => void }) => { open: () => void } } }
-    if (!w.daum?.Postcode) return
-    new w.daum.Postcode({
-      oncomplete: (data) => {
-        setAddress(data.roadAddress || data.jibunAddress)
-        setDetailAddress('')
+  // 카카오 주소 검색 스크립트 로드
+  useEffect(() => {
+    const checkDaumScript = () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if ((window as any).daum && (window as any).daum.Postcode) {
+        setIsDaumPostcodeLoaded(true)
+      } else {
+        const script = document.createElement('script')
+        script.src = '//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js'
+        script.async = true
+        script.onload = () => setIsDaumPostcodeLoaded(true)
+        document.body.appendChild(script)
+      }
+    }
+    if (open) checkDaumScript()
+  }, [open])
+
+  const handleAddressSearch = () => {
+    if (!isDaumPostcodeLoaded) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    new (window as any).daum.Postcode({
+      oncomplete: (data: any) => {
+        setFormData(prev => ({
+          ...prev,
+          address: data.roadAddress || data.address,
+          businessName: prev.businessName || data.buildingName
+        }))
       },
     }).open()
   }
 
-  // request가 바뀌면 관리 정보 초기화
-  useEffect(() => {
-    if (request) {
-      isInitializing.current = true
-      // 접수 정보 초기화
-      setReceptionDate(request.receptionDate || '')
-      setAffiliate(request.affiliate || '')
-      setBusinessName(request.businessName || '')
-      setAddress(request.address || '')
-      setDetailAddress(request.detailAddress || '')
-      setContactName(request.contactName || '')
-      setContactPhone(request.contactPhone || '')
-      setAsReason(request.asReason || '')
-      setModelName(request.modelName || '')
-      setOutdoorUnitLocation(request.outdoorUnitLocation || '')
-      // 관리 정보 초기화
-      setVisitDate(request.visitDate || '')
-      setSamsungAsCenter(request.samsungAsCenter || '')
-      setTechnicianName(request.technicianName || '')
-      setTechnicianPhone(request.technicianPhone || '')
-      setProcessingDetails(request.processingDetails || '')
-      setProcessedDate(request.processedDate || '')
-      setAsCost(request.asCost || 0)
-      setReceptionFee(request.receptionFee || 0)
-      setNotes(request.notes || '')
-      setSaveStatus('idle')
-      if (request.settlementMonth) {
-        const parts = request.settlementMonth.split('-')
-        if (parts.length === 2) {
-          setSettlementYear(parseInt(parts[0]))
-          setSettlementMonthNum(parseInt(parts[1]))
-        }
-      } else {
-        setSettlementYear(currentYearRef.current)
-        setSettlementMonthNum(currentMonthRef.current)
-      }
-      setTimeout(() => { isInitializing.current = false }, 100)
-    }
-  }, [request])
-
-  /** 자동저장 실행 함수 */
-  const doAutoSave = useCallback(async () => {
-    if (!request || isInitializing.current || request.status === 'settled') return
-    const currentTotal = asCost + receptionFee
-    const currentSettlementMonth = `${settlementYear}-${String(settlementMonthNum).padStart(2, '0')}`
-    setSaveStatus('saving')
-    try {
-      await onUpdate(request.id, {
-        // 접수 정보 (received 상태에서 수정 가능)
-        ...(request.status === 'received' ? {
-          receptionDate,
-          affiliate,
-          businessName,
-          address,
-          detailAddress,
-          contactName,
-          contactPhone,
-          asReason,
-          modelName,
-          outdoorUnitLocation,
-        } : {}),
-        // 관리 정보
-        visitDate,
-        samsungAsCenter,
-        technicianName,
-        technicianPhone,
-        processingDetails,
-        processedDate,
-        asCost,
-        receptionFee,
-        totalAmount: currentTotal,
-        notes,
-        ...(request.status !== 'received' ? { settlementMonth: currentSettlementMonth } : {}),
-      })
-      setSaveStatus('saved')
-      setTimeout(() => setSaveStatus('idle'), 2000)
-    } catch {
-      setSaveStatus('idle')
-    }
-  }, [request, receptionDate, affiliate, businessName, address, detailAddress,
-      contactName, contactPhone, asReason, modelName, outdoorUnitLocation,
-      visitDate, samsungAsCenter, technicianName, technicianPhone,
-      processingDetails, processedDate, asCost, receptionFee, notes,
-      settlementYear, settlementMonthNum, onUpdate])
-
-  /** 값이 바뀔 때마다 1초 디바운스 자동저장 (정산완료 상태에서는 비활성) */
-  useEffect(() => {
-    if (!request || isInitializing.current || !open || request.status === 'settled') return
-
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    debounceTimer.current = setTimeout(() => {
-      doAutoSave()
-    }, 1000)
-
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    }
-  }, [request, open, doAutoSave, receptionDate, affiliate, businessName, address, detailAddress,
-      contactName, contactPhone, asReason, modelName, outdoorUnitLocation,
-      visitDate, samsungAsCenter, technicianName, technicianPhone,
-      processingDetails, processedDate, asCost, receptionFee, notes,
-      settlementYear, settlementMonthNum])
-
   if (!request) return null
 
-  const totalAmount = asCost + receptionFee
-  const settlementMonthStr = `${settlementYear}-${String(settlementMonthNum).padStart(2, '0')}`
-  const isSettled = request.status === 'settled'
+  const status = request.status
+  const totalAmount = (Number(formData.asCost) || 0) + (Number(formData.receptionFee) || 0)
 
-  /** 상태 변경 (다음 단계로) */
-  const handleStatusForward = async () => {
-    const nextStatus = STATUS_TRANSITIONS[request.status].next
-    if (!nextStatus) return
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    await onUpdate(request.id, {
-      status: nextStatus,
-      receptionDate,
-      affiliate,
-      businessName,
-      address,
-      detailAddress,
-      contactName,
-      contactPhone,
-      asReason,
-      modelName,
-      outdoorUnitLocation,
-      visitDate,
-      samsungAsCenter,
-      technicianName,
-      technicianPhone,
-      processingDetails,
-      processedDate,
-      asCost,
-      receptionFee,
-      totalAmount,
-      notes,
-      settlementMonth: settlementMonthStr,
+  const handleSave = async () => {
+    if (isSaving) return
+    setIsSaving(true)
+    try {
+      await onUpdate(request.id, formData)
+      setIsEditing(false)
+    } finally {
+      setIsSaving(false)
+    }
+  }
+
+  // 닫힐 때 자동 저장 로직 추가
+  const handleOpenChange = async (newOpen: boolean) => {
+    if (!newOpen) {
+      const isModified = JSON.stringify(formData) !== JSON.stringify(request)
+      if (isModified && !isSaving) {
+        await handleSave()
+      }
+    }
+    onOpenChange(newOpen)
+  }
+
+  const handleDelete = () => {
+    setConfirmConfig({
+      open: true,
+      title: 'AS 접수 삭제',
+      description: '이 AS 요청 내역을 정말 삭제하시겠습니까? 삭제된 데이터는 복구할 수 없습니다.',
+      variant: 'destructive',
+      action: async () => {
+        await onDelete(request.id)
+        onOpenChange(false)
+      }
     })
   }
 
-  /** 상태 되돌리기 */
-  const handleStatusBack = async () => {
-    const prevStatus = STATUS_TRANSITIONS[request.status].prev
-    if (!prevStatus) return
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    await onUpdate(request.id, { status: prevStatus })
-  }
-
-  /** 삭제 */
-  const handleDelete = async () => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current)
-    await onDelete(request.id)
-    onOpenChange(false)
-  }
-
-  const transitions = STATUS_TRANSITIONS[request.status]
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[640px] max-h-[90vh] overflow-y-auto p-0">
-
-        {/* ===== 헤더 — 상태별 컬러 배경 ===== */}
-        <div className={`${STATUS_HEADER_BG[request.status]} text-white px-6 py-4 rounded-t-lg`}>
-          <DialogHeader>
-            <DialogTitle className="text-white text-base font-normal flex items-center gap-2">
-              {STATUS_ICONS[request.status]}
-              <span className="text-white/70 text-sm">{AS_STATUS_LABELS[request.status]}</span>
-              {isSettled && <Lock className="h-3.5 w-3.5 text-white/50 ml-1" />}
-            </DialogTitle>
-          </DialogHeader>
-          <h2 className="text-lg font-bold mt-1">{request.businessName}</h2>
-          <p className="text-white/70 text-xs mt-0.5 flex items-center gap-1">
-            <MapPin className="h-3 w-3" /> {request.address}{request.detailAddress ? `, ${request.detailAddress}` : ''}
-          </p>
-        </div>
-
-        {/* ===== 스텝 인디케이터 — 현재 진행 단계 시각화 ===== */}
-        <div className="px-6 py-3 border-b bg-gray-50">
-          <div className="flex items-center">
-            {STEPS.map((step, idx) => {
-              const currentStepIdx = STEP_INDEX[request.status]
-              const isCompleted = idx < currentStepIdx
-              const isCurrent = idx === currentStepIdx
-              return (
-                <Fragment key={step.status}>
-                  <div className="flex flex-col items-center gap-1">
-                    <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors
-                      ${isCompleted ? 'bg-teal-600 text-white' : ''}
-                      ${isCurrent ? `${STATUS_HEADER_BG[request.status]} text-white` : ''}
-                      ${!isCompleted && !isCurrent ? 'bg-gray-200 text-gray-400' : ''}
-                    `}>
-                      {isCompleted ? <Check className="h-3 w-3" /> : idx + 1}
-                    </div>
-                    <span className={`text-[10px] font-medium whitespace-nowrap
-                      ${isCurrent ? 'text-gray-800' : isCompleted ? 'text-teal-600' : 'text-gray-400'}
-                    `}>
-                      {step.label}
-                    </span>
-                  </div>
-                  {/* 단계 사이 연결선 */}
-                  {idx < STEPS.length - 1 && (
-                    <div className={`flex-1 h-0.5 mb-4 mx-1 ${idx < currentStepIdx ? 'bg-teal-600' : 'bg-gray-200'}`} />
-                  )}
-                </Fragment>
-              )
-            })}
+    <>
+      <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-[750px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl bg-slate-50">
+        
+        {/* 상단 헤더 */}
+        <div className="bg-white px-8 py-6 border-b border-slate-200 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 bg-zinc-900 rounded-2xl flex items-center justify-center shadow-lg shadow-zinc-200">
+              <Wrench className="h-6 w-6 text-orange-500" strokeWidth={2.5} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 mb-1">
+                <Badge className="bg-orange-500 text-white border-none px-2.5 py-0.5 h-5 text-[10px] font-black uppercase tracking-wider shadow-sm">
+                  {AS_STATUS_LABELS[status]}
+                </Badge>
+                <span className="text-zinc-400 text-[11px] font-bold font-mono">ID: {request.id.slice(0, 8)}</span>
+              </div>
+              <DialogTitle className="text-2xl font-black text-zinc-900 tracking-tight leading-none">
+                {request.businessName}
+              </DialogTitle>
+            </div>
           </div>
         </div>
 
-        <div className="px-6 pb-6 pt-4 space-y-4">
-
-          {/* ============================================================
-              AS접수 — 접수 정보 수정 가능 폼 (중요도 순 배치)
-              ============================================================ */}
-          {request.status === 'received' && (
-            <div className="space-y-4">
-              {/* 계열사 버튼 그룹 */}
-              <div className="space-y-2">
-                <Label className="text-xs text-gray-500 font-medium">
-                  계열사 <span className="text-brick-500">*</span>
-                </Label>
-                <div className="flex flex-wrap gap-2">
-                  {AFFILIATE_OPTIONS.map(opt => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setAffiliate(opt)}
-                      className={`px-3 py-1.5 rounded-full text-sm border transition-colors
-                        ${affiliate === opt
-                          ? 'bg-teal-600 text-white border-teal-600'
-                          : 'bg-white text-gray-600 border-gray-200 hover:border-teal-400'
-                        }`}
-                    >
-                      {opt}
-                    </button>
-                  ))}
-                </div>
+        <div className="p-8 space-y-8 max-h-[70vh] overflow-y-auto custom-scrollbar bg-white">
+          
+          {/* 섹션 1: 접수 및 고객 정보 (언제나 노출) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between px-1">
+              <div className="flex items-center gap-2">
+                <ClipboardList className="h-5 w-5 text-zinc-900" />
+                <h3 className="text-lg font-black text-zinc-900 tracking-tight">1. 접수 및 고객 정보</h3>
               </div>
+              {!isEditing && (
+                <Button 
+                  onClick={() => setIsEditing(true)} 
+                  className="h-8 bg-orange-50 border border-orange-200 text-orange-600 font-bold hover:bg-orange-100 px-4 rounded-lg shadow-sm text-xs transition-all active:scale-95"
+                >
+                  <Edit className="h-3 w-3 mr-1.5" />수정
+                </Button>
+              )}
+            </div>
 
-              {/* 사업자명 */}
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-business" className="text-xs text-gray-500 font-medium">
-                  사업자명 <span className="text-brick-500">*</span>
-                </Label>
-                <Input
-                  id="edit-business"
-                  placeholder="예: 구몬 화곡지국"
-                  value={businessName}
-                  onChange={e => setBusinessName(e.target.value)}
-                  className="h-9"
+            <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+              <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                <DataField label="계열사" value={formData.affiliate} isEditing={isEditing} 
+                  input={<SelectInput value={formData.affiliate} options={AFFILIATE_OPTIONS as unknown as string[]} onChange={v => setFormData({...formData, affiliate: v})} />} 
+                />
+                <DataField label="사업자명" value={formData.businessName} isEditing={isEditing}
+                  input={<Input value={formData.businessName} onChange={e => setFormData({...formData, businessName: e.target.value})} className="h-10 border-zinc-200 font-bold" />}
                 />
               </div>
-
-              {/* AS 사유 (가장 중요!) */}
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-reason" className="text-xs text-gray-500 font-medium">
-                  AS 사유 <span className="text-brick-500">*</span>
-                </Label>
-                <Textarea
-                  id="edit-reason"
-                  placeholder="어떤 증상인지 자세히 적어주세요 (예: 실외기 소음, 냉방 안됨)"
-                  value={asReason}
-                  onChange={e => setAsReason(e.target.value)}
-                  rows={3}
-                  className="resize-none"
+              <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                <DataField label="접수일자" value={formData.receptionDate} isEditing={isEditing}
+                  input={<Input type="date" value={formData.receptionDate} onChange={e => setFormData({...formData, receptionDate: e.target.value})} className="h-10 border-zinc-200" />}
+                />
+                <DataField label="현장 접수자" value={formData.contactName} isEditing={isEditing}
+                  input={<Input value={formData.contactName} onChange={e => setFormData({...formData, contactName: e.target.value})} className="h-10 border-zinc-200" />}
                 />
               </div>
-
-              {/* 현장주소 */}
-              <div className="space-y-1.5">
-                <Label className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                  <MapPin className="h-3 w-3" /> 현장주소 <span className="text-brick-500">*</span>
-                </Label>
-                <div className="flex gap-2">
-                  <Input
-                    readOnly
-                    placeholder="주소 검색 버튼을 눌러주세요"
-                    value={address}
-                    className="h-9 flex-1 bg-gray-50 cursor-pointer"
-                    onClick={handleSearchAddress}
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSearchAddress}
-                    className="h-9 px-3 shrink-0"
-                  >
-                    <Search className="h-4 w-4 mr-1" />
-                    주소 검색
-                  </Button>
-                </div>
-                {address && (
-                  <Input
-                    placeholder="상세주소 (예: 3층 301호)"
-                    value={detailAddress}
-                    onChange={e => setDetailAddress(e.target.value)}
-                    className="h-9 mt-1.5"
-                  />
-                )}
+              <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                <DataField label="접수자 연락처" value={formData.contactPhone} isEditing={isEditing}
+                  input={<Input value={formData.contactPhone} onChange={e => setFormData({...formData, contactPhone: e.target.value})} className="h-10 border-zinc-200" />}
+                />
+                <DataField label="모델명" value={formData.modelName} isEditing={isEditing}
+                  input={<Input value={formData.modelName} onChange={e => setFormData({...formData, modelName: e.target.value})} className="h-10 border-zinc-200 font-bold" />}
+                />
               </div>
-
-              {/* 담당자 이름 + 연락처 (한 행) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-contact" className="text-xs text-gray-500 font-medium">담당자 이름</Label>
-                  <Input
-                    id="edit-contact"
-                    placeholder="성함"
-                    value={contactName}
-                    onChange={e => setContactName(e.target.value)}
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-phone" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                    <Phone className="h-3 w-3" /> 연락처
-                  </Label>
-                  <Input
-                    id="edit-phone"
-                    placeholder="010-0000-0000"
-                    value={contactPhone}
-                    onChange={e => setContactPhone(formatPhoneNumber(e.target.value))}
-                    className="h-9"
-                  />
-                </div>
+              <div className="p-5 border-b border-zinc-100">
+                <DataField label="현장 주소" value={`${formData.address} ${formData.detailAddress || ''}`} isEditing={isEditing} fullWidth
+                  input={
+                    <div className="space-y-2 w-full">
+                      <div className="flex gap-2">
+                        <Input 
+                          value={formData.address} 
+                          readOnly 
+                          placeholder="주소 검색을 클릭해주세요" 
+                          className="h-10 bg-zinc-50 border-zinc-200 flex-1 cursor-default" 
+                        />
+                        <Button 
+                          type="button" 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={handleAddressSearch}
+                          className="h-10 border-orange-200 text-orange-600 font-bold bg-orange-50 hover:bg-orange-100 transition-all"
+                        >
+                          <Search className="h-4 w-4 mr-1.5" />주소 검색
+                        </Button>
+                      </div>
+                      <Input value={formData.detailAddress} onChange={e => setFormData({...formData, detailAddress: e.target.value})} placeholder="상세주소" className="h-10 border-zinc-200" />
+                    </div>
+                  }
+                />
               </div>
-
-              {/* 모델명 + 실외기 위치 (선택) */}
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-model" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                    <Box className="h-3 w-3" /> 모델명 <span className="text-gray-400 font-normal">(선택)</span>
-                  </Label>
-                  <Input
-                    id="edit-model"
-                    placeholder="예: AR-WF07"
-                    value={modelName}
-                    onChange={e => setModelName(e.target.value)}
-                    className="h-9"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <Label htmlFor="edit-outdoor" className="text-xs text-gray-500 font-medium flex items-center gap-1">
-                    <Fan className="h-3 w-3" /> 실외기 위치 <span className="text-gray-400 font-normal">(선택)</span>
-                  </Label>
-                  <Input
-                    id="edit-outdoor"
-                    placeholder="예: 옥상, 1층 뒤편"
-                    value={outdoorUnitLocation}
-                    onChange={e => setOutdoorUnitLocation(e.target.value)}
-                    className="h-9"
-                  />
-                </div>
+              <div className="p-5 border-b border-zinc-100">
+                <DataField label="AS 요청사유" value={formData.asReason} isEditing={isEditing} fullWidth
+                  input={<Textarea value={formData.asReason} onChange={e => setFormData({...formData, asReason: e.target.value})} className="min-h-[100px] border-zinc-200 resize-none" />}
+                />
               </div>
-
-              {/* 접수일 */}
-              <div className="space-y-1.5">
-                <Label htmlFor="edit-date" className="text-xs text-gray-500 font-medium">접수일</Label>
-                <Input
-                  id="edit-date"
-                  type="date"
-                  value={receptionDate}
-                  onChange={e => setReceptionDate(e.target.value)}
-                  className="h-9 w-[180px]"
+              <div className="p-5">
+                <DataField label="메모" value={formData.notes} isEditing={isEditing} fullWidth
+                  input={<Textarea value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})} placeholder="특이사항 입력" className="min-h-[60px] border-zinc-200 resize-none" />}
                 />
               </div>
             </div>
-          )}
+          </div>
 
-          {/* ============================================================
-              AS처리중 — 접수 정보 컴팩트 (3열)
-              ============================================================ */}
-          {request.status === 'in-progress' && (
-            <div className="bg-gray-50 rounded-lg px-4 py-3">
-              <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider mb-2">접수 정보</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-400">접수일</span>
-                  <span className="font-medium text-gray-700">{request.receptionDate}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-gray-400">계열사</span>
-                  <span className="font-medium text-gray-700">{request.affiliate}</span>
-                </div>
-                {request.contactName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-400">담당자</span>
-                    <span className="font-medium text-gray-700">{request.contactName}</span>
-                  </div>
-                )}
-                {request.contactPhone && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-400">연락처</span>
-                    <span className="font-medium text-gray-700">{request.contactPhone}</span>
-                  </div>
-                )}
-                {request.modelName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-400">모델명</span>
-                    <span className="font-medium text-gray-700">{request.modelName}</span>
-                  </div>
-                )}
-                {request.outdoorUnitLocation && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-gray-400">실외기 위치</span>
-                    <span className="font-medium text-gray-700">{request.outdoorUnitLocation}</span>
-                  </div>
-                )}
-                {request.asReason && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-gray-200">
-                    <span className="text-[10px] text-gray-400">AS 사유</span>
-                    <span className="text-gray-700">{request.asReason}</span>
-                  </div>
-                )}
+          {/* 섹션 2: AS 처리 내용 (통합 섹션) */}
+          {status !== 'received' && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-2 px-1">
+                <Wrench className="h-5 w-5 text-zinc-900" />
+                <h3 className="text-lg font-black text-zinc-900 tracking-tight">2. AS 처리 내용</h3>
               </div>
-            </div>
-          )}
 
-          {/* ============================================================
-              정산대기 — 처리 요약 (읽기 전용 요약)
-              ============================================================ */}
-          {request.status === 'completed' && (
-            <div className="bg-teal-50 rounded-lg px-4 py-3">
-              <h4 className="text-[11px] font-bold text-teal-400 uppercase tracking-wider mb-2">AS 처리 요약</h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-teal-400">접수일</span>
-                  <span className="font-medium text-gray-700">{request.receptionDate}</span>
+              <div className="bg-white rounded-2xl border border-zinc-200 shadow-sm overflow-hidden">
+                <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                  <DataField label="삼성 AS 센터" value={formData.samsungAsCenter} isEditing={isEditing || status === 'in-progress'}
+                    input={<Input value={formData.samsungAsCenter} onChange={e => setFormData({...formData, samsungAsCenter: e.target.value})} className="h-10 border-zinc-200" />}
+                  />
+                  <DataField label="방문 예정일" value={formData.visitDate} isEditing={isEditing || status === 'in-progress'}
+                    input={<Input type="date" value={formData.visitDate} onChange={e => setFormData({...formData, visitDate: e.target.value})} className="h-10 border-zinc-200 font-bold text-orange-600" />}
+                  />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-teal-400">계열사</span>
-                  <span className="font-medium text-gray-700">{request.affiliate}</span>
+                <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                  <DataField label="담당 기사" value={formData.technicianName} isEditing={isEditing || status === 'in-progress'}
+                    input={<Input value={formData.technicianName} onChange={e => setFormData({...formData, technicianName: e.target.value})} className="h-10 border-zinc-200" />}
+                  />
+                  <DataField label="기사 연락처" value={formData.technicianPhone} isEditing={isEditing || status === 'in-progress'}
+                    input={<Input value={formData.technicianPhone} onChange={e => setFormData({...formData, technicianPhone: e.target.value})} className="h-10 border-zinc-200" />}
+                  />
                 </div>
-                {request.contactName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-teal-400">담당자</span>
-                    <span className="font-medium text-gray-700">{request.contactName}</span>
-                  </div>
-                )}
-                {request.contactPhone && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-teal-400">연락처</span>
-                    <span className="font-medium text-gray-700">{request.contactPhone}</span>
-                  </div>
-                )}
-                {request.modelName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-teal-400">모델명</span>
-                    <span className="font-medium text-gray-700">{request.modelName}</span>
-                  </div>
-                )}
-                {request.outdoorUnitLocation && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-teal-400">실외기 위치</span>
-                    <span className="font-medium text-gray-700">{request.outdoorUnitLocation}</span>
-                  </div>
-                )}
-                {request.asReason && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
-                    <span className="text-[10px] text-teal-400">AS 사유</span>
-                    <span className="text-gray-700">{request.asReason}</span>
-                  </div>
-                )}
-                {/* AS 처리 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
-                  <span className="text-[10px] text-teal-400 font-bold mb-1">AS 처리 정보</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-teal-400">삼성AS센터</span>
-                  <span className="font-medium text-gray-700">{request.samsungAsCenter || '-'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-teal-400">방문일</span>
-                  <span className="font-medium text-gray-700">{request.visitDate || '-'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-teal-400">AS 기사</span>
-                  <span className="font-medium text-gray-700">{request.technicianName || '-'}</span>
-                </div>
-                {request.technicianPhone && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-teal-400">기사 연락처</span>
-                    <span className="font-medium text-gray-700">{request.technicianPhone}</span>
-                  </div>
-                )}
-                {request.processingDetails && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-teal-200">
-                    <span className="text-[10px] text-teal-400">처리내역</span>
-                    <span className="text-gray-700">{request.processingDetails}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================
-              정산완료 — 전체 정보 읽기 전용
-              ============================================================ */}
-          {isSettled && (
-            <div className="bg-olive-50 rounded-lg px-4 py-3">
-              <h4 className="text-[11px] font-bold text-olive-500 uppercase tracking-wider mb-2 flex items-center gap-1">
-                <Lock className="h-3 w-3" /> 정산 완료 — 수정 불가
-              </h4>
-              <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                {/* 접수 정보 */}
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">접수일</span>
-                  <span className="font-medium text-gray-700">{request.receptionDate}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">계열사</span>
-                  <span className="font-medium text-gray-700">{request.affiliate}</span>
-                </div>
-                {request.contactName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-olive-400">담당자</span>
-                    <span className="font-medium text-gray-700">{request.contactName}</span>
-                  </div>
-                )}
-                {request.contactPhone && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-olive-400">연락처</span>
-                    <span className="font-medium text-gray-700">{request.contactPhone}</span>
-                  </div>
-                )}
-                {request.modelName && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-olive-400">모델명</span>
-                    <span className="font-medium text-gray-700">{request.modelName}</span>
-                  </div>
-                )}
-                {request.outdoorUnitLocation && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-olive-400">실외기 위치</span>
-                    <span className="font-medium text-gray-700">{request.outdoorUnitLocation}</span>
-                  </div>
-                )}
-                {request.asReason && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
-                    <span className="text-[10px] text-olive-400">AS 사유</span>
-                    <span className="text-gray-700">{request.asReason}</span>
-                  </div>
-                )}
-                {/* AS 처리 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
-                  <span className="text-[10px] text-olive-400 font-bold mb-1">AS 처리 정보</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">삼성AS센터</span>
-                  <span className="font-medium text-gray-700">{request.samsungAsCenter || '-'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">방문일</span>
-                  <span className="font-medium text-gray-700">{request.visitDate || '-'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">AS 기사</span>
-                  <span className="font-medium text-gray-700">{request.technicianName || '-'}</span>
-                </div>
-                {request.technicianPhone && (
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-olive-400">기사 연락처</span>
-                    <span className="font-medium text-gray-700">{request.technicianPhone}</span>
-                  </div>
-                )}
-                {request.processingDetails && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
-                    <span className="text-[10px] text-olive-400">처리내역</span>
-                    <span className="text-gray-700">{request.processingDetails}</span>
-                  </div>
-                )}
-                {/* 정산 정보 */}
-                <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
-                  <span className="text-[10px] text-olive-400 font-bold mb-1">정산 정보</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">처리일</span>
-                  <span className="font-medium text-gray-700">{request.processedDate || '-'}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">정산월</span>
-                  <span className="font-bold text-olive-700">{formatSettlementMonth(request.settlementMonth)}</span>
-                </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] text-olive-400">총금액</span>
-                  <span className="font-bold text-olive-700">{formatAmount(request.totalAmount)}</span>
-                </div>
-                {request.notes && (
-                  <div className="flex flex-col col-span-2 mt-1 pt-1.5 border-t border-olive-200">
-                    <span className="text-[10px] text-olive-400">메모</span>
-                    <span className="text-gray-700">{request.notes}</span>
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ============================================================
-              편집 가능 영역 (정산완료가 아닌 경우만)
-              ============================================================ */}
-          {!isSettled && (
-            <>
-              {/* 방문 예정일 — 빨간 강조 (처리중에서만 표시) */}
-              {request.status === 'in-progress' && (
-                <div className="border-2 border-brick-300 rounded-lg p-3 bg-brick-50 space-y-2">
-                  <p className="text-xs text-brick-500">삼성 AS 접수 후 방문일을 입력하세요</p>
-                  <div className="flex items-center justify-between">
-                    <Label htmlFor="visit-date" className="flex items-center gap-1.5 text-brick-600 font-bold text-sm">
-                      <CalendarClock className="h-4 w-4" />
-                      방문 예정일
+                <div className="grid grid-cols-3 divide-x divide-zinc-100 border-b border-zinc-100 bg-zinc-50/30">
+                  <div className="p-5 space-y-2">
+                    <Label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5 flex items-center justify-between">
+                      AS 수리비용 (삼성) <span className="text-[9px] text-orange-500 font-bold ml-1">VAT 별도</span>
                     </Label>
-                    <Input
-                      id="visit-date"
-                      type="date"
-                      value={visitDate}
-                      onChange={e => setVisitDate(e.target.value)}
-                      className="w-[180px] h-9 border-brick-300 bg-white text-brick-700 font-bold text-center"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {/* 삼성AS센터 + 기사 + 처리내역 (처리중에서만 표시) */}
-              {request.status === 'in-progress' && (
-                <div className="space-y-3">
-                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Wrench className="h-3.5 w-3.5" /> AS 처리
-                  </h4>
-                  <div className="space-y-1.5">
-                    <Label htmlFor="as-center" className="text-xs text-gray-500">삼성AS센터</Label>
-                    <Input
-                      id="as-center"
-                      placeholder="예: 삼성전자 강서센터"
-                      value={samsungAsCenter}
-                      onChange={e => setSamsungAsCenter(e.target.value)}
-                      className="h-9"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="space-y-1.5">
-                      <Label htmlFor="tech-name" className="text-xs text-gray-500">AS 기사</Label>
-                      <Input
-                        id="tech-name"
-                        placeholder="기사 이름"
-                        value={technicianName}
-                        onChange={e => setTechnicianName(e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor="tech-phone" className="text-xs text-gray-500">AS 기사 번호</Label>
-                      <Input
-                        id="tech-phone"
-                        placeholder="010-0000-0000"
-                        value={technicianPhone}
-                        onChange={e => setTechnicianPhone(formatPhoneNumber(e.target.value))}
-                        className="h-9"
-                      />
-                    </div>
-                  </div>
-                  {/* 처리내역은 처리중에서만 */}
-                  {request.status === 'in-progress' && (
-                    <div className="space-y-1.5">
-                      <Label htmlFor="as-details" className="text-xs text-gray-500">처리내역</Label>
-                      <Textarea
-                        id="as-details"
-                        placeholder="AS 진행 상황을 적어주세요"
-                        value={processingDetails}
-                        onChange={e => setProcessingDetails(e.target.value)}
-                        rows={2}
-                        className="resize-none"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* 비용 섹션 (처리중/정산대기에서 표시) */}
-              {(request.status === 'in-progress' || request.status === 'completed') && (
-                <div className="border-2 border-teal-300 rounded-lg p-4 bg-teal-50/50 space-y-3">
-                  <h4 className="text-[11px] font-bold text-teal-600 uppercase tracking-wider">비용 <span className="text-[10px] font-normal text-gray-400 normal-case">(부가세 별도)</span></h4>
-                  <div className="grid grid-cols-3 gap-3">
-                    <div className="space-y-1">
-                      <Label htmlFor="as-cost" className="text-xs text-teal-500 font-medium">AS 비용</Label>
-                      <Input
-                        id="as-cost"
-                        type="number"
+                    {isEditing || status === 'in-progress' ? (
+                      <Input 
+                        type="text" 
+                        value={formData.asCost ? formData.asCost.toLocaleString('ko-KR') : ''} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({...formData, asCost: val === '' ? 0 : Number(val)});
+                        }} 
+                        className="h-10 border-zinc-200 font-bold" 
                         placeholder="0"
-                        value={asCost || ''}
-                        onChange={e => setAsCost(Number(e.target.value) || 0)}
-                        className="h-9 bg-white border-teal-200"
                       />
-                    </div>
-                    <div className="space-y-1">
-                      <Label htmlFor="as-fee" className="text-xs text-teal-500 font-medium">접수비</Label>
-                      <Input
-                        id="as-fee"
-                        type="number"
+                    ) : (
+                      <p className="text-[15px] font-bold text-zinc-800">{formatAmount(formData.asCost)}</p>
+                    )}
+                  </div>
+                  <div className="p-5 space-y-2">
+                    <Label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5 flex items-center justify-between">
+                      AS 접수비 (멜레아) <span className="text-[9px] text-orange-500 font-bold ml-1">VAT 별도</span>
+                    </Label>
+                    {isEditing || status === 'in-progress' ? (
+                      <Input 
+                        type="text" 
+                        value={formData.receptionFee ? formData.receptionFee.toLocaleString('ko-KR') : ''} 
+                        onChange={e => {
+                          const val = e.target.value.replace(/[^0-9]/g, '');
+                          setFormData({...formData, receptionFee: val === '' ? 0 : Number(val)});
+                        }} 
+                        className="h-10 border-zinc-200 font-bold" 
                         placeholder="0"
-                        value={receptionFee || ''}
-                        onChange={e => setReceptionFee(Number(e.target.value) || 0)}
-                        className="h-9 bg-white border-teal-200"
                       />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-teal-500 font-medium">총금액</Label>
-                      <div className="h-9 flex items-center justify-center px-3 bg-teal-600 rounded-md text-sm font-bold text-white">
-                        {totalAmount.toLocaleString('ko-KR')}원
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-[15px] font-bold text-zinc-800">{formatAmount(formData.receptionFee)}</p>
+                    )}
+                  </div>
+                  <div className="p-5 space-y-1 bg-white">
+                    <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5">최종 합계</p>
+                    <p className="text-xl font-black text-orange-600 tracking-tight">{totalAmount.toLocaleString()}원</p>
                   </div>
                 </div>
-              )}
 
-              {/* 일정 섹션 — 처리일 + 정산월 (처리중/정산대기에서 표시) */}
-              {(request.status === 'in-progress' || request.status === 'completed') && (
-                <div className="space-y-3">
-                  <h4 className="text-[11px] font-bold text-gray-400 uppercase tracking-wider flex items-center gap-1.5">
-                    <Calendar className="h-3.5 w-3.5" /> 일정
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <Label htmlFor="processed-date" className="text-xs text-gray-500">처리일</Label>
-                      <Input
-                        id="processed-date"
-                        type="date"
-                        value={processedDate}
-                        onChange={e => setProcessedDate(e.target.value)}
-                        className="h-9"
+                <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                  <div className="p-5 space-y-1 bg-white">
+                    <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5">정산월</p>
+                    {isEditing || status === 'in-progress' || (status === 'completed' && !formData.settlementMonth) ? (
+                      <Input 
+                        type="month" 
+                        value={formData.settlementMonth} 
+                        onChange={e => setFormData({...formData, settlementMonth: e.target.value})} 
+                        className="h-9 w-full border-zinc-200 bg-white font-bold text-sm" 
                       />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs text-gray-500">정산월</Label>
-                      <div className="flex items-center gap-1.5">
-                        <Select
-                          value={String(settlementYear)}
-                          onValueChange={v => setSettlementYear(Number(v))}
-                        >
-                          <SelectTrigger className="h-9 w-[90px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {[currentYearRef.current - 1, currentYearRef.current, currentYearRef.current + 1].map(y => (
-                              <SelectItem key={y} value={String(y)}>{y}년</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Select
-                          value={String(settlementMonthNum)}
-                          onValueChange={v => setSettlementMonthNum(Number(v))}
-                        >
-                          <SelectTrigger className="h-9 w-[80px]">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {Array.from({ length: 12 }, (_, i) => i + 1).map(m => (
-                              <SelectItem key={m} value={String(m)}>{m}월</SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
+                    ) : (
+                      <p className="text-[15px] font-bold text-zinc-800">{formatSettlementMonth(formData.settlementMonth)}</p>
+                    )}
+                  </div>
+                  <div className="p-5 space-y-1 bg-white">
+                    <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5">AS 처리완료일</p>
+                    {isEditing || status === 'in-progress' ? (
+                      <Input 
+                        type="date" 
+                        value={formData.processedDate || ''} 
+                        onChange={e => setFormData({...formData, processedDate: e.target.value})} 
+                        className="h-9 w-full border-zinc-200 bg-white font-bold text-sm" 
+                      />
+                    ) : (
+                      <p className="text-[15px] font-bold text-zinc-800">{formData.processedDate || '-'}</p>
+                    )}
                   </div>
                 </div>
-              )}
 
-              {/* 메모 */}
-              <div className="space-y-1.5">
-                <Label htmlFor="as-notes" className="text-xs text-gray-500">메모</Label>
-                <Textarea
-                  id="as-notes"
-                  placeholder="특이사항이 있으면 메모하세요"
-                  value={notes}
-                  onChange={e => setNotes(e.target.value)}
-                  rows={2}
-                  className="resize-none"
-                />
+                <div className="p-5 bg-zinc-50/20 flex items-center italic text-[12px] text-zinc-400 font-medium border-b border-zinc-100">
+                  * 모든 금액은 부가세(VAT) 별도 기준입니다.
+                </div>
+
+                <div className="p-5">
+                  <DataField label="수리 처리내역" value={formData.processingDetails} isEditing={isEditing || status === 'in-progress'} fullWidth
+                    input={<Textarea value={formData.processingDetails} onChange={e => setFormData({...formData, processingDetails: e.target.value})} placeholder="상세 처리 내역을 입력하세요" className="min-h-[100px] border-zinc-200 resize-none" />}
+                  />
+                </div>
               </div>
-            </>
+            </div>
           )}
-
-          {/* ===== 하단 액션 바 ===== */}
-          <div className="flex items-center justify-between pt-3 border-t">
-            {/* 좌측: 삭제 + 자동저장 상태 */}
-            <div className="flex items-center gap-3">
-              {!isSettled && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="sm" className="text-brick-400 hover:text-brick-600 hover:bg-brick-50 text-xs">
-                      <Trash2 className="h-3.5 w-3.5 mr-1" />
-                      삭제
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>AS 요청 삭제</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        &quot;{request.businessName}&quot; AS 요청을 삭제하시겠습니까?
-                        <br />삭제된 데이터는 복구할 수 없습니다.
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>취소</AlertDialogCancel>
-                      <AlertDialogAction onClick={handleDelete} className="bg-brick-600 hover:bg-brick-700">
-                        삭제
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-
-              {/* 자동저장 상태 표시 */}
-              {!isSettled && (
-                <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                  {saveStatus === 'saving' && (
-                    <><Loader2 className="h-3 w-3 animate-spin" /> 저장 중...</>
-                  )}
-                  {saveStatus === 'saved' && (
-                    <><Check className="h-3 w-3 text-olive-500" /> 자동 저장됨</>
-                  )}
-                  {saveStatus === 'idle' && '입력 시 자동 저장'}
-                </span>
-              )}
-            </div>
-
-            {/* 우측: 되돌리기 + 상태변경 */}
-            <div className="flex items-center gap-2">
-              {transitions.prev && (
-                <Button variant="ghost" size="sm" onClick={handleStatusBack} className="text-xs text-gray-500">
-                  <Undo2 className="h-3.5 w-3.5 mr-1" />
-                  {AS_STATUS_LABELS[transitions.prev]}으로
-                </Button>
-              )}
-              {transitions.next && (
-                <Button size="sm" onClick={handleStatusForward} className={NEXT_STATUS_BUTTON_COLOR[request.status]}>
-                  <ArrowRight className="h-3.5 w-3.5 mr-1" />
-                  {AS_STATUS_LABELS[transitions.next]}으로 변경
-                </Button>
-              )}
-            </div>
-          </div>
         </div>
-      </DialogContent>
-    </Dialog>
+
+        {/* 푸터 액션 */}
+        <DialogFooter className="px-8 py-6 bg-zinc-50 border-t border-zinc-200 flex items-center justify-between sm:justify-between w-full">
+          <Button variant="ghost" onClick={handleDelete} className="text-zinc-400 hover:text-rose-600 font-bold text-xs h-10 px-4">
+            <Trash2 className="h-4 w-4 mr-2" />접수 삭제
+          </Button>
+          
+          <div className="flex items-center gap-3">
+            {status === 'received' && (
+              <Button 
+                onClick={() => onUpdate(request.id, { 
+                  status: 'in-progress',
+                  settlementMonth: new Date().toISOString().slice(0, 7)
+                })} 
+                className="bg-orange-600 hover:bg-orange-700 text-white font-black rounded-xl h-11 px-10 shadow-lg transition-all active:scale-95"
+              >
+                접수완료 처리 <ArrowRight className="h-4 w-4 ml-2" />
+              </Button>
+            )}
+                          {status === 'in-progress' && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                onClick={() => {
+                                  setConfirmConfig({
+                                    open: true,
+                                    title: '단계 되돌리기',
+                                    description: '이 건을 다시 AS 접수(1단계) 상태로 되돌리겠습니까?',
+                                    action: () => onUpdate(request.id, { status: 'received' })
+                                  })
+                                }} 
+                                className="text-zinc-400 hover:text-orange-600 font-bold h-11 px-4"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />접수 단계로 이동
+                              </Button>                <Button 
+                  variant="outline"
+                  onClick={handleSave} 
+                  disabled={isSaving}
+                  className="border-zinc-200 text-zinc-900 font-black rounded-xl h-11 px-10 shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
+                >
+                  {isSaving ? '저장 중...' : '즉시저장'} <Save className="h-4 w-4 ml-2" />
+                </Button>
+              </>
+            )}
+                          {status === 'completed' && (
+                            <>
+                              <Button 
+                                variant="ghost" 
+                                onClick={() => {
+                                  setConfirmConfig({
+                                    open: true,
+                                    title: '단계 되돌리기',
+                                    description: '이 건을 다시 AS 처리중(2단계) 상태로 되돌리겠습니까?',
+                                    action: () => onUpdate(request.id, { status: 'in-progress' })
+                                  })
+                                }} 
+                                className="text-zinc-400 hover:text-teal-600 font-bold h-11 px-4"
+                              >
+                                <RotateCcw className="h-4 w-4 mr-2" />AS 처리 단계로 이동
+                              </Button>                <Button 
+                  variant="outline"
+                  onClick={handleSave} 
+                  disabled={isSaving}
+                  className="border-zinc-200 text-zinc-900 font-black rounded-xl h-11 px-10 shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
+                >
+                  {isSaving ? '저장 중...' : '즉시저장'} <Save className="h-4 w-4 ml-2" />
+                </Button>
+              </>
+            )}
+          </div>
+        </DialogFooter>
+              </DialogContent>
+            </Dialog>
+      
+            {/* 커스텀 확인 다이얼로그 */}
+            <AlertDialog 
+              open={confirmConfig.open} 
+              onOpenChange={(open) => setConfirmConfig(prev => ({ ...prev, open }))}
+            >
+              <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+                <AlertDialogHeader>
+                  <AlertDialogTitle className="text-xl font-black text-slate-900">
+                    {confirmConfig.title}
+                  </AlertDialogTitle>
+                  <AlertDialogDescription className="text-[14.5px] font-medium text-slate-500 leading-relaxed pt-2">
+                    {confirmConfig.description}
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="mt-6 gap-2">
+                  <AlertDialogCancel className="rounded-xl font-bold border-slate-200 h-11">
+                    취소
+                  </AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={() => {
+                      confirmConfig.action();
+                      setConfirmConfig(prev => ({ ...prev, open: false }));
+                    }} 
+                    className={`rounded-xl font-bold h-11 px-6 ${confirmConfig.variant === 'destructive' ? 'bg-rose-600 hover:bg-rose-700' : 'bg-orange-600 hover:bg-orange-700'}`}
+                  >
+                    확인
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
+        )
+      }
+function DataField({ label, value, isEditing, input, fullWidth = false }: { label: string; value?: string | number; isEditing: boolean; input: React.ReactNode; fullWidth?: boolean }) {
+  if (isEditing) {
+    return (
+      <div className={`p-5 space-y-2 ${fullWidth ? 'w-full' : ''}`}>
+        <Label className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5">{label}</Label>
+        {input}
+      </div>
+    )
+  }
+  return (
+    <div className={`p-5 space-y-1.5 ${fullWidth ? 'w-full' : ''}`}>
+      <p className="text-[11px] font-black text-zinc-400 uppercase tracking-widest ml-0.5">{label}</p>
+      <p className={`text-[15px] font-bold text-zinc-800 leading-snug ${fullWidth ? '' : 'truncate'}`}>
+        {value || <span className="text-zinc-200 font-medium italic text-[13px]">미입력</span>}
+      </p>
+    </div>
+  )
+}
+
+function SelectInput({ value, options, onChange }: { value?: string; options: string[]; onChange: (v: string) => void }) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map(opt => (
+        <button
+          key={opt}
+          type="button"
+          onClick={() => onChange(opt)}
+          className={`px-3 py-1.5 rounded-xl text-[12px] font-extrabold border transition-all
+            ${value === opt ? 'bg-zinc-900 border-zinc-900 text-white shadow-md' : 'bg-white border-zinc-200 text-slate-500 hover:border-zinc-300 hover:bg-zinc-50'}`}
+        >
+          {opt}
+        </button>
+      ))}
+    </div>
   )
 }

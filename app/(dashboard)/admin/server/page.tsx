@@ -20,10 +20,11 @@ const ROLE_ORDER: UserRole[] = ['admin', 'melea', 's1eng', 'kyowon', 'affiliate'
 /** 메뉴 그룹별 색상 도트 */
 const GROUP_DOT_COLORS: Record<string, string> = {
   '': 'bg-gray-400',
-  '교원그룹': 'bg-teal-400',
-  '교원 · 멜레아': 'bg-teal-400',
-  '멜레아 · 에스원': 'bg-olive-400',
-  '멜레아 전용': 'bg-carrot-400',
+  '교원 업무': 'bg-gold-400',
+  '교원그룹 자산': 'bg-carrot-400',
+  '에스원 설치/정산': 'bg-blue-400',
+  '멜레아 배송/재고': 'bg-teal-400',
+  '멜레아 정산': 'bg-brick-400',
 }
 
 /** 역할 옵션 */
@@ -97,7 +98,7 @@ export default function AdminPage() {
         </div>
         <div>
           <h1 className="text-xl font-bold">관리자 페이지</h1>
-          <p className="text-sm text-muted-foreground">시스템 관리 · opendnals123 전용</p>
+          <p className="text-sm text-muted-foreground">시스템 관리 및 모니터링</p>
         </div>
       </div>
 
@@ -228,8 +229,8 @@ function AccountsTab() {
                   <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{user.username}</td>
                   <td className="px-4 py-3 text-muted-foreground font-mono text-xs">{user.plain_password || '-'}</td>
                   <td className="px-4 py-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[user.role] || 'bg-gray-500/15 text-gray-400'}`}>
-                      {ROLE_LABELS[user.role] || user.role}
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[user.role as UserRole] || 'bg-gray-500/15 text-gray-400'}`}>
+                      {ROLE_LABELS[user.role as UserRole] || user.role}
                     </span>
                   </td>
                   <td className="px-4 py-3 text-muted-foreground hidden md:table-cell">{user.affiliate_name || '-'}</td>
@@ -274,16 +275,23 @@ function AccountsTab() {
 // ============================================================
 
 function RoleMenuMatrix() {
-  /** 역할이 특정 메뉴 그룹에 접근 가능한지 확인 */
-  const hasAccess = (role: UserRole, groupTitle: string) => {
-    return ROLE_MENU_ACCESS[role]?.[groupTitle] ?? false
+  /** 역할이 특정 메뉴 그룹 + 개별 아이템에 접근 가능한지 확인 */
+  const hasItemAccess = (role: UserRole, groupTitle: string, itemRoles?: UserRole[]) => {
+    // 1. 그룹 접근 권한 확인
+    const groupAccessible = ROLE_MENU_ACCESS[role]?.[groupTitle] ?? false
+    if (!groupAccessible) return false
+
+    // 2. 아이템 레벨 권한 확인 (roles 배열이 있으면 체크)
+    if (itemRoles && !itemRoles.includes(role)) return false
+
+    return true
   }
 
   return (
     <div className="mt-6">
       <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
         <Shield className="h-4 w-4 text-teal-400" />
-        역할별 메뉴 권한
+        역할별 메뉴 권한 (실제 적용 기준)
       </h3>
 
       {/* ── 데스크톱: 매트릭스 테이블 (md 이상) ── */}
@@ -333,10 +341,10 @@ function RoleMenuMatrix() {
                         </td>
                         {ROLE_ORDER.map(role => (
                           <td key={role} className="text-center px-3 py-2.5">
-                            {hasAccess(role, group.title) ? (
+                            {hasItemAccess(role, group.title, item.roles) ? (
                               <CheckCircle2 className="h-4 w-4 text-olive-400 mx-auto" />
                             ) : (
-                              <XCircle className="h-4 w-4 text-muted-foreground/25 mx-auto" />
+                              <XCircle className="h-4 w-4 text-rose-500/40 mx-auto" />
                             )}
                           </td>
                         ))}
@@ -378,7 +386,7 @@ function RoleMenuMatrix() {
                     <serverAdminMenuItem.icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
                     <span className="text-xs">{serverAdminMenuItem.title}</span>
                     <span className="text-[10px] text-brick-400/70 bg-brick-500/10 px-1.5 py-0.5 rounded border border-brick-500/15">
-                      opendnals123 전용
+                      관리자 전용
                     </span>
                   </div>
                 </td>
@@ -409,22 +417,23 @@ function RoleMenuMatrix() {
             </div>
             <div className="p-3 space-y-3">
               {menuItems.map(group => {
-                const accessible = hasAccess(role, group.title)
+                const groupAccessible = ROLE_MENU_ACCESS[role]?.[group.title] ?? false
                 return (
                   <div key={group.title || 'dashboard'}>
                     {/* 그룹명 */}
                     <div className="flex items-center gap-2 mb-1.5">
                       <span className={`h-2 w-2 rounded-full ${GROUP_DOT_COLORS[group.title] || 'bg-gray-400'}`} />
-                      <span className={`text-[11px] font-semibold ${accessible ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
+                      <span className={`text-[11px] font-semibold ${groupAccessible ? 'text-muted-foreground' : 'text-muted-foreground/40'}`}>
                         {group.title || '대시보드'}
                       </span>
-                      {!accessible && (
+                      {!groupAccessible && (
                         <XCircle className="h-3 w-3 text-muted-foreground/30" />
                       )}
                     </div>
                     {/* 메뉴 아이템 목록 */}
                     <div className="pl-4 space-y-1">
                       {group.items.map(item => {
+                        const accessible = hasItemAccess(role, group.title, item.roles)
                         const Icon = item.icon
                         return (
                           <div key={item.url} className={`flex items-center gap-2 py-0.5 ${!accessible ? 'opacity-30 line-through' : ''}`}>
@@ -781,8 +790,8 @@ function ServerTab() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[login.role] || 'bg-gray-500/15 text-gray-400'}`}>
-                      {ROLE_LABELS[login.role] || login.role}
+                    <span className={`inline-flex px-2 py-0.5 rounded-md text-[11px] font-medium border ${ROLE_COLORS[login.role as UserRole] || 'bg-gray-500/15 text-gray-400'}`}>
+                      {ROLE_LABELS[login.role as UserRole] || login.role}
                     </span>
                     <span className="text-xs text-muted-foreground min-w-[70px] text-right">
                       {formatRelativeTime(login.lastSignInAt)}
@@ -1123,7 +1132,7 @@ function CreateUserModal({ onClose, onSuccess, onError }: { onClose: () => void;
           <div className="flex flex-wrap gap-2">
             {ROLE_OPTIONS.map(opt => (
               <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${role === opt.value ? ROLE_COLORS[opt.value] : 'border-border text-muted-foreground hover:bg-accent'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${role === opt.value ? ROLE_COLORS[opt.value as UserRole] : 'border-border text-muted-foreground hover:bg-accent'}`}>
                 {opt.label}
               </button>
             ))}
@@ -1177,7 +1186,7 @@ function EditRoleModal({ user, onClose, onSuccess, onError }: { user: UserRow; o
           <div className="flex flex-wrap gap-2">
             {ROLE_OPTIONS.map(opt => (
               <button key={opt.value} type="button" onClick={() => setRole(opt.value)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${role === opt.value ? ROLE_COLORS[opt.value] : 'border-border text-muted-foreground hover:bg-accent'}`}>
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors ${role === opt.value ? ROLE_COLORS[opt.value as UserRole] : 'border-border text-muted-foreground hover:bg-accent'}`}>
                 {opt.label}
               </button>
             ))}

@@ -29,46 +29,52 @@ export const ROLE_LABELS: Record<UserRole, string> = {
  * | 메뉴 그룹       | admin | melea | s1eng | kyowon | affiliate |
  * |----------------|-------|-------|-------|--------|-----------|
  * | 대시보드 ('')    | O     | O     | O     | O      | O         |
- * | 교원그룹         | O     | O     | X     | O      | O         |
- * | 교원 · 멜레아    | O     | O     | X     | O      | X         |
- * | 멜레아 · 에스원  | O     | O     | O     | X      | X         |
- * | 멜레아 전용      | O     | O     | X     | X      | X         |
+ * | 교원그룹 발주/AS | O     | O     | O     | O      | O(정산 제외)|
+ * | 교원그룹 자산    | O     | O     | X     | O      | O         |
+ * | 에스원 설치/정산 | O     | O     | O     | X      | X         |
+ * | 멜레아 배송/재고 | O     | O     | O     | X      | X         |
+ * | 멜레아 정산      | O     | O     | X     | X      | X         |
  */
 export const ROLE_MENU_ACCESS: Record<UserRole, Record<string, boolean>> = {
   admin: {
-    '': true,           // 대시보드
-    '교원그룹': true,
-    '교원 · 멜레아': true,
-    '멜레아 · 에스원': true,
-    '멜레아 전용': true,
+    '': true,
+    '교원 업무': true,
+    '교원그룹 자산': true,
+    '에스원 설치/정산': true,
+    '멜레아 배송/재고': true,
+    '멜레아 정산': true,
   },
   melea: {
     '': true,
-    '교원그룹': true,
-    '교원 · 멜레아': true,
-    '멜레아 · 에스원': true,
-    '멜레아 전용': true,
+    '교원 업무': true,
+    '교원그룹 자산': true,
+    '에스원 설치/정산': true,
+    '멜레아 배송/재고': true,
+    '멜레아 정산': true,
   },
   s1eng: {
     '': true,
-    '교원그룹': true,
-    '교원 · 멜레아': false,
-    '멜레아 · 에스원': true,
-    '멜레아 전용': false,
+    '교원 업무': true, // 설치팀도 발주 현황은 확인 필요
+    '교원그룹 자산': false,
+    '에스원 설치/정산': true,
+    '멜레아 배송/재고': true,
+    '멜레아 정산': false,
   },
   kyowon: {
     '': true,
-    '교원그룹': true,
-    '교원 · 멜레아': true,
-    '멜레아 · 에스원': false,
-    '멜레아 전용': false,
+    '교원 업무': true,
+    '교원그룹 자산': true,
+    '에스원 설치/정산': false,
+    '멜레아 배송/재고': false,
+    '멜레아 정산': false,
   },
   affiliate: {
     '': true,
-    '교원그룹': true,
-    '교원 · 멜레아': false,
-    '멜레아 · 에스원': false,
-    '멜레아 전용': false,
+    '교원 업무': true, // 하위 메뉴 중 '월별 정산내역'은 아이템 레벨에서 필터링됨
+    '교원그룹 자산': true,
+    '에스원 설치/정산': false,
+    '멜레아 배송/재고': false,
+    '멜레아 정산': false,
   },
 }
 
