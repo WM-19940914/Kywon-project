@@ -21,7 +21,6 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
-  SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { menuItems, serverAdminMenuItem, archiveMenuItem } from '@/lib/menu-items'
 import { AlertProvider } from '@/components/ui/custom-alert'

@@ -58,6 +58,7 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
     if (!isDaumPostcodeLoaded) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     new (window as any).daum.Postcode({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oncomplete: (data: any) => {
         setFormData(prev => ({
           ...prev,

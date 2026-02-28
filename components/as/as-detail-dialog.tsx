@@ -23,11 +23,8 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 import { 
   Wrench, 
-  Banknote, 
   Trash2, 
-  X,
   ArrowRight,
-  CheckCircle2,
   ClipboardList,
   Search,
   Edit,
@@ -105,6 +102,7 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
     if (!isDaumPostcodeLoaded) return
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     new (window as any).daum.Postcode({
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       oncomplete: (data: any) => {
         setFormData(prev => ({
           ...prev,
