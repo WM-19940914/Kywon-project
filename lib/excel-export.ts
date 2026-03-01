@@ -65,7 +65,7 @@ export interface ExportSettlementOptions {
   affiliateData: Record<string, SettlementSheetData[]>
   asAffiliateData?: Record<string, Record<string, unknown>[]>
   asColumns?: ExcelColumn<Record<string, unknown>>[]
-  summary?: AffiliateSummary[] // 이 필드가 settlements/page.tsx에서 사용됨
+  summary?: AffiliateSummary[]
   fileName: string
   monthLabel: string
 }
@@ -93,14 +93,14 @@ function applyHeaderStyle(row: ExcelJS.Row) {
 
 function applyDataCellStyle(cell: ExcelJS.Cell, numberFormat?: string) {
   cell.font = DEFAULT_FONT; cell.border = THIN_BORDER; cell.alignment = { vertical: 'middle' }
-  const isNumeric = typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in cell.value)
+  const isNumeric = typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in (cell.value as any))
   if (isNumeric) { cell.alignment = { horizontal: 'right', vertical: 'middle' }; cell.numFmt = numberFormat || '#,##0' }
 }
 
 function applyTotalRowStyle(row: ExcelJS.Row) {
   row.eachCell({ includeEmpty: true }, (cell) => {
     cell.font = TOTAL_FONT; cell.border = TOTAL_BORDER; cell.alignment = { vertical: 'middle' }
-    if (typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in cell.value)) { cell.alignment = { horizontal: 'right', vertical: 'middle' }; cell.numFmt = '#,##0' }
+    if (typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in (cell.value as any))) { cell.alignment = { horizontal: 'right', vertical: 'middle' }; cell.numFmt = '#,##0' }
   })
 }
 
@@ -219,8 +219,7 @@ export async function exportFlattenedToExcel<P, C>({
  * ★ 교원 월별 정산 내역 표준 엑셀 함수 (100% 동일 양식)
  */
 export async function exportSettlementExcel(options: ExportSettlementOptions) {
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const { affiliateData, asAffiliateData, asColumns, summary, fileName, monthLabel } = options
+  const { affiliateData, asAffiliateData, asColumns, monthLabel, fileName } = options
   
   const wb = new ExcelJS.Workbook()
   const installSheetTotalCells: Record<string, string> = {}
@@ -266,12 +265,12 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
         const start = ws.rowCount + 1
         eqs.forEach(q => { const r = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, { formula: `E${ws.rowCount+1}*F${ws.rowCount+1}`, result: q.totalPrice }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
         if (o.equipRounding > 0) { const r = ws.addRow(['', '', '', '', '', '장비비 절사', -o.equipRounding]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) }
-        eqSub = ws.addRow(['', '', '', '', '', '장비비 소계', { formula: `SUM(G${start}:G${ws.rowCount})`, result: 0 }]); eqSub.eachCell(c => { if (c.col >= 6) { c.font = TOTAL_FONT; c.border = THIN_BORDER; c.numFmt = '#,##0'; c.alignment = { horizontal: 'right' } } })
+        eqSub = ws.addRow(['', '', '', '', '', '장비비 소계', { formula: `SUM(G${start}:G${ws.rowCount})`, result: 0 }]); eqSub.eachCell((cell, colNum) => { if (colNumberNum(colNum) >= 6) { cell.font = TOTAL_FONT; cell.border = THIN_BORDER; cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right' } } })
       }
       const iStart = ws.rowCount + 1
       ins.forEach(q => { const r = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, { formula: `E${ws.rowCount+1}*F${ws.rowCount+1}`, result: q.totalPrice }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
       if (o.installRounding > 0) { const r = ws.addRow(['', '', '', '', '', '설치비 절사', -o.installRounding]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) }
-      const iSub = ws.addRow(['', '', '', '', '', '설치비 소계', { formula: `SUM(G${iStart}:G${ws.rowCount})`, result: 0 }]); iSub.eachCell(c => { if (c.col >= 6) { c.font = TOTAL_FONT; c.border = THIN_BORDER; c.numFmt = '#,##0'; c.alignment = { horizontal: 'right' } } })
+      const iSub = ws.addRow(['', '', '', '', '', '설치비 소계', { formula: `SUM(G${iStart}:G${ws.rowCount})`, result: 0 }]); iSub.eachCell((cell, colNum) => { if (colNumberNum(colNum) >= 6) { cell.font = TOTAL_FONT; cell.border = THIN_BORDER; cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right' } } })
       
       ws.addRow([])
       const rowS = ws.addRow(['', '', '', '', '', '공급가액', { formula: `${eqSub ? `G${eqSub.number}` : '0'}+G${iSub.number}`, result: o.supplyAmount }])
@@ -316,7 +315,7 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
       const rowVa = ws.addRow([]); rowVa.getCell(lIdx).value = '부가세(10%)'; rowVa.getCell(vIdx).value = { formula: `ROUND(${ws.getColumn(vIdx).letter}${rowSu.number}*0.1, 0)`, result: 0 }
       const rowGr = ws.addRow([]); rowGr.getCell(lIdx).value = '합계(VAT포함)'; rowGr.getCell(vIdx).value = { formula: `${ws.getColumn(vIdx).letter}${rowSu.number}+${ws.getColumn(vIdx).letter}${rowVa.number}`, result: 0 }
       const asSummRows = [rowRa, rowTr, rowSu, rowVa, rowGr]
-      asSummRows.forEach((r, ai) => { r.getCell(lIdx).font = TOTAL_FONT; r.getCell(lIdx).alignment = { horizontal: 'right' }; r.getCell(lIdx).border = THIN_BORDER; r.getCell(vIdx).font = TOTAL_FONT; r.getCell(vIdx).alignment = { horizontal: 'right' }; r.getCell(vIdx).numFmt = '#,##0'; r.getCell(vIdx).border = (ai === 4 ? TOTAL_BORDER : THIN_BORDER); if (ai === 4) { r.getCell(lIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; r.getCell(vIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; r.getCell(lIdx).border = TOTAL_BORDER } })
+      asSummRows.forEach((r, ai) => { const cellL = r.getCell(lIdx); const cellV = r.getCell(vIdx); cellL.font = TOTAL_FONT; cellL.alignment = { horizontal: 'right' }; cellL.border = THIN_BORDER; cellV.font = TOTAL_FONT; cellV.alignment = { horizontal: 'right' }; cellV.numFmt = '#,##0'; cellV.border = (ai === 4 ? TOTAL_BORDER : THIN_BORDER); if (ai === 4) { cellL.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; cellV.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; cellL.border = TOTAL_BORDER } })
       const gTRef = `'${sName}'!${ws.getColumn(vIdx).letter}${rowGr.number}`
       asSheetTotalCells[affiliate] = gTRef
       detailBusinessRows.push({ sheetKey: `AS_${affiliate}`, bizName: `${affiliate} AS 합계`, cellRef: gTRef, isAs: true })
@@ -330,18 +329,18 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
   const finalSec = summaryWs.addRow(['최종 정산 통합금액']); finalSec.getCell(1).font = { ...TOTAL_FONT, size: 12, bold: true }
   const finalHdr = summaryWs.addRow(['구분', '건수', '합계(VAT포함)']); applyHeaderStyle(finalHdr)
   const finInstRow = summaryWs.addRow(['설치 정산 합계', 0, 0]); const finAsRow = summaryWs.addRow(['AS 정산 합계', 0, 0]); const finTotRow = summaryWs.addRow(['총 합계', 0, 0])
-  finInstRow.eachCell(c => applyDataCellStyle(c, '#,##0')); finAsRow.eachCell(c => applyDataCellStyle(c, '#,##0')); applyTotalRowStyle(finTotRow); finTotRow.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFE0' } }; if (c.col >= 2) c.numFmt = '#,##0' })
+  finInstRow.eachCell(c => applyDataCellStyle(c, '#,##0')); finAsRow.eachCell(c => applyDataCellStyle(c, '#,##0')); applyTotalRowStyle(finTotRow); finTotRow.eachCell((c, colNum) => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFE0' } }; if (colNumberNum(colNum) >= 2) c.numFmt = '#,##0' })
   
   summaryWs.addRow([]); summaryWs.addRow([])
   const subTitle = summaryWs.addRow([]); subTitle.getCell(1).value = '설치 정산 상세 요약'; subTitle.getCell(1).font = { ...TOTAL_FONT, size: 11, color: { argb: 'FF0D9488' } }; subTitle.getCell(5).value = 'AS 정산 상세 요약'; subTitle.getCell(5).font = { ...TOTAL_FONT, size: 11, color: { argb: 'FFEA580C' } }
   const subHdr = summaryWs.addRow([]); ['상세 시트명', '건수', '합계(VAT포함)'].forEach((h, i) => { subHdr.getCell(i + 1).value = h }); ['상세 시트명', '건수', '합계(VAT포함)'].forEach((h, i) => { subHdr.getCell(i + 5).value = h })
-  subHdr.eachCell({ includeEmpty: false }, c => { if (c.col !== 4) { c.fill = HEADER_FILL; c.font = HEADER_FONT; c.alignment = { horizontal: 'center' }; c.border = THIN_BORDER } })
+  subHdr.eachCell({ includeEmpty: false }, (c, colNum) => { if (colNumberNum(colNum) !== 4) { c.fill = HEADER_FILL; c.font = HEADER_FONT; c.alignment = { horizontal: 'center' }; c.border = THIN_BORDER } })
   
   const instKeys = Object.keys(affiliateData); const asKeys = asAffiliateData ? Object.keys(asAffiliateData) : []; const maxRows = Math.max(instKeys.length, asKeys.length); const tStart = subHdr.number + 1
   for (let i = 0; i < maxRows; i++) {
     const r = summaryWs.addRow([])
-    if (i < instKeys.length) { const k = instKeys[i]; r.getCell(1).value = k; r.getCell(2).value = affiliateData[k].length; if (installSheetTotalCells[k]) r.getCell(3).value = { formula: installSheetTotalCells[k], result: 0 }; [1, 2, 3].forEach(c => applyDataCellStyle(r.getCell(c), '#,##0')) }
-    if (i < asKeys.length) { const k = asKeys[i]; r.getCell(5).value = `AS_${k}`; r.getCell(6).value = asAffiliateData[k].length; if (asSheetTotalCells[k]) r.getCell(7).value = { formula: asSheetTotalCells[k], result: 0 }; [5, 6, 7].forEach(c => applyDataCellStyle(r.getCell(c), '#,##0')) }
+    if (i < instKeys.length) { const k = instKeys[i]; r.getCell(1).value = k; r.getCell(2).value = affiliateData[k].length; if (installSheetTotalCells[k]) r.getCell(3).value = { formula: installSheetTotalCells[k], result: 0 }; [1, 2, 3].forEach(cNum => applyDataCellStyle(r.getCell(cNum), '#,##0')) }
+    if (i < asKeys.length) { const k = asKeys[i]; r.getCell(5).value = `AS_${k}`; r.getCell(6).value = asAffiliateData[k].length; if (asSheetTotalCells[k]) r.getCell(7).value = { formula: asSheetTotalCells[k], result: 0 }; [5, 6, 7].forEach(cNum => applyDataCellStyle(r.getCell(cNum), '#,##0')) }
   }
   const tEnd = summaryWs.rowCount; const subTot = summaryWs.addRow([]); subTot.getCell(1).value = '설치 합계'; subTot.getCell(2).value = { formula: `SUM(B${tStart}:B${tEnd})`, result: 0 }; subTot.getCell(3).value = { formula: `SUM(C${tStart}:C${tEnd})`, result: 0 }; subTot.getCell(5).value = 'AS 합계'; subTot.getCell(6).value = { formula: `SUM(F${tStart}:F${tEnd})`, result: 0 }; subTot.getCell(7).value = { formula: `SUM(G${tStart}:G${tEnd})`, result: 0 }
   const appSubS = (sc: number) => { [0, 1, 2].forEach(i => { const c = subTot.getCell(sc + i); c.font = TOTAL_FONT; c.border = TOTAL_BORDER; c.alignment = { horizontal: i === 0 ? 'left' : 'right' }; if (i > 0) c.numFmt = '#,##0' }) }; appSubS(1); appSubS(5)
@@ -451,7 +450,7 @@ export async function exportDeliveryPurchaseExcel(options: {
       ]
 
       if (!hidePricing) {
-        rowValues.push(Number(item.unitPrice) || 0, 0, 0) // 매입단가, 매입금액, VAT포함 (금액은 수식으로 아래에서 처리)
+        rowValues.push(Number(item.unitPrice) || 0, 0, 0) // 매입단가, 매입금액, VAT포함
       }
 
       rowValues.push(
@@ -465,27 +464,24 @@ export async function exportDeliveryPurchaseExcel(options: {
       if (!hidePricing) {
         const itemQty = Number(item.quantity) || 0
         const itemPrice = Number(item.unitPrice) || 0
-        // 가격 정보가 있을 때만 수식 적용 (J:10, K:11, L:12, M:13)
         row.getCell(12).value = { formula: `J${ri}*K${ri}`, result: itemQty * itemPrice }
         row.getCell(13).value = { formula: `L${ri}*1.1`, result: Math.round(itemQty * itemPrice * 1.1) }
       }
       
-      row.eachCell({ includeEmpty: true }, (c) => { 
-        // 숫자 데이터 스타일 적용 (J열 이후부터)
-        if (c.col >= 10 && c.col <= (hidePricing ? 10 : 13)) {
-          applyDataCellStyle(c, '#,##0')
+      row.eachCell({ includeEmpty: true }, (cell, colNum) => { 
+        const colNumVal = colNumberNum(colNum)
+        if (colNumVal >= 10 && colNumVal <= (hidePricing ? 10 : 13)) {
+          applyDataCellStyle(cell, '#,##0')
         } else {
-          applyDataCellStyle(c)
+          applyDataCellStyle(cell)
         }
-        if (c.col === 5) { c.alignment = { horizontal: 'center' }; c.numFmt = '@' } 
+        if (colNumVal === 5) { cell.alignment = { horizontal: 'center' }; cell.numFmt = '@' } 
       })
       currentIdx++
     })
     
     const endR = currentIdx - 1
     if (endR > startR) {
-      // 병합할 컬럼 인덱스 (계열사, 사업자명, 현장주소, 주문번호 + 창고정보)
-      // hidePricing일 때 창고정보는 11, 12번 컬럼임
       const mergeCols = hidePricing ? [1, 2, 3, 5, 11, 12] : [1, 2, 3, 5, 14, 15]
       mergeCols.forEach(col => {
         ws.mergeCells(startR, col, endR, col)
@@ -493,10 +489,19 @@ export async function exportDeliveryPurchaseExcel(options: {
         cell.alignment = { vertical: 'middle', horizontal: (col === 3 || col === (hidePricing ? 12 : 15)) ? 'left' : 'center', wrapText: true }
       })
     }
-    ws.getRow(endR).eachCell(c => { c.border = { ...c.border, bottom: { style: 'medium', color: { argb: 'FF2B3A67' } } } })
+    ws.getRow(endR).eachCell(cell => { 
+      cell.border = { ...cell.border, bottom: { style: 'medium', color: { argb: 'FF2B3A67' } } } 
+    })
   })
   
   await downloadWorkbook(wb, fileName)
+}
+
+/** 
+ * colNumber가 string 또는 number일 수 있는 문제를 해결하기 위한 보조 함수
+ */
+function colNumberNum(val: any): number {
+  return typeof val === 'number' ? val : parseInt(val, 10)
 }
 
 export function buildExcelFileName(pageName: string, tabName?: string): string {
