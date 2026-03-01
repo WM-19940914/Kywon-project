@@ -65,6 +65,7 @@ export interface ExportSettlementOptions {
   affiliateData: Record<string, SettlementSheetData[]>
   asAffiliateData?: Record<string, Record<string, unknown>[]>
   asColumns?: ExcelColumn<Record<string, unknown>>[]
+  summary?: AffiliateSummary[] // 이 필드가 settlements/page.tsx에서 사용됨
   fileName: string
   monthLabel: string
 }
@@ -217,7 +218,10 @@ export async function exportFlattenedToExcel<P, C>({
 /** 
  * ★ 교원 월별 정산 내역 표준 엑셀 함수 (100% 동일 양식)
  */
-export async function exportSettlementExcel({ affiliateData, asAffiliateData, asColumns, fileName, monthLabel }: ExportSettlementOptions) {
+export async function exportSettlementExcel(options: ExportSettlementOptions) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const { affiliateData, asAffiliateData, asColumns, summary, fileName, monthLabel } = options
+  
   const wb = new ExcelJS.Workbook()
   const installSheetTotalCells: Record<string, string> = {}
   const asSheetTotalCells: Record<string, string> = {}
@@ -293,12 +297,12 @@ export async function exportSettlementExcel({ affiliateData, asAffiliateData, as
     for (const [affiliate, data] of Object.entries(asAffiliateData)) {
       const sName = `AS_${affiliate}`.substring(0, 31); const ws = wb.addWorksheet(sName); ws.columns = asColumns.map(c => ({ width: c.width ?? 15 }))
       const hRow = ws.addRow(asColumns.map(c => c.header)); applyHeaderStyle(hRow)
-      const start = ws.rowCount + 1; const totalIdx = asColumns.findIndex(c => c.key === 'totalAmount') + 1
+      const start = ws.rowCount + 1; const totalIdx = asColumns.findIndex(c => (c as any).key === 'totalAmount') + 1
       data.forEach(item => { const r = ws.addRow(extractRowValues(item, asColumns)); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
       if (data.length === 0) ws.addRow(['데이터 없음'])
       const end = ws.rowCount
       ws.addRow([])
-      const asCostIdx = asColumns.findIndex(c => c.key === 'asCost') + 1; const recIdx = asColumns.findIndex(c => c.key === 'receptionFee') + 1
+      const asCostIdx = asColumns.findIndex(c => (c as any).key === 'asCost') + 1; const recIdx = asColumns.findIndex(c => (c as any).key === 'receptionFee') + 1
       const totalRow = ws.addRow([]); totalRow.getCell(1).value = '합 계'
       if (asCostIdx > 0) totalRow.getCell(asCostIdx).value = { formula: `SUM(${ws.getColumn(asCostIdx).letter}${start}:${ws.getColumn(asCostIdx).letter}${end})`, result: 0 }
       if (recIdx > 0) totalRow.getCell(recIdx).value = { formula: `SUM(${ws.getColumn(recIdx).letter}${start}:${ws.getColumn(recIdx).letter}${end})`, result: 0 }
