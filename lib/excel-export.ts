@@ -65,7 +65,6 @@ export interface ExportSettlementOptions {
   affiliateData: Record<string, SettlementSheetData[]>
   asAffiliateData?: Record<string, Record<string, unknown>[]>
   asColumns?: ExcelColumn<Record<string, unknown>>[]
-  summary?: AffiliateSummary[]
   fileName: string
   monthLabel: string
 }
@@ -147,7 +146,7 @@ export async function exportMultiSheetExcel({ sheets, fileName }: ExportMultiShe
 
     // 데이터 추가
     data.forEach((item) => {
-      const values = extractRowValues(item, columns)
+      const values = extractRowValues(item, (columns as any))
       const row = ws.addRow(values)
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const col = columns[colNumber - 1]
@@ -448,9 +447,7 @@ export async function exportDeliveryPurchaseExcel(options: {
       ]
 
       if (!hidePricing) {
-        const qty = Number(item.quantity) || 0
-        const price = Number(item.unitPrice) || 0
-        rowValues.push(price, 0, 0) // 매입단가, 매입금액, VAT포함 (금액은 수식으로 아래에서 처리)
+        rowValues.push(Number(item.unitPrice) || 0, 0, 0) // 매입단가, 매입금액, VAT포함 (금액은 수식으로 아래에서 처리)
       }
 
       rowValues.push(
@@ -462,9 +459,11 @@ export async function exportDeliveryPurchaseExcel(options: {
       const ri = row.number
 
       if (!hidePricing) {
+        const itemQty = Number(item.quantity) || 0
+        const itemPrice = Number(item.unitPrice) || 0
         // 가격 정보가 있을 때만 수식 적용 (J:10, K:11, L:12, M:13)
-        row.getCell(12).value = { formula: `J${ri}*K${ri}`, result: (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) }
-        row.getCell(13).value = { formula: `L${ri}*1.1`, result: Math.round((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) * 1.1) }
+        row.getCell(12).value = { formula: `J${ri}*K${ri}`, result: itemQty * itemPrice }
+        row.getCell(13).value = { formula: `L${ri}*1.1`, result: Math.round(itemQty * itemPrice * 1.1) }
       }
       
       row.eachCell({ includeEmpty: true }, (c) => { 
@@ -494,15 +493,6 @@ export async function exportDeliveryPurchaseExcel(options: {
   })
   
   await downloadWorkbook(wb, fileName)
-}
-
-function summaryRowsStyle(rowS: ExcelJS.Row, rowP: ExcelJS.Row, rowSt: ExcelJS.Row, rowV: ExcelJS.Row, rowG: ExcelJS.Row) {
-  const rows = [rowS, rowP, rowSt, rowV, rowG]
-  rows.forEach((r, i) => { 
-    r.getCell(6).font = TOTAL_FONT; r.getCell(6).alignment = { horizontal: 'right' }; r.getCell(6).border = THIN_BORDER
-    r.getCell(7).font = TOTAL_FONT; r.getCell(7).alignment = { horizontal: 'right' }; r.getCell(7).numFmt = '#,##0'; r.getCell(7).border = (i === 4 ? TOTAL_BORDER : THIN_BORDER)
-    if (i === 4) { r.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(6).border = TOTAL_BORDER }
-  })
 }
 
 export function buildExcelFileName(pageName: string, tabName?: string): string {
