@@ -526,8 +526,9 @@ export const INVENTORY_EVENT_TYPE_COLORS: Record<InventoryEventType, string> = {
   'prepaid': 'bg-teal-50 text-teal-700 border-teal-200',
   'cancelled': 'bg-brick-50 text-brick-700 border-brick-200',
   'substitution': 'bg-carrot-50 text-carrot-700 border-carrot-200',
-  'transfer_out': 'bg-gold-100 text-gold-700 border-gold-200',
-  'transfer_return': 'bg-gold-100 text-gold-700 border-gold-200',
+  'transfer_out': 'bg-blue-50 text-blue-700 border-blue-200',
+  'transfer_return': 'bg-indigo-50 text-indigo-700 border-indigo-200',
+  'idle': 'bg-slate-100 text-slate-600 border-slate-200', // 유휴재고 전용 색상 추가
 }
 
 /** 재고 이벤트 상태별 한글 라벨 */
