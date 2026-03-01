@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * 엑셀 내보내기 공통 유틸리티
  */
@@ -24,7 +25,7 @@ export interface ExportOptions<T> {
 export interface ExportMultiSheetOptions {
   sheets: {
     sheetName: string
-    data: any[]
+    data: unknown[]
     columns: ExcelColumn<any>[]
   }[]
   fileName: string
@@ -217,7 +218,7 @@ export async function exportFlattenedToExcel<P, C>({
 /** 
  * ★ 교원 월별 정산 내역 표준 엑셀 함수 (100% 동일 양식)
  */
-export async function exportSettlementExcel({ affiliateData, asAffiliateData, asColumns, summary, fileName, monthLabel }: ExportSettlementOptions) {
+export async function exportSettlementExcel({ affiliateData, asAffiliateData, asColumns, fileName, monthLabel }: ExportSettlementOptions) {
   const wb = new ExcelJS.Workbook()
   const installSheetTotalCells: Record<string, string> = {}
   const asSheetTotalCells: Record<string, string> = {}

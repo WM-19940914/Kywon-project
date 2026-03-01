@@ -27,7 +27,6 @@ import { Button } from '@/components/ui/button'
 import {
   ShoppingCart, ChevronDown, ChevronRight, MapPin, CalendarDays,
   Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, Download,
-  Warehouse as WarehouseIcon,
 } from 'lucide-react'
 import { buildExcelFileName, exportDeliveryPurchaseExcel } from '@/lib/excel-export'
 
