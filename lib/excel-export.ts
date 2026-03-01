@@ -340,7 +340,13 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
   for (let i = 0; i < maxRows; i++) {
     const r = summaryWs.addRow([])
     if (i < instKeys.length) { const k = instKeys[i]; r.getCell(1).value = k; r.getCell(2).value = affiliateData[k].length; if (installSheetTotalCells[k]) r.getCell(3).value = { formula: installSheetTotalCells[k], result: 0 }; [1, 2, 3].forEach(cNum => applyDataCellStyle(r.getCell(cNum), '#,##0')) }
-    if (i < asKeys.length) { const k = asKeys[i]; r.getCell(5).value = `AS_${k}`; r.getCell(6).value = asAffiliateData[k].length; if (asSheetTotalCells[k]) r.getCell(7).value = { formula: asSheetTotalCells[k], result: 0 }; [5, 6, 7].forEach(cNum => applyDataCellStyle(r.getCell(cNum), '#,##0')) }
+    if (asAffiliateData && i < asKeys.length) { 
+      const k = asKeys[i]; 
+      r.getCell(5).value = `AS_${k}`; 
+      r.getCell(6).value = asAffiliateData[k].length; 
+      if (asSheetTotalCells[k]) r.getCell(7).value = { formula: asSheetTotalCells[k], result: 0 }; 
+      [5, 6, 7].forEach(cNum => applyDataCellStyle(r.getCell(cNum), '#,##0')) 
+    }
   }
   const tEnd = summaryWs.rowCount; const subTot = summaryWs.addRow([]); subTot.getCell(1).value = '설치 합계'; subTot.getCell(2).value = { formula: `SUM(B${tStart}:B${tEnd})`, result: 0 }; subTot.getCell(3).value = { formula: `SUM(C${tStart}:C${tEnd})`, result: 0 }; subTot.getCell(5).value = 'AS 합계'; subTot.getCell(6).value = { formula: `SUM(F${tStart}:F${tEnd})`, result: 0 }; subTot.getCell(7).value = { formula: `SUM(G${tStart}:G${tEnd})`, result: 0 }
   const appSubS = (sc: number) => { [0, 1, 2].forEach(i => { const c = subTot.getCell(sc + i); c.font = TOTAL_FONT; c.border = TOTAL_BORDER; c.alignment = { horizontal: i === 0 ? 'left' : 'right' }; if (i > 0) c.numFmt = '#,##0' }) }; appSubS(1); appSubS(5)
