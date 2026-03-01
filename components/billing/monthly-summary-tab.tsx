@@ -29,7 +29,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { 
   FileText, ChevronDown, PlusCircle, ArrowRightLeft, Wrench, 
   CircleDollarSign, Archive, Trash2, Package, RotateCcw, 
-  Receipt, CheckCircle2, RefreshCw, ChevronLeft, ChevronRightIcon 
+  Receipt, CheckCircle2, RefreshCw
 } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportSettlementExcel, buildExcelFileName } from '@/lib/excel-export'
@@ -49,8 +49,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { Card, CardContent } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
 
 /** 작업종류 아이콘 매핑 */
 const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
@@ -265,7 +263,7 @@ export function MonthlySummaryTab({
     })
     const monthLabel = `${selectedYear}년${selectedMonth}월`
     exportSettlementExcel({ affiliateData, asAffiliateData, asColumns: [{ header: '계열사', key: 'affiliate', width: 14 }, { header: '접수일', key: 'receptionDate', width: 12 }, { header: '사업자명', key: 'businessName', width: 20 }, { header: '모델명', key: 'modelName', width: 14 }, { header: 'AS사유', key: 'asReason', width: 20 }, { header: '처리일', key: 'processedDate', width: 12 }, { header: 'AS비용', key: 'asCost', width: 12, numberFormat: '#,##0' }, { header: '접수비', key: 'receptionFee', width: 12, numberFormat: '#,##0' }, { header: '합계', key: 'totalAmount', width: 12, numberFormat: '#,##0' }], summary: summaryData, fileName: buildExcelFileName('정산관리', monthLabel), monthLabel })
-  }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth, getSettlementCategory, orders])
+  }, [filteredOrders, filteredASRequests, selectedYear, selectedMonth, getSettlementCategory])
 
   const businessBreakdown = useMemo(() => {
     const map: Record<string, number> = {}
@@ -385,6 +383,7 @@ function AffiliateGroup({ affiliateName, categoryLabel, orders, onViewOrder, onQ
   )
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: any; businessName: string }) {
   const eqs = snapshot.equipItems || []; const ins = snapshot.installItems || []
   return (<div className="mx-4 my-3"><div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md"><div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600"><Receipt className="h-4 w-4 text-white" /><span className="text-sm font-bold text-white tracking-wide">견적서</span><span className="text-xs text-teal-200 ml-2">— {businessName}</span></div><table className="w-full text-sm"><thead><tr className="border-b-2 border-slate-800 bg-slate-50/80 text-xs text-slate-500 font-semibold uppercase"><th className="py-2 px-2 text-center w-10">No.</th><th className="py-2 px-2 text-center">품목 / 모델명</th><th className="py-2 px-2 text-center w-16">수량</th><th className="py-2 px-2 text-right w-28">단가</th><th className="py-2 px-2 text-right w-32">금액</th></tr></thead><tbody><tr className="bg-slate-100"><td colSpan={5} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">[ 장비 ]</td></tr>{eqs.length > 0 ? eqs.map((i: any, idx: number) => { const { product, model } = splitItemName(i.itemName); return (<tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40"><td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td><td className="py-2 px-2 text-center text-slate-800 font-medium">{product} {model && <span className="text-slate-400 ml-1">({model})</span>}</td><td className="py-2 px-2 text-center">{i.quantity}</td><td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td><td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td></tr>) }) : <tr><td colSpan={5} className="py-3 text-center text-xs text-slate-400">장비 항목 없음</td></tr>}{snapshot.equipRounding > 0 && <tr className="border-t border-dashed"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td><td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.equipRounding.toLocaleString()}</td></tr>}<tr className="bg-slate-50 font-bold text-xs"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-700">장비비 소계</td><td className="py-1.5 px-2 text-right text-slate-700">{snapshot.equipSubtotal.toLocaleString()}</td></tr><tr className="bg-slate-100"><td colSpan={5} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">[ 설치비 ]</td></tr>{ins.length > 0 ? ins.map((i: any, idx: number) => { const { product, model } = splitItemName(i.itemName); return (<tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40"><td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td><td className="py-2 px-2 text-center text-slate-800 font-medium">{product} {model && <span className="text-slate-400 ml-1">({model})</span>}</td><td className="py-2 px-2 text-center">{i.quantity}</td><td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td><td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td></tr>) }) : <tr><td colSpan={5} className="py-3 text-center text-xs text-slate-400">설치비 항목 없음</td></tr>}{snapshot.installRounding > 0 && <tr className="border-t border-dashed"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td><td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.installRounding.toLocaleString()}</td></tr>}<tr className="bg-slate-50 font-bold text-xs border-b-2 border-slate-300"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-700">설치비 소계</td><td className="py-1.5 px-2 text-right text-slate-700">{snapshot.installSubtotal.toLocaleString()}</td></tr></tbody><tfoot><tr><td colSpan={5} className="p-3 pt-4 flex justify-end"><div className="w-[300px] rounded-xl border border-slate-200 overflow-hidden shadow-sm"><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs"><span>공급가액</span><span>{snapshot.supplyAmount.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-gold-600 font-semibold"><span>기업이윤 (3%)</span><span>+{snapshot.adjustedProfit.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-white text-xs font-bold border-y border-slate-100"><span>소계 (VAT별도)</span><span>{snapshot.subtotalWithProfit.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-slate-500"><span>부가세 (10%)</span><span>+{snapshot.vat.toLocaleString()}</span></div><div className="flex justify-between px-4 py-3 bg-teal-600 text-white font-black text-sm"><span>최종금액</span><span>{snapshot.grandTotal.toLocaleString()}원</span></div></div></td></tr></tfoot></table></div></div>)

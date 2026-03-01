@@ -30,7 +30,7 @@ export default function DeliveryPage() {
 
   // Supabase에서 데이터 로드
   const [orders, setOrders] = useState<Order[]>([])
-  const [warehouses, setWarehouses] = useState<any[]>([]) // 창고 정보를 담을 상태 추가
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]) // 창고 정보를 담을 상태 추가
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
@@ -255,7 +255,7 @@ export default function DeliveryPage() {
         ...order,
         equipmentItems: updatedEquipmentItems.length > 0 
           ? updatedEquipmentItems 
-          : [{ componentName: '정보없음', quantity: 0, unitPrice: 0 } as any]
+          : [{ componentName: '정보없음', quantity: 0, unitPrice: 0 } as unknown as EquipmentItem]
       }
     })
 
