@@ -1272,13 +1272,21 @@ export default function SettlementsPage() {
     return Object.entries(map)
       .map(([label, amount]) => ({ label, amount }))
       .sort((a, b) => {
+        // 1. AS 여부 확인 (AS를 뒤로 보냄)
+        const aIsAs = a.label.includes(' AS ')
+        const bIsAs = b.label.includes(' AS ')
+        if (aIsAs !== bIsAs) return aIsAs ? 1 : -1
+
+        // 2. 계열사 순서 적용
         const aAff = affiliateOrder.find(aff => a.label.startsWith(aff)) || '기타'
         const bAff = affiliateOrder.find(aff => b.label.startsWith(aff)) || '기타'
         const aIdx = affiliateOrder.indexOf(aAff)
         const bIdx = affiliateOrder.indexOf(bAff)
 
         if (aIdx !== bIdx) return aIdx - bIdx
-        return a.label.localeCompare(b.label) // 같은 계열사인 경우 이름순 정렬
+        
+        // 3. 동일 계열사 내 이름순 정렬
+        return a.label.localeCompare(b.label)
       })
   }, [filteredOrders, filteredASRequests, getSettlementCategory])
 

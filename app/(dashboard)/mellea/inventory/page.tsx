@@ -24,7 +24,8 @@ export default function InventoryPage() {
   const [events, setEvents] = useState<InventoryEvent[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
-  useEffect(() => {
+  const fetchData = React.useCallback(() => {
+    setIsLoading(true)
     Promise.all([
       fetchOrders(),
       fetchWarehouses(),
@@ -36,6 +37,10 @@ export default function InventoryPage() {
       setIsLoading(false)
     })
   }, [])
+
+  useEffect(() => {
+    fetchData()
+  }, [fetchData])
 
   if (isLoading) {
     return (
@@ -76,6 +81,7 @@ export default function InventoryPage() {
         orders={orders}
         warehouses={warehouses}
         events={events}
+        onRefresh={fetchData}
       />
     </div>
   )

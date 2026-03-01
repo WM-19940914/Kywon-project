@@ -16,8 +16,38 @@ import { WAREHOUSE_STOCK_STATUS_LABELS, WAREHOUSE_STOCK_STATUS_COLORS } from '@/
 import type { Warehouse } from '@/types/warehouse'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { Package, CheckCircle2, Box, ChevronDown, Ban, ArrowRight } from 'lucide-react'
+import { 
+  Package, 
+  CheckCircle2, 
+  Box, 
+  ChevronDown, 
+  Ban, 
+  ArrowRight,
+  MoreVertical,
+  Pencil,
+  Trash2,
+  AlertTriangle
+} from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
+import { useAlert } from '@/components/ui/custom-alert'
+import { deleteInventoryEvent } from '@/lib/supabase/dal'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
 
 /** formatStockDate — 뱃지 제거, 일반 날짜 표시만 */
 function formatStockDate(dateString?: string): React.ReactNode {
@@ -26,27 +56,30 @@ function formatStockDate(dateString?: string): React.ReactNode {
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
+import { IdleInventoryDialog } from './idle-inventory-dialog'
 
 /** 창고 재고 아이템 (테이블 한 행) */
 interface WarehouseStockItem {
-  orderId: string              // 발주 ID
+  id?: string                  // 이벤트 ID (수동 입력 시)
+  orderId?: string             // 발주 ID (연결된 경우)
   equipmentItemId?: string     // 구성품 ID
-  businessName: string         // 현장명 (원래 현장)
-  address: string              // 주소
-  componentName: string        // 구성품명
+  businessName: string         // 현장명 (원래 현장 또는 출처)
+  address?: string             // 주소
+  componentName: string        // 구성품명 (또는 품목)
   componentModel?: string      // 구성품 모델명
   quantity: number             // 수량
   warehouseId?: string         // 창고 ID
-  confirmedDeliveryDate?: string // 입고일
+  confirmedDeliveryDate?: string // 입고일 (또는 이벤트 발생일)
   installCompleteDate?: string // 설치완료일
   stockStatus: WarehouseStockStatus // 재고 상태 (파생)
   // 유휴재고 전용 필드
-  cancelReason?: string              // 취소 사유
-  cancelledAt?: string               // 취소일
+  cancelReason?: string              // 취소 사유 / 메모
+  cancelledAt?: string               // 취소일 / 이벤트일
   idleEventStatus?: 'active' | 'resolved'  // 유휴재고 이벤트 상태
   usedByBusinessName?: string        // 사용된 현장명 (resolved 시)
   usedByOrderId?: string             // 사용된 발주 ID
   resolvedDate?: string              // 사용완료 처리일
+  isManual?: boolean                 // 직접 입력 여부
 }
 
 /** Props */
@@ -54,6 +87,7 @@ interface InventoryWarehouseViewProps {
   orders: Order[]
   warehouses: Warehouse[]
   events: InventoryEvent[]
+  onRefresh?: () => void
 }
 
 /**
@@ -78,11 +112,42 @@ export function InventoryWarehouseView({
   orders,
   warehouses,
   events,
+  onRefresh,
 }: InventoryWarehouseViewProps) {
+  const { showAlert } = useAlert()
   // 선택된 창고 (빈 문자열 = 전체)
   const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>('')
   // 상태 필터 (기본값: 유휴재고)
   const [statusFilter, setStatusFilter] = useState<WarehouseStockStatus | null>('idle')
+
+  // 삭제 관련 상태
+  const [deleteTarget, setDeleteTarget] = useState<WarehouseStockItem | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+
+  // 수정 관련 상태
+  const [editTarget, setEditTarget] = useState<WarehouseStockItem | null>(null)
+
+  /** 삭제 처리 */
+  const handleDelete = async () => {
+    if (!deleteTarget?.id) return
+
+    setIsDeleting(true)
+    try {
+      const success = await deleteInventoryEvent(deleteTarget.id)
+      if (success) {
+        showAlert('데이터가 성공적으로 삭제되었습니다.', 'success')
+        onRefresh?.()
+      } else {
+        showAlert('삭제에 실패했습니다.', 'error')
+      }
+    } catch (error) {
+      console.error('삭제 오류:', error)
+      showAlert('오류가 발생했습니다.', 'error')
+    } finally {
+      setIsDeleting(false)
+      setDeleteTarget(null)
+    }
+  }
 
   /**
    * 유휴재고 이벤트 맵 (equipment_item_id → event)
@@ -91,10 +156,11 @@ export function InventoryWarehouseView({
   const idleEventMap = useMemo(() => {
     const map: Record<string, InventoryEvent> = {}
     events
-      .filter(e => e.eventType === 'cancelled')
+      .filter(e => e.eventType === 'cancelled' || e.eventType === 'idle')
       .forEach(e => {
         if (e.equipmentItemId) map[e.equipmentItemId] = e
-        if (e.sourceOrderId) map[`order:${e.sourceOrderId}`] = e
+        else if (e.sourceOrderId) map[`order:${e.sourceOrderId}`] = e
+        else map[`event:${e.id}`] = e // standalone
       })
     return map
   }, [events])
@@ -107,11 +173,12 @@ export function InventoryWarehouseView({
   }, [orders])
 
   /**
-   * 모든 발주에서 "입고 확정된 구성품"을 추출하여 재고 아이템 목록 생성
+   * 모든 발주 및 이벤트를 추출하여 재고 아이템 목록 생성
    */
   const stockItems = useMemo(() => {
     const items: WarehouseStockItem[] = []
 
+    // 1. 발주 기반 재고 수집
     orders.forEach(order => {
       if (!order.equipmentItems || order.equipmentItems.length === 0) return
 
@@ -169,6 +236,38 @@ export function InventoryWarehouseView({
       })
     })
 
+    // 2. 독립적인 유휴재고 이벤트(idle) 수집 — 발주와 연결되지 않은 직접 입력 건
+    events
+      .filter(e => (e.eventType === 'idle' || e.eventType === 'cancelled') && !e.equipmentItemId && !e.sourceOrderId)
+      .forEach(e => {
+        // 사용된 현장명 조회 (resolved 이벤트에 targetOrderId가 있을 때)
+        let usedByBusinessName: string | undefined
+        let usedByOrderId: string | undefined
+        if (e.status === 'resolved' && e.targetOrderId) {
+          const targetOrder = orderMap[e.targetOrderId]
+          usedByBusinessName = targetOrder?.businessName
+          usedByOrderId = e.targetOrderId
+        }
+
+        items.push({
+          id: e.id,
+          businessName: e.siteName || '직접 입력',
+          componentName: e.category || '기타',
+          componentModel: e.modelName,
+          quantity: e.quantity || 1,
+          warehouseId: e.sourceWarehouseId,
+          confirmedDeliveryDate: e.eventDate,
+          stockStatus: 'idle',
+          cancelReason: e.notes,
+          cancelledAt: e.eventDate,
+          idleEventStatus: e.status as 'active' | 'resolved',
+          usedByBusinessName,
+          usedByOrderId,
+          resolvedDate: e.resolvedDate,
+          isManual: true,
+        })
+      })
+
     // 정렬: 유휴재고는 active 먼저 → resolved 나중, 그 안에서 입고일 최신순
     items.sort((a, b) => {
       // 유휴재고끼리는 active가 먼저
@@ -184,7 +283,7 @@ export function InventoryWarehouseView({
     })
 
     return items
-  }, [orders, idleEventMap, orderMap])
+  }, [orders, events, idleEventMap, orderMap])
 
   /** 창고별 필터링 */
   const warehouseFiltered = useMemo(() => {
@@ -349,7 +448,12 @@ export function InventoryWarehouseView({
           </button>
         </div>
         ) : <div />}
-        <ExcelExportButton onClick={handleExcelExport} disabled={filteredItems.length === 0} />
+        <div className="flex items-center gap-2">
+          {statusFilter === 'idle' && (
+            <IdleInventoryDialog warehouses={warehouses} onSuccess={() => onRefresh?.()} />
+          )}
+          <ExcelExportButton onClick={handleExcelExport} disabled={filteredItems.length === 0} />
+        </div>
       </div>
 
       {/* ===== 유휴재고 전용 테이블 (statusFilter === 'idle') ===== */}
@@ -374,14 +478,16 @@ export function InventoryWarehouseView({
                     <th className="text-center p-3 text-sm font-medium" style={{ width: '50px' }}>수량</th>
                     <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>취소 사유</th>
                     <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>사용 내역</th>
+                    <th className="text-center p-3 text-sm font-medium" style={{ width: '60px' }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item, idx) => {
                     const isResolved = item.idleEventStatus === 'resolved'
+                    const rowKey = item.isManual ? `manual-${item.id}-${idx}` : `${item.orderId}-${idx}`
                     return (
                       <tr
-                        key={`${item.orderId}-${idx}`}
+                        key={rowKey}
                         className={`border-b border-gray-100 transition-colors ${
                           isResolved
                             ? 'bg-gray-50/50 text-gray-400'
@@ -440,6 +546,34 @@ export function InventoryWarehouseView({
                             <span className="text-xs text-brick-400">대기중</span>
                           )}
                         </td>
+                        {/* 관리 버튼 (직접 입력 건만 노출) */}
+                        <td className="p-3 text-center">
+                          {item.isManual && !isResolved && (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className="p-1 hover:bg-brick-100 rounded-md transition-colors text-brick-400 hover:text-brick-600">
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-32">
+                                <DropdownMenuItem 
+                                  className="gap-2 cursor-pointer"
+                                  onClick={() => setEditTarget(item)}
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                  <span>수정</span>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem 
+                                  className="gap-2 text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
+                                  onClick={() => setDeleteTarget(item)}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <span>삭제</span>
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
+                        </td>
                       </tr>
                     )
                   })}
@@ -458,9 +592,10 @@ export function InventoryWarehouseView({
             ) : (
               filteredItems.map((item, idx) => {
                 const isResolved = item.idleEventStatus === 'resolved'
+                const rowKey = item.isManual ? `manual-${item.id}-${idx}` : `${item.orderId}-${idx}`
                 return (
                   <div
-                    key={`${item.orderId}-${idx}`}
+                    key={rowKey}
                     className={`border rounded-lg p-4 space-y-2 ${
                       isResolved
                         ? 'bg-gray-50 border-gray-200'
@@ -511,12 +646,72 @@ export function InventoryWarehouseView({
                         <span className="text-olive-500 text-[10px] ml-auto">{formatShortDate(item.resolvedDate)}</span>
                       </div>
                     )}
+
+                    {/* 모바일 관리 버튼 */}
+                    {item.isManual && !isResolved && (
+                      <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-1 h-8 text-xs gap-1.5 text-gray-600"
+                          onClick={() => setEditTarget(item)}
+                        >
+                          <Pencil className="h-3 w-3" /> 수정
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="flex-1 h-8 text-xs gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => setDeleteTarget(item)}
+                        >
+                          <Trash2 className="h-3 w-3" /> 삭제
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 )
               })
             )}
           </div>
         </>
+      )}
+
+      {/* ===== 삭제 확인 다이얼로그 ===== */}
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <AlertDialogTitle>정말 삭제하시겠습니까?</AlertDialogTitle>
+            <AlertDialogDescription>
+              직접 입력한 유휴재고 정보가 영구적으로 삭제됩니다.<br />
+              <span className="font-semibold text-gray-900 mt-2 block">
+                모델명: {deleteTarget?.componentModel} / 수량: {deleteTarget?.quantity}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>취소</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeleting}
+            >
+              {isDeleting ? '삭제 중...' : '확인'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ===== 수정 다이얼로그 ===== */}
+      {editTarget && (
+        <IdleInventoryDialog 
+          warehouses={warehouses}
+          onSuccess={() => { onRefresh?.(); setEditTarget(null); }}
+          editData={events.find(e => e.id === editTarget.id)}
+          onClose={() => setEditTarget(null)}
+        />
       )}
 
       {/* ===== 입고내역 / 설치완료 기존 테이블 (유휴재고가 아닐 때) ===== */}

@@ -482,8 +482,9 @@ export const S1_SETTLEMENT_STATUS_COLORS: Record<S1SettlementStatus, string> = {
  * - substitution: 대체사용 이력 (A현장 취소 장비를 B현장에서 사용)
  * - transfer_out: 타창고 이동 (다른 창고에서 빌려옴)
  * - transfer_return: 타창고 반환 (빌려온 장비를 원래 창고로 돌려보냄)
+ * - idle: 유휴재고 (수동으로 입력한 창고 보관 재고)
  */
-export type InventoryEventType = 'prepaid' | 'cancelled' | 'substitution' | 'transfer_out' | 'transfer_return'
+export type InventoryEventType = 'prepaid' | 'cancelled' | 'substitution' | 'transfer_out' | 'transfer_return' | 'idle'
 
 /** 재고 이벤트 상태 */
 export type InventoryEventStatus = 'active' | 'resolved'
@@ -501,6 +502,8 @@ export interface InventoryEvent {
   affiliate?: string                    // 입금처/계열사 (선입금용)
   modelName?: string                    // 모델명 (표시용)
   siteName?: string                     // 현장명 (표시용)
+  category?: string                     // 품목 (수동 입력용)
+  quantity?: number                     // 수량 (수동 입력용)
   status: InventoryEventStatus          // 처리 상태
   notes?: string                        // 메모
   eventDate: string                     // 이벤트 발생일
@@ -515,6 +518,7 @@ export const INVENTORY_EVENT_TYPE_LABELS: Record<InventoryEventType, string> = {
   'substitution': '대체사용',
   'transfer_out': '타창고 이동',
   'transfer_return': '타창고 반환',
+  'idle': '유휴재고(수동)',
 }
 
 /** 재고 이벤트 종류별 색상 */

@@ -23,19 +23,21 @@ import { Button } from '@/components/ui/button'
 import { useAlert } from '@/components/ui/custom-alert'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
-import { exportFlattenedToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
+import { exportDeliveryPurchaseExcel, buildExcelFileName } from '@/lib/excel-export'
 
 export default function DeliveryPage() {
   const { showAlert } = useAlert()
 
   // Supabase에서 데이터 로드
   const [orders, setOrders] = useState<Order[]>([])
+  const [warehouses, setWarehouses] = useState<any[]>([]) // 창고 정보를 담을 상태 추가
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
     // 창고 + 발주 데이터 동시 로드
-    Promise.all([fetchWarehouses(), fetchOrders()]).then(([warehouses, ordersData]) => {
-      setWarehouseCache(warehouses)
+    Promise.all([fetchWarehouses(), fetchOrders()]).then(([warehousesData, ordersData]) => {
+      setWarehouseCache(warehousesData)
+      setWarehouses(warehousesData) // 가져온 창고 정보를 상태에 저장
       setOrders(ordersData)
       setIsLoading(false)
     })
@@ -229,31 +231,39 @@ export default function DeliveryPage() {
     ? filteredOrders.slice((deliveredPage - 1) * DELIVERED_PAGE_SIZE, deliveredPage * DELIVERED_PAGE_SIZE)
     : filteredOrders
 
-  /** 엑셀 다운로드 — 발주(부모) + 구성품(자식) 펼쳐서 추출 */
+  /** 엑셀 다운로드 — 멜레아 내부정산 양식을 활용하되 배송관리 데이터에 최적화 */
   const handleExcelExport = () => {
     const tabLabel = statusFilter === 'pending' ? '발주대기' : statusFilter === 'ordered' ? '진행중' : '배송완료'
-    const parentColumns: ExcelColumn<Order>[] = [
-      { header: '문서번호', key: 'documentNumber', width: 16 },
-      { header: '계열사', key: 'affiliate', width: 14 },
-      { header: '사업자명', key: 'businessName', width: 20 },
-      { header: '주소', key: 'address', width: 30 },
-    ]
-    const childColumns: ExcelColumn<EquipmentItem>[] = [
-      { header: '구성품명', key: 'componentName', width: 14 },
-      { header: '모델명', key: 'componentModel', width: 22 },
-      { header: '매입처', key: 'supplier', width: 10 },
-      { header: '주문번호', key: 'orderNumber', width: 16 },
-      { header: '배송일', key: 'confirmedDeliveryDate', width: 12 },
-      { header: '수량', key: 'quantity', width: 6, numberFormat: '#,##0' },
-      { header: '매입단가', key: 'unitPrice', width: 12, numberFormat: '#,##0' },
-    ]
-    exportFlattenedToExcel({
-      parents: filteredOrders,
-      getChildren: (order) => order.equipmentItems || [],
-      parentColumns,
-      childColumns,
+    
+    // 멜레아 내부정산 함수를 그대로 쓰되, 전달하기 전에 창고 정보를 강제로 매핑해서 보냄
+    const ordersWithWarehouseInfo = filteredOrders.map(order => {
+      const updatedEquipmentItems = (order.equipmentItems || []).map(item => {
+        // 현재 페이지의 warehouses 상태에서 실제 창고 정보를 찾음
+        const warehouse = warehouses.find(w => w.id === item.warehouseId)
+        return {
+          ...item,
+          // 아래 필드들을 명시적으로 채워주면 엑셀 함수가 그대로 읽어감
+          warehouseName: warehouse?.name || '-',
+          warehouseAddress: warehouse?.address || '-',
+          // 매입단가 등이 0으로 나와도 무방하다 하셨으므로 원본 데이터 유지
+          unitPrice: item.unitPrice || 0,
+          quantity: item.quantity || 0,
+        }
+      })
+
+      return {
+        ...order,
+        equipmentItems: updatedEquipmentItems.length > 0 
+          ? updatedEquipmentItems 
+          : [{ componentName: '정보없음', quantity: 0, unitPrice: 0 } as any]
+      }
+    })
+
+    exportDeliveryPurchaseExcel({
+      orders: ordersWithWarehouseInfo,
       fileName: buildExcelFileName('배송관리', tabLabel),
-      sheetName: tabLabel,
+      monthLabel: monthFilterEnabled ? `${filterYear}년 ${filterMonth}월` : '',
+      hidePricing: true // 가격 관련 열 숨김
     })
   }
 

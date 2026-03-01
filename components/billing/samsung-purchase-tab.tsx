@@ -29,8 +29,7 @@ import {
   Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, Download,
   Warehouse as WarehouseIcon,
 } from 'lucide-react'
-import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
-import type { ExcelColumn } from '@/lib/excel-export'
+import { buildExcelFileName, exportDeliveryPurchaseExcel } from '@/lib/excel-export'
 
 // ─── SET 모델 그룹 컬러바 ───
 const SET_GROUP_COLORS = [
@@ -99,19 +98,16 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
 
   /**
    * 정산 데이터로 매입내역 행을 생성하는 함수
-   * 각 발주의 구성품을 단가표 매칭하여 매입단가(DC 45% 적용) 계산
    */
   const generateRows = useCallback(async (): Promise<PurchaseReportItem[]> => {
     const rows: PurchaseReportItem[] = []
 
-    // 창고 + 단가표 로드
     const [warehouses, ptData] = await Promise.all([
       fetchWarehouses(),
       fetchPriceTable(selectedYear),
     ])
     setWarehouseCache(warehouses)
 
-    // 구성품 모델 → 출하가 매핑
     const componentPriceMap: Record<string, number> = {}
     ptData.forEach(row => {
       row.components.forEach(comp => {
@@ -121,7 +117,6 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
       })
     })
 
-    // 신규설치 발주건만 필터
     const filteredOrders = orders.filter(order => {
       const hasNewInstall = order.items.some(i =>
         i.workType === '신규설치' || i.workType === '이전설치' || i.workType === '재고설치'
@@ -135,7 +130,6 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
       const items = order.equipmentItems || []
       items.forEach(item => {
         const qty = item.quantity || 1
-        // 매입단가: DB unitPrice → 단가표 출하가 × 0.55 (DC 45%) → 0
         let unitPrice = 0
         if (item.unitPrice && item.unitPrice > 0) {
           unitPrice = item.unitPrice
@@ -143,11 +137,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
           unitPrice = Math.round(componentPriceMap[item.componentModel] * 0.55)
         }
         const totalPrice = unitPrice * qty
-
-        // 배송상태
         const deliveryStatus = computeItemDeliveryStatus(item)
-
-        // 창고 정보
         const whDetail = getWarehouseDetail(item.warehouseId)
 
         rows.push({
@@ -224,7 +214,6 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     setEditItems(prev => {
       const next = [...prev]
       const item = { ...next[index], [field]: value }
-      // 매입금액 = 매입단가 × 수량
       item.totalPrice = item.unitPrice * item.quantity
       next[index] = item
       return next
@@ -265,29 +254,13 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     [isEditing, editItems, savedReport?.items]
   )
 
-  /** 엑셀 다운로드 — 매입내역 전체 */
+  /** 엑셀 다운로드 — 매입내역 전체 (요청하신 13개 컬럼 및 병합 양식 적용) */
   const handleExportExcel = () => {
-    const columns: ExcelColumn<PurchaseReportItem>[] = [
-      { header: '사업자명', getValue: r => r.businessName, width: 18 },
-      { header: '계열사', getValue: r => r.affiliate, width: 12 },
-      { header: '현장주소', getValue: r => r.siteAddress, width: 25 },
-      { header: '발주일', getValue: r => r.orderDateDisplay, width: 12 },
-      { header: '매입처', getValue: r => r.supplier, width: 12 },
-      { header: '구성품명', getValue: r => r.componentName, width: 14 },
-      { header: '모델명', getValue: r => r.componentModel, width: 18 },
-      { header: '수량', getValue: r => r.quantity, width: 6 },
-      { header: '매입단가', getValue: r => r.unitPrice, width: 12, numberFormat: '#,##0' },
-      { header: '매입금액', getValue: r => r.totalPrice, width: 12, numberFormat: '#,##0' },
-      { header: '주문번호', getValue: r => r.orderNumber, width: 14 },
-      { header: '배송확정일', getValue: r => r.confirmedDeliveryDate, width: 12 },
-      { header: '창고명', getValue: r => r.warehouseName, width: 16 },
-    ]
-    const monthLabel = `${selectedYear}년${selectedMonth}월`
-    exportToExcel({
-      data: displayItems,
-      columns,
-      fileName: buildExcelFileName('멜레아정산_매입내역', monthLabel),
-      sheetName: '매입내역',
+    const monthLabel = `${selectedYear}년 ${selectedMonth}월`
+    exportDeliveryPurchaseExcel({
+      items: displayItems,
+      fileName: buildExcelFileName('멜레아정산_배송매입내역', monthLabel),
+      monthLabel
     })
   }
 
@@ -374,7 +347,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     )
   }
 
-  // ─── 생성 버튼 (저장된 보고서 없을 때) ───
+  // ─── 생성 버튼 ───
   if (!savedReport) {
     return (
       <div className="bg-white rounded-xl border border-slate-200 shadow-sm">
@@ -479,21 +452,16 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                   </div>
                 </div>
                 <div className="text-right shrink-0">
-                  {orderTotal > 0 ? (
-                    <p className="text-sm font-bold tabular-nums text-teal-700">
-                      {orderTotal.toLocaleString('ko-KR')}
-                      <span className="text-slate-400 font-medium ml-0.5">원</span>
-                    </p>
-                  ) : (
-                    <span className="text-xs text-slate-400">매입가 미입력</span>
-                  )}
+                  <p className="text-sm font-bold tabular-nums text-teal-700">
+                    {orderTotal.toLocaleString('ko-KR')}
+                    <span className="text-slate-400 font-medium ml-0.5">원</span>
+                  </p>
                 </div>
               </button>
 
               {/* 아코디언: 구성품 상세 테이블 */}
               {isExpanded && (
                 <div className="border-t border-slate-200 bg-slate-50/50">
-                  {/* 데스크톱 테이블 */}
                   <div className="hidden md:block overflow-x-auto px-3 py-3">
                     <table className="w-full text-sm border-collapse" style={{ minWidth: '1400px' }}>
                       <thead>
@@ -517,22 +485,16 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                       <tbody className="bg-white divide-y divide-slate-100">
                         {group.items.map((item, idx) => {
                           const barColor = groupColors[idx]
-                          // 수정 모드일 때 editItems에서 해당 아이템의 실제 인덱스 찾기
                           const editIndex = isEditing ? editItems.findIndex(e => e.sortOrder === item.sortOrder) : -1
 
                           return (
                             <tr key={item.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-teal-50/20'}`}>
                               <td className="px-2 py-2 text-center text-slate-400 tabular-nums text-xs">{idx + 1}</td>
                               <td className="px-2 py-2">
-                                {item.deliveryStatus === 'none' ? (
-                                  <span className="text-xs text-slate-300">—</span>
-                                ) : (
-                                  <Badge className={`${ITEM_DELIVERY_STATUS_COLORS[item.deliveryStatus as keyof typeof ITEM_DELIVERY_STATUS_COLORS] || 'bg-slate-100 text-slate-500'} text-[10px]`}>
-                                    {ITEM_DELIVERY_STATUS_LABELS[item.deliveryStatus as keyof typeof ITEM_DELIVERY_STATUS_LABELS] || item.deliveryStatus}
-                                  </Badge>
-                                )}
+                                <Badge className={`${ITEM_DELIVERY_STATUS_COLORS[item.deliveryStatus as keyof typeof ITEM_DELIVERY_STATUS_COLORS] || 'bg-slate-100 text-slate-500'} text-[10px]`}>
+                                  {ITEM_DELIVERY_STATUS_LABELS[item.deliveryStatus as keyof typeof ITEM_DELIVERY_STATUS_LABELS] || item.deliveryStatus}
+                                </Badge>
                               </td>
-                              {/* 매입처 (수정 가능) */}
                               <td className="px-2 py-2">
                                 {isEditing && editIndex >= 0 ? (
                                   <input
@@ -547,40 +509,23 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                   }`}>{item.supplier}</span>
                                 )}
                               </td>
-                              <td className="px-2 py-2 text-xs text-slate-600 font-mono truncate" title={item.orderNumber}>
-                                {item.orderNumber || <span className="text-slate-300">-</span>}
+                              <td className="px-2 py-2 text-xs text-slate-600 font-mono truncate">{item.orderNumber || '-'}</td>
+                              <td className="px-2 py-2 text-xs text-slate-600">{item.itemOrderDate || '-'}</td>
+                              <td className="px-2 py-2 text-xs text-slate-600">{item.scheduledDeliveryDate || '-'}</td>
+                              <td className="px-2 py-2 text-xs text-slate-600">{item.confirmedDeliveryDate || '-'}</td>
+                              <td className="px-2 py-2 text-xs text-slate-800 truncate" style={barColor ? { borderLeft: `4px solid ${barColor}`, paddingLeft: '8px' } : undefined}>
+                                {item.componentModel || '-'}
                               </td>
-                              <td className="px-2 py-2 text-xs text-slate-600">
-                                {item.itemOrderDate || <span className="text-slate-300">-</span>}
-                              </td>
-                              <td className="px-2 py-2 text-xs text-slate-600">
-                                {item.scheduledDeliveryDate || <span className="text-slate-300">-</span>}
-                              </td>
-                              <td className="px-2 py-2 text-xs text-slate-600">
-                                {item.confirmedDeliveryDate || <span className="text-slate-300">-</span>}
-                              </td>
-                              {/* 모델명 (SET 그룹 컬러바) */}
-                              <td
-                                className="px-2 py-2 text-xs text-slate-800 truncate"
-                                style={barColor ? { borderLeft: `4px solid ${barColor}`, paddingLeft: '8px' } : undefined}
-                                title={item.componentModel}
-                              >
-                                {item.componentModel || <span className="text-slate-300">-</span>}
-                              </td>
-                              {/* 매입단가 (수정 가능) */}
                               <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-600">
                                 {isEditing && editIndex >= 0 ? (
                                   <input
                                     type="number"
-                                    className="w-full max-w-[80px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-right tabular-nums focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                    className="w-full max-w-[80px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-right focus:outline-none focus:ring-1 focus:ring-yellow-400"
                                     value={editItems[editIndex].unitPrice}
                                     onChange={e => handleFieldChange(editIndex, 'unitPrice', Number(e.target.value) || 0)}
                                   />
-                                ) : (
-                                  item.unitPrice > 0 ? item.unitPrice.toLocaleString('ko-KR') : <span className="text-slate-300">-</span>
-                                )}
+                                ) : item.unitPrice.toLocaleString('ko-KR')}
                               </td>
-                              {/* 수량 (수정 가능) */}
                               <td className="px-2 py-2 text-center text-xs text-slate-700 tabular-nums">
                                 {isEditing && editIndex >= 0 ? (
                                   <input
@@ -591,90 +536,24 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                   />
                                 ) : item.quantity}
                               </td>
-                              {/* 매입금액 (자동 계산) */}
                               <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-700 font-semibold">
-                                {item.totalPrice > 0
-                                  ? item.totalPrice.toLocaleString('ko-KR')
-                                  : <span className="text-slate-300">-</span>
-                                }
+                                {item.totalPrice.toLocaleString('ko-KR')}
                               </td>
                               <td className="px-2 py-2 text-xs text-slate-600">{item.componentName || '-'}</td>
-                              {/* 창고명 */}
-                              <td className="px-2 py-2 text-xs text-slate-700 truncate" title={item.warehouseName}>
-                                {item.warehouseName ? (
-                                  <span className="font-medium">{item.warehouseName}</span>
-                                ) : (
-                                  <span className="text-slate-300">미지정</span>
-                                )}
-                              </td>
-                              {/* 창고주소 */}
-                              <td className="px-2 py-2 text-[11px] text-slate-500 truncate" title={item.warehouseAddress}>
-                                {item.warehouseAddress || <span className="text-slate-300">-</span>}
-                              </td>
+                              <td className="px-2 py-2 text-xs text-slate-700 truncate">{item.warehouseName || '미지정'}</td>
+                              <td className="px-2 py-2 text-[11px] text-slate-500 truncate">{item.warehouseAddress || '-'}</td>
                             </tr>
                           )
                         })}
                       </tbody>
                       <tfoot>
                         <tr className="bg-teal-50 border-t-2 border-teal-200">
-                          <td colSpan={10} className="px-3 py-2 text-right text-xs font-bold text-teal-800">
-                            매입 소계
-                          </td>
-                          <td className="px-3 py-2 text-right text-xs font-bold text-teal-800 tabular-nums">
-                            {orderTotal.toLocaleString('ko-KR')}원
-                          </td>
+                          <td colSpan={10} className="px-3 py-2 text-right text-xs font-bold text-teal-800">매입 소계</td>
+                          <td className="px-3 py-2 text-right text-xs font-bold text-teal-800 tabular-nums">{orderTotal.toLocaleString('ko-KR')}원</td>
                           <td colSpan={3}></td>
                         </tr>
                       </tfoot>
                     </table>
-                  </div>
-
-                  {/* 모바일 카드 */}
-                  <div className="md:hidden divide-y divide-slate-100">
-                    {group.items.map((item, idx) => {
-                      const barColor = groupColors[idx]
-                      return (
-                        <div
-                          key={item.id || idx}
-                          className="px-4 py-3"
-                          style={barColor ? { borderLeft: `4px solid ${barColor}` } : undefined}
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-[10px] text-slate-400 bg-slate-100 rounded w-5 h-5 flex items-center justify-center shrink-0">{idx + 1}</span>
-                                <span className={`px-1.5 py-0.5 rounded text-[9px] font-semibold ${
-                                  item.supplier === '삼성전자' ? 'bg-teal-100 text-teal-700' : 'bg-slate-100 text-slate-600'
-                                }`}>{item.supplier}</span>
-                              </div>
-                              <p className="text-sm font-medium text-slate-800 mt-1 truncate">{item.componentModel || '-'}</p>
-                              <p className="text-xs text-slate-500">{item.componentName || '-'} · {item.quantity}개</p>
-                              {item.orderNumber && (
-                                <p className="text-[10px] text-slate-400 font-mono mt-0.5">주문 {item.orderNumber}</p>
-                              )}
-                              {item.warehouseName && (
-                                <p className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1">
-                                  <WarehouseIcon className="h-3 w-3" />
-                                  {item.warehouseName}
-                                </p>
-                              )}
-                              {item.unitPrice > 0 && (
-                                <p className="text-[10px] text-teal-500 mt-0.5">
-                                  매입 {item.unitPrice.toLocaleString('ko-KR')}원 × {item.quantity}
-                                </p>
-                              )}
-                            </div>
-                            <p className="text-sm font-semibold tabular-nums text-teal-700 shrink-0 ml-3">
-                              {item.totalPrice > 0 ? `${item.totalPrice.toLocaleString('ko-KR')}원` : '-'}
-                            </p>
-                          </div>
-                        </div>
-                      )
-                    })}
-                    <div className="px-4 py-3 bg-teal-50 flex items-center justify-between">
-                      <span className="text-sm font-bold text-teal-800">매입 소계</span>
-                      <span className="text-sm font-bold text-teal-800 tabular-nums">{orderTotal.toLocaleString('ko-KR')}원</span>
-                    </div>
                   </div>
                 </div>
               )}

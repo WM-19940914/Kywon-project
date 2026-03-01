@@ -21,7 +21,7 @@ import { SettledHistoryPanel } from '@/components/orders/settled-history-panel'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Search } from 'lucide-react'
+import { Search, ClipboardList, Plus } from 'lucide-react'
 import { useAlert } from '@/components/ui/custom-alert'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportMultiSheetExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
@@ -341,48 +341,83 @@ export default function OrdersPage() {
   ]
 
   return (
-    <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6">
-      {/* 컴팩트 1줄 툴바 */}
-      <div className="flex items-center gap-3 flex-wrap mb-4">
-        {/* 좌측: 제목 + 건수 */}
-        <h1 className="text-lg font-bold tracking-tight">발주 관리</h1>
-        {viewTab === 'active' && (
-          <span className="text-sm text-muted-foreground">{totalOrders}건</span>
-        )}
+    <div className="container mx-auto max-w-[1400px] py-6 px-4 md:px-6 space-y-6">
+      {/* 페이지 헤더 — AS 페이지와 스타일 통일 */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 px-2">
+        <div className="space-y-1">
+          <h1 className="text-2xl font-black tracking-tight text-slate-900 flex items-center gap-2.5">
+            <div className="p-2 bg-[#E09520] rounded-xl shadow-lg shadow-orange-200">
+              <ClipboardList className="h-5 w-5 text-white" strokeWidth={2.5} />
+            </div>
+            설치 발주 및 현황
+          </h1>
+          <p className="text-[13.5px] font-medium text-slate-400 pl-11">
+            교원그룹 에어컨 설치 발주 내역을 확인하고 진행 상태를 실시간으로 관리합니다.
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button className="bg-[#E09520] hover:bg-[#c87d1a] text-white font-black rounded-xl px-4 h-9.5 shadow-md shadow-orange-100 transition-all active:scale-95 text-[13px]">
+                <Plus className="h-4 w-4 mr-1.5" strokeWidth={3} />
+                신규 발주
+              </Button>
+            </DialogTrigger>
+            <DialogContent
+              className="max-w-3xl max-h-[90vh] overflow-y-auto"
+              onInteractOutside={(e) => e.preventDefault()}
+            >
+              <DialogHeader>
+                <DialogTitle>신규 발주 등록</DialogTitle>
+              </DialogHeader>
+              <OrderForm
+                onSubmit={handleSubmit}
+                onCancel={() => setIsDialogOpen(false)}
+                isSubmitting={isSubmitting}
+                storedEquipment={storedEquipment}
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
+      {/* 툴바 필터 영역 */}
+      <div className="bg-white rounded-2xl border border-slate-200/60 shadow-sm p-4 flex flex-wrap items-center gap-3">
         {/* 뷰 탭 (pill 형태) */}
-        <div className="flex bg-muted rounded-lg p-0.5 ml-2">
+        <div className="flex bg-slate-100 rounded-xl p-1">
           {tabItems.map((tab) => (
             <button
               key={tab.key}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors
+              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all
                 ${viewTab === tab.key
-                  ? 'bg-white text-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'}`}
+                  ? 'bg-white text-slate-900 shadow-sm'
+                  : 'text-slate-400 hover:text-slate-600'}`}
               onClick={() => setViewTab(tab.key)}
             >
               {tab.label}
+              {viewTab === tab.key && tab.key === 'active' && (
+                <span className="ml-1.5 opacity-50">{totalOrders}</span>
+              )}
             </button>
           ))}
         </div>
 
-        <div className="flex-1" />
+        <div className="flex-1 min-w-[200px] relative">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder="문서번호, 사업자명, 주소 검색..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10 h-10 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+          />
+        </div>
 
-        {/* 우측: 검색 + 필터 + 버튼 (진행중 탭에서만) */}
         {viewTab === 'active' && (
-          <>
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="검색..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-8 w-48 h-9 text-sm"
-              />
-            </div>
-
+          <div className="flex items-center gap-2">
             <Select value={affiliateFilter} onValueChange={setAffiliateFilter}>
-              <SelectTrigger className="w-[130px] h-9 text-sm">
+              <SelectTrigger className="w-[140px] h-10 rounded-xl border-slate-200 bg-slate-50/50">
                 <SelectValue placeholder="계열사" />
               </SelectTrigger>
               <SelectContent>
@@ -394,7 +429,7 @@ export default function OrdersPage() {
             </Select>
 
             <Select value={sortOrder} onValueChange={setSortOrder}>
-              <SelectTrigger className="w-[110px] h-9 text-sm">
+              <SelectTrigger className="w-[110px] h-10 rounded-xl border-slate-200 bg-slate-50/50">
                 <SelectValue placeholder="정렬" />
               </SelectTrigger>
               <SelectContent>
@@ -402,29 +437,7 @@ export default function OrdersPage() {
                 <SelectItem value="oldest">오래된순</SelectItem>
               </SelectContent>
             </Select>
-
-            <ExcelExportButton onClick={handleExcelExport} disabled={filteredOrders.length === 0} />
-
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button className="h-9 text-sm">+ 신규 발주</Button>
-              </DialogTrigger>
-              <DialogContent
-                className="max-w-3xl max-h-[90vh] overflow-y-auto"
-                onInteractOutside={(e) => e.preventDefault()}
-              >
-                <DialogHeader>
-                  <DialogTitle>신규 발주 등록</DialogTitle>
-                </DialogHeader>
-                <OrderForm
-                  onSubmit={handleSubmit}
-                  onCancel={() => setIsDialogOpen(false)}
-                  isSubmitting={isSubmitting}
-                  storedEquipment={storedEquipment}
-                />
-              </DialogContent>
-            </Dialog>
-          </>
+          </div>
         )}
       </div>
 

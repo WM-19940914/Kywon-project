@@ -23,7 +23,7 @@ import {
 import type { ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
 import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, GripVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
+import { exportToExcel, buildExcelFileName, exportDeliveryPurchaseExcel } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
 import { toast } from 'sonner' // ✅ 예쁜 알림창 라이브러리 추가
 
@@ -468,6 +468,17 @@ export function DetailedExpenseReportTab({
     })
   }
 
+  /** 엑셀 다운로드 — 배송 및 매입 내역 상세 (요청 양식) */
+  const handleExportDeliveryExcel = () => {
+    const monthLabel = `${selectedYear}년 ${selectedMonth}월`
+    exportDeliveryPurchaseExcel({
+      orders,
+      fileName: buildExcelFileName('멜레아정산_배송매입내역', monthLabel),
+      monthLabel
+    })
+    toast.success('배송 및 매입 내역 엑셀 다운로드를 시작합니다.')
+  }
+
   // ─── 로딩/생성 중/다이얼로그 ───
   if (isLoading) {
     return (
@@ -622,8 +633,11 @@ export function DetailedExpenseReportTab({
               <Button variant="outline" size="sm" onClick={() => setShowRewriteConfirm(true)} className="gap-1.5 text-slate-600">
                 <RefreshCw className="h-3.5 w-3.5" />재작성
               </Button>
+              <Button variant="outline" size="sm" onClick={handleExportDeliveryExcel} className="gap-1.5 text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100">
+                <Download className="h-3.5 w-3.5" />배송/매입 내역
+              </Button>
               <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
-                <Download className="h-3.5 w-3.5" />엑셀
+                <Download className="h-3.5 w-3.5" />지출결의서
               </Button>
             </>
           )}

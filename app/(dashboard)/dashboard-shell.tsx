@@ -21,6 +21,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarProvider,
+  SidebarTrigger,
 } from '@/components/ui/sidebar'
 import { menuItems, serverAdminMenuItem, archiveMenuItem } from '@/lib/menu-items'
 import { AlertProvider } from '@/components/ui/custom-alert'
@@ -271,6 +272,11 @@ export default function DashboardShell({ children, user }: DashboardShellProps) 
 
       {/* ── 오른쪽 메인 콘텐츠 영역 ── */}
       <div className="flex-1 flex flex-col min-h-screen">
+        {/* 상단 헤더: 사이드바 토글 버튼 포함 */}
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b bg-white/50 backdrop-blur-sm sticky top-0 z-20 px-4">
+          <SidebarTrigger className="-ml-1 text-slate-500 hover:text-slate-900 transition-colors" />
+        </header>
+
         <main className="flex-1 bg-slate-50/50 p-8">
           <div className="animate-page-enter">
             {children}

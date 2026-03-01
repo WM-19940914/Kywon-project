@@ -1,347 +1,137 @@
 /**
  * 엑셀 내보내기 공통 유틸리티
- * - 모든 페이지에서 현재 탭 데이터를 .xlsx 파일로 다운로드할 때 사용
- * - ExcelJS 기반 — 셀 서식(테두리/배경색/폰트/병합) 지원
  */
 
 import ExcelJS from 'exceljs'
 
 /* ─────────────────────────── 타입 정의 ─────────────────────────── */
 
-/** 엑셀 컬럼 설정 */
 export interface ExcelColumn<T> {
-  /** 엑셀 헤더(첫 번째 행)에 표시될 이름 */
   header: string
-  /** 데이터 객체에서 값을 꺼낼 키 (단순 키) */
   key?: keyof T
-  /** 커스텀 값 추출 함수 (복잡한 계산이나 중첩 데이터에 사용) */
   getValue?: (item: T) => string | number | null | undefined
-  /** 엑셀 컬럼 너비 (기본 15) */
   width?: number
-  /** 숫자 포맷 (예: '#,##0' → 1000 단위 쉼표) */
   numberFormat?: string
 }
 
-/** 일반 테이블 엑셀 변환 옵션 */
 export interface ExportOptions<T> {
-  /** 데이터 배열 */
   data: T[]
-  /** 컬럼 설정 배열 */
   columns: ExcelColumn<T>[]
-  /** 파일명 (확장자 제외) — buildExcelFileName()으로 생성 권장 */
   fileName: string
-  /** 시트 이름 (기본: 'Sheet1') */
   sheetName?: string
 }
 
-/** 다중 시트 엑셀 옵션 */
 export interface ExportMultiSheetOptions {
-  /** 각 시트별 설정 */
   sheets: {
     sheetName: string
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     data: any[]
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     columns: ExcelColumn<any>[]
   }[]
-  /** 파일명 (확장자 제외) */
   fileName: string
 }
 
-/** 부모+자식 중첩 데이터 엑셀 변환 옵션 (배송관리 등) */
-export interface ExportFlattenedOptions<P, C> {
-  /** 부모 데이터 배열 */
-  parents: P[]
-  /** 부모에서 자식 배열을 꺼내는 함수 */
-  getChildren: (parent: P) => C[]
-  /** 부모 컬럼 설정 */
-  parentColumns: ExcelColumn<P>[]
-  /** 자식 컬럼 설정 */
-  childColumns: ExcelColumn<C>[]
-  /** 파일명 (확장자 제외) */
-  fileName: string
-  /** 시트 이름 (기본: 'Sheet1') */
-  sheetName?: string
-}
-
-/**
- * 정산관리 전용: 계열사별 시트 생성 (정산 요약 + 사업자별 견적 상세)
- *
- * 각 계열사 시트 구조:
- * ┌─────────────────────────────────────────────────┐
- * │ [정산 요약]                                       │
- * │ 사업자명 | 작업종류 | 발주일 | 완료일 | 부가세별도 | VAT | 합계 │
- * │ ...                                              │
- * │ ── 소계 ──                            xxx   xxx   │
- * │                                                   │
- * │ [견적서 상세]                                      │
- * │ ▸ 사업자A (작업종류)                               │
- * │   구분 | 항목명 | 수량 | 단가 | 금액                │
- * │   장비비  벽걸이형 16평  1   xxx   xxx              │
- * │   설치비  표준설치       1   xxx   xxx              │
- * │                                ── 소계: xxx ──     │
- * │                                                   │
- * │ ▸ 사업자B (작업종류)                               │
- * │   ...                                             │
- * └─────────────────────────────────────────────────┘
- */
 export interface SettlementSheetData {
-  /** 사업자명 */
   businessName: string
-  /** 작업종류 */
   workTypes: string
-  /** 발주일 */
   orderDate: string
-  /** 설치완료일 */
   installCompleteDate: string
-  /** 부가세별도 (공급가액+기업이윤) */
   subtotalWithProfit: number
-  /** 부가세 */
   vat: number
-  /** 합계(VAT포함) */
   grandTotal: number
-  /** 장비비 절사 */
   equipRounding: number
-  /** 설치비 절사 */
   installRounding: number
-  /** 공급가액 (장비비소계+설치비소계) */
   supplyAmount: number
-  /** 기업이윤 (설치비의 3%, 절사 반영) */
   adjustedProfit: number
-  /** 견적서 항목 */
   quoteItems: {
-    category: string    // '장비비' | '설치비'
-    productName: string // 품목명
-    modelName: string   // 모델명
+    category: string
+    productName: string
+    modelName: string
     quantity: number
     unitPrice: number
     totalPrice: number
   }[]
 }
 
-/** 요약 통계에 사용할 계열사별 합계 */
 export interface AffiliateSummary {
   name: string
   installCount: number
-  installTotal: number  // VAT포함
+  installTotal: number
   asCount: number
-  asTotal: number       // VAT포함
+  asTotal: number
 }
 
 export interface ExportSettlementOptions {
-  /** 계열사별 설치정산 데이터 */
   affiliateData: Record<string, SettlementSheetData[]>
-  /** 계열사별 AS정산 데이터 */
   asAffiliateData?: Record<string, Record<string, unknown>[]>
   asColumns?: ExcelColumn<Record<string, unknown>>[]
-  /** 요약 통계 (첫 시트용) */
   summary?: AffiliateSummary[]
-  /** 파일명 */
   fileName: string
-  /** 월 라벨 (예: '2026년2월') */
   monthLabel: string
 }
 
 /* ─────────────────────────── 스타일 상수 ─────────────────────────── */
 
-/** 헤더 배경 (진한 남색) */
-const HEADER_FILL: ExcelJS.FillPattern = {
-  type: 'pattern',
-  pattern: 'solid',
-  fgColor: { argb: 'FF2B3A67' },
-}
+const HEADER_FILL: ExcelJS.FillPattern = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2B3A67' } }
+const HEADER_FONT: Partial<ExcelJS.Font> = { name: '맑은 고딕', size: 10, bold: true, color: { argb: 'FFFFFFFF' } }
+const DEFAULT_FONT: Partial<ExcelJS.Font> = { name: '맑은 고딕', size: 10 }
+const THIN_BORDER: Partial<ExcelJS.Borders> = { top: { style: 'thin', color: { argb: 'FFD0D0D0' } }, left: { style: 'thin', color: { argb: 'FFD0D0D0' } }, bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } }, right: { style: 'thin', color: { argb: 'FFD0D0D0' } } }
+const TOTAL_FONT: Partial<ExcelJS.Font> = { name: '맑은 고딕', size: 10, bold: true }
+const TOTAL_BORDER: Partial<ExcelJS.Borders> = { top: { style: 'medium', color: { argb: 'FF2B3A67' } }, left: { style: 'thin', color: { argb: 'FFD0D0D0' } }, bottom: { style: 'double', color: { argb: 'FF2B3A67' } }, right: { style: 'thin', color: { argb: 'FFD0D0D0' } } }
+const SECTION_TITLE_FONT: Partial<ExcelJS.Font> = { name: '맑은 고딕', size: 12, bold: true }
+const SUB_HEADER_FILL: ExcelJS.FillPattern = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F0F0' } }
+const BUSINESS_HEADER_FILL: ExcelJS.FillPattern = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFE8EDF5' } }
 
-/** 헤더 폰트 (흰색 볼드 10pt 맑은고딕) */
-const HEADER_FONT: Partial<ExcelJS.Font> = {
-  name: '맑은 고딕',
-  size: 10,
-  bold: true,
-  color: { argb: 'FFFFFFFF' },
-}
+/* ─────────────────────────── 스타일 헬퍼 ─────────────────────────── */
 
-/** 데이터 셀 기본 폰트 (10pt 맑은고딕) */
-const DEFAULT_FONT: Partial<ExcelJS.Font> = {
-  name: '맑은 고딕',
-  size: 10,
-}
-
-/** 데이터 셀 얇은 테두리 */
-const THIN_BORDER: Partial<ExcelJS.Borders> = {
-  top: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-  left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-  bottom: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-  right: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-}
-
-/** 합계행 볼드 폰트 */
-const TOTAL_FONT: Partial<ExcelJS.Font> = {
-  name: '맑은 고딕',
-  size: 10,
-  bold: true,
-}
-
-/** 합계행 상단 두꺼운 테두리 */
-const TOTAL_BORDER: Partial<ExcelJS.Borders> = {
-  top: { style: 'medium', color: { argb: 'FF2B3A67' } },
-  left: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-  bottom: { style: 'double', color: { argb: 'FF2B3A67' } },
-  right: { style: 'thin', color: { argb: 'FFD0D0D0' } },
-}
-
-/** 섹션 타이틀 폰트 (볼드 12pt) */
-const SECTION_TITLE_FONT: Partial<ExcelJS.Font> = {
-  name: '맑은 고딕',
-  size: 12,
-  bold: true,
-}
-
-/** 서브 헤더 배경 (연한 회색) */
-const SUB_HEADER_FILL: ExcelJS.FillPattern = {
-  type: 'pattern',
-  pattern: 'solid',
-  fgColor: { argb: 'FFF0F0F0' },
-}
-
-/** 사업자 구분 배경 (연한 파란색) */
-const BUSINESS_HEADER_FILL: ExcelJS.FillPattern = {
-  type: 'pattern',
-  pattern: 'solid',
-  fgColor: { argb: 'FFE8EDF5' },
-}
-
-/* ─────────────────────────── 스타일 헬퍼 함수 ─────────────────────────── */
-
-/** 헤더행 스타일 적용 (배경+폰트+테두리+중앙정렬) */
 function applyHeaderStyle(row: ExcelJS.Row) {
   row.eachCell({ includeEmpty: true }, (cell) => {
-    cell.fill = HEADER_FILL
-    cell.font = HEADER_FONT
-    cell.alignment = { horizontal: 'center', vertical: 'middle' }
-    cell.border = {
-      top: { style: 'thin', color: { argb: 'FF2B3A67' } },
-      left: { style: 'thin', color: { argb: 'FF2B3A67' } },
-      bottom: { style: 'thin', color: { argb: 'FF2B3A67' } },
-      right: { style: 'thin', color: { argb: 'FF2B3A67' } },
-    }
+    cell.fill = HEADER_FILL; cell.font = HEADER_FONT; cell.alignment = { horizontal: 'center', vertical: 'middle' }; cell.border = THIN_BORDER
   })
   row.height = 22
 }
 
-/** 데이터 셀 스타일 적용 (테두리+정렬+숫자포맷) */
 function applyDataCellStyle(cell: ExcelJS.Cell, numberFormat?: string) {
-  cell.font = DEFAULT_FONT
-  cell.border = THIN_BORDER
-  cell.alignment = { vertical: 'middle' }
-
-  // 숫자 셀은 오른쪽 정렬 + 포맷
-  if (typeof cell.value === 'number') {
-    cell.alignment = { horizontal: 'right', vertical: 'middle' }
-    cell.numFmt = numberFormat || '#,##0'
-  }
+  cell.font = DEFAULT_FONT; cell.border = THIN_BORDER; cell.alignment = { vertical: 'middle' }
+  const isNumeric = typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in cell.value)
+  if (isNumeric) { cell.alignment = { horizontal: 'right', vertical: 'middle' }; cell.numFmt = numberFormat || '#,##0' }
 }
 
-/** 합계행 스타일 적용 (볼드+상단 두꺼운 테두리) */
 function applyTotalRowStyle(row: ExcelJS.Row) {
   row.eachCell({ includeEmpty: true }, (cell) => {
-    cell.font = TOTAL_FONT
-    cell.border = TOTAL_BORDER
-    cell.alignment = { vertical: 'middle' }
-    if (typeof cell.value === 'number') {
-      cell.alignment = { horizontal: 'right', vertical: 'middle' }
-      cell.numFmt = '#,##0'
-    }
+    cell.font = TOTAL_FONT; cell.border = TOTAL_BORDER; cell.alignment = { vertical: 'middle' }
+    if (typeof cell.value === 'number' || (cell.value && typeof cell.value === 'object' && 'formula' in cell.value)) { cell.alignment = { horizontal: 'right', vertical: 'middle' }; cell.numFmt = '#,##0' }
   })
 }
 
-/** 섹션 타이틀 적용 (셀 병합 + 큰 폰트) */
 function applySectionTitle(ws: ExcelJS.Worksheet, rowNum: number, title: string, colSpan: number) {
-  const row = ws.getRow(rowNum)
-  row.getCell(1).value = title
-  row.getCell(1).font = SECTION_TITLE_FONT
-  row.getCell(1).alignment = { vertical: 'middle' }
-  if (colSpan > 1) {
-    ws.mergeCells(rowNum, 1, rowNum, colSpan)
-  }
-  row.height = 28
-  row.commit()
+  const row = ws.getRow(rowNum); row.getCell(1).value = title; row.getCell(1).font = SECTION_TITLE_FONT; row.getCell(1).alignment = { vertical: 'middle' }
+  if (colSpan > 1) { ws.mergeCells(rowNum, 1, rowNum, colSpan) }
+  row.height = 28; row.commit()
 }
 
 /* ─────────────────────────── 핵심 함수 ─────────────────────────── */
 
-/**
- * 컬럼 설정에 따라 데이터 한 행의 값을 추출
- */
 function extractRowValues<T>(item: T, columns: ExcelColumn<T>[]): (string | number | null | undefined)[] {
-  return columns.map((col) => {
-    if (col.getValue) return col.getValue(item)
-    if (col.key) return item[col.key] as string | number | null | undefined
-    return ''
-  })
+  return columns.map((col) => { if (col.getValue) return col.getValue(item); if (col.key) return item[col.key] as string | number | null | undefined; return '' })
 }
 
-/**
- * 워크북을 .xlsx 파일로 다운로드 (async Blob 패턴)
- */
 async function downloadWorkbook(wb: ExcelJS.Workbook, fileName: string) {
   const buffer = await wb.xlsx.writeBuffer()
-  const blob = new Blob([buffer], {
-    type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  })
-  const url = URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = url
-  link.download = `${fileName}.xlsx`
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  URL.revokeObjectURL(url)
+  const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+  const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = `${fileName}.xlsx`; document.body.appendChild(link); link.click(); document.body.removeChild(link); URL.revokeObjectURL(url)
 }
 
 /* ─────────────────────────── 공개 API ─────────────────────────── */
 
-/**
- * 일반 테이블 → 엑셀 다운로드
- *
- * 사용 예:
- * ```ts
- * exportToExcel({
- *   data: filteredItems,
- *   columns: [
- *     { header: '이름', key: 'name', width: 20 },
- *     { header: '금액', getValue: (item) => item.price, numberFormat: '#,##0' },
- *   ],
- *   fileName: buildExcelFileName('AS관리', 'AS접수'),
- * })
- * ```
- */
 export async function exportToExcel<T>({ data, columns, fileName, sheetName = 'Sheet1' }: ExportOptions<T>) {
-  const wb = new ExcelJS.Workbook()
-  const ws = wb.addWorksheet(sheetName)
-
-  // 1) 컬럼 너비 설정
-  ws.columns = columns.map((c) => ({ width: c.width ?? 15 }))
-
-  // 2) 헤더 행
-  const headerRow = ws.addRow(columns.map((c) => c.header))
-  applyHeaderStyle(headerRow)
-
-  // 3) 데이터 행
-  data.forEach((item) => {
-    const values = extractRowValues(item, columns)
-    const row = ws.addRow(values)
-    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-      const col = columns[colNumber - 1]
-      applyDataCellStyle(cell, col?.numberFormat)
-    })
-  })
-
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet(sheetName); ws.columns = columns.map((c) => ({ width: c.width ?? 15 }))
+  const headerRow = ws.addRow(columns.map((c) => c.header)); applyHeaderStyle(headerRow)
+  data.forEach((item) => { const values = extractRowValues(item, columns); const row = ws.addRow(values); row.eachCell({ includeEmpty: true }, (cell, colNumber) => { const col = columns[colNumber - 1]; applyDataCellStyle(cell, col?.numberFormat) }) })
   await downloadWorkbook(wb, fileName)
 }
 
 /**
- * 다중 시트 엑셀 다운로드
- *
- * 사용 예: 정산관리 — 시트1: 설치정산, 시트2: AS정산
+ * 여러 시트를 한 번에 내보내는 공통 함수
  */
 export async function exportMultiSheetExcel({ sheets, fileName }: ExportMultiSheetOptions) {
   const wb = new ExcelJS.Workbook()
@@ -349,10 +139,12 @@ export async function exportMultiSheetExcel({ sheets, fileName }: ExportMultiShe
   sheets.forEach(({ sheetName, data, columns }) => {
     const ws = wb.addWorksheet(sheetName)
     ws.columns = columns.map((c) => ({ width: c.width ?? 15 }))
-
+    
+    // 헤더 추가
     const headerRow = ws.addRow(columns.map((c) => c.header))
     applyHeaderStyle(headerRow)
 
+    // 데이터 추가
     data.forEach((item) => {
       const values = extractRowValues(item, columns)
       const row = ws.addRow(values)
@@ -367,10 +159,8 @@ export async function exportMultiSheetExcel({ sheets, fileName }: ExportMultiShe
 }
 
 /**
- * 부모+자식 중첩 데이터 → 1행=1자식으로 펼쳐서 엑셀 다운로드
- * (배송관리: 발주(부모) + 구성품(자식[]) 등)
- *
- * 부모 정보는 첫 번째 자식 행에만 표시하고, 나머지는 빈 칸
+ * 부모-자식 관계의 데이터를 한 줄로 펼쳐서 내보내는 함수 (Flatten)
+ * 예: 하나의 발주서(부모)에 속한 여러 개의 품목(자식)을 각각 한 줄씩 출력
  */
 export async function exportFlattenedToExcel<P, C>({
   parents,
@@ -379,39 +169,43 @@ export async function exportFlattenedToExcel<P, C>({
   childColumns,
   fileName,
   sheetName = 'Sheet1',
-}: ExportFlattenedOptions<P, C>) {
+}: {
+  parents: P[]
+  getChildren: (parent: P) => C[]
+  parentColumns: ExcelColumn<P>[]
+  childColumns: ExcelColumn<C>[]
+  fileName: string
+  sheetName?: string
+}) {
   const wb = new ExcelJS.Workbook()
   const ws = wb.addWorksheet(sheetName)
 
+  // 헤더 구성 (부모 컬럼 + 자식 컬럼)
   const allColumns = [...parentColumns, ...childColumns]
-  ws.columns = allColumns.map((c) => ({ width: (c as ExcelColumn<P | C>).width ?? 15 }))
-
-  // 헤더 행
+  ws.columns = allColumns.map((c) => ({ width: c.width ?? 15 }))
   const headerRow = ws.addRow(allColumns.map((c) => c.header))
   applyHeaderStyle(headerRow)
 
-  // 데이터 행
+  // 데이터 구성
   parents.forEach((parent) => {
     const children = getChildren(parent)
     const parentValues = extractRowValues(parent, parentColumns)
 
     if (children.length === 0) {
-      // 자식이 없으면 부모만 1행
-      const row = ws.addRow([...parentValues, ...childColumns.map(() => '')])
+      // 자식이 없더라도 부모 정보는 한 줄 출력
+      const row = ws.addRow([...parentValues, ...new Array(childColumns.length).fill('')])
       row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
         const col = allColumns[colNumber - 1]
-        applyDataCellStyle(cell, (col as ExcelColumn<P | C>)?.numberFormat)
+        applyDataCellStyle(cell, col?.numberFormat)
       })
     } else {
-      children.forEach((child, idx) => {
+      // 자식 수만큼 행 생성 (부모 정보 반복)
+      children.forEach((child) => {
         const childValues = extractRowValues(child, childColumns)
-        const rowValues = idx === 0
-          ? [...parentValues, ...childValues]
-          : [...parentColumns.map(() => ''), ...childValues]
-        const row = ws.addRow(rowValues)
+        const row = ws.addRow([...parentValues, ...childValues])
         row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
           const col = allColumns[colNumber - 1]
-          applyDataCellStyle(cell, (col as ExcelColumn<P | C>)?.numberFormat)
+          applyDataCellStyle(cell, col?.numberFormat)
         })
       })
     }
@@ -420,346 +214,298 @@ export async function exportFlattenedToExcel<P, C>({
   await downloadWorkbook(wb, fileName)
 }
 
-/**
- * 정산관리 전용: 요약 시트 + 계열사별 시트 + AS 시트 생성
- * 보고서 수준 서식 적용 (테두리/배경색/폰트/병합/숫자포맷)
+/** 
+ * ★ 교원 월별 정산 내역 표준 엑셀 함수 (100% 동일 양식)
  */
 export async function exportSettlementExcel({ affiliateData, asAffiliateData, asColumns, summary, fileName, monthLabel }: ExportSettlementOptions) {
   const wb = new ExcelJS.Workbook()
+  const installSheetTotalCells: Record<string, string> = {}
+  const asSheetTotalCells: Record<string, string> = {}
+  const detailBusinessRows: { sheetKey: string; bizName: string; cellRef: string; isAs: boolean }[] = []
 
-  // ═══════════════════════════════════════════════════
-  //  첫 번째 시트: 요약 통계
-  // ═══════════════════════════════════════════════════
-  if (summary && summary.length > 0) {
-    const ws = wb.addWorksheet(`${monthLabel} 정산`)
-    ws.columns = [{ width: 18 }, { width: 12 }, { width: 20 }]
+  const summaryWs = wb.addWorksheet(`${monthLabel} 정산`)
 
-    let installTotalCount = 0
-    let installTotalAmount = 0
-    let asTotalCount = 0
-    let asTotalAmount = 0
-
-    // ── 대제목 ──
-    applySectionTitle(ws, 1, `${monthLabel} 정산 요약`, 3)
-    ws.addRow([]) // 빈 행
-
-    // ── 설치 정산 섹션 ──
-    const installSectionRow = ws.addRow(['설치 정산'])
-    installSectionRow.getCell(1).font = { ...TOTAL_FONT, size: 11 }
-    installSectionRow.commit()
-
-    const installHeaderRow = ws.addRow(['계열사', '건수', '합계(VAT포함)'])
-    applyHeaderStyle(installHeaderRow)
-
-    summary.forEach((s) => {
-      const row = ws.addRow([s.name, s.installCount, s.installCount > 0 ? s.installTotal : 0])
-      row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-      installTotalCount += s.installCount
-      installTotalAmount += s.installTotal
-    })
-
-    // 설치 합계행
-    const installTotalRow = ws.addRow(['합 계', installTotalCount, installTotalAmount])
-    applyTotalRowStyle(installTotalRow)
-
-    ws.addRow([]) // 빈 행
-    ws.addRow([]) // 빈 행
-
-    // ── AS 정산 섹션 ──
-    const asSectionRow = ws.addRow(['AS 정산'])
-    asSectionRow.getCell(1).font = { ...TOTAL_FONT, size: 11 }
-    asSectionRow.commit()
-
-    const asHeaderRow = ws.addRow(['계열사', '건수', '합계(VAT포함)'])
-    applyHeaderStyle(asHeaderRow)
-
-    summary.forEach((s) => {
-      const row = ws.addRow([s.name, s.asCount, s.asCount > 0 ? s.asTotal : 0])
-      row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-      asTotalCount += s.asCount
-      asTotalAmount += s.asTotal
-    })
-
-    // AS 합계행
-    const asTotalRow = ws.addRow(['합 계', asTotalCount, asTotalAmount])
-    applyTotalRowStyle(asTotalRow)
-
-    ws.addRow([]) // 빈 행
-    ws.addRow([]) // 빈 행
-
-    // ── 최종 합계 섹션 ──
-    const finalSectionRow = ws.addRow(['최종 정산금액'])
-    finalSectionRow.getCell(1).font = { ...TOTAL_FONT, size: 11 }
-    finalSectionRow.commit()
-
-    const finalHeaderRow = ws.addRow(['구분', '건수', '합계(VAT포함)'])
-    applyHeaderStyle(finalHeaderRow)
-
-    const finalInstallRow = ws.addRow(['설치 정산', installTotalCount, installTotalAmount])
-    finalInstallRow.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-
-    const finalAsRow = ws.addRow(['AS 정산', asTotalCount, asTotalAmount])
-    finalAsRow.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-
-    // 최종 합계행
-    const finalTotalRow = ws.addRow(['최종 합계', installTotalCount + asTotalCount, installTotalAmount + asTotalAmount])
-    applyTotalRowStyle(finalTotalRow)
-  }
-
-  // ═══════════════════════════════════════════════════
-  //  계열사별 시트 (0건도 포함)
-  // ═══════════════════════════════════════════════════
-  Object.entries(affiliateData).forEach(([affiliate, orders]) => {
-    const sheetName = affiliate.length > 31 ? affiliate.substring(0, 31) : affiliate
+  // 1. 상세 시트 생성
+  for (const [key, orders] of Object.entries(affiliateData)) {
+    const sheetName = key.length > 31 ? key.substring(0, 31) : key
     const ws = wb.addWorksheet(sheetName)
-
-    // 컬럼 너비 설정
-    ws.columns = [
-      { width: 22 }, // A: 사업자명/구분헤더
-      { width: 10 }, // B: 작업종류/구분
-      { width: 22 }, // C: 발주일/품목명
-      { width: 20 }, // D: 설치완료일/모델명
-      { width: 10 }, // E: 공급가액/수량
-      { width: 16 }, // F: 기업이윤/단가/라벨
-      { width: 16 }, // G: 소계/금액
-      { width: 14 }, // H: 부가세
-      { width: 16 }, // I: 합계
-    ]
-
-    // ── 상단: 정산 요약 테이블 ──
-    applySectionTitle(ws, 1, `[ ${affiliate} ] ${monthLabel} 정산 요약 — ${orders.length}건`, 9)
-    ws.addRow([]) // 빈 행
-
-    // 정산 요약 헤더
-    const summaryHeaderRow = ws.addRow([
-      '사업자명', '작업종류', '발주일', '설치완료일',
-      '공급가액', '기업이윤', '소계(부가세별도)', '부가세', '합계(VAT포함)',
-    ])
-    applyHeaderStyle(summaryHeaderRow)
-
-    let totalSupply = 0
-    let totalProfit = 0
-    let totalSubtotal = 0
-    let totalVat = 0
-    let totalGrand = 0
-
-    // 데이터 행
-    orders.forEach((o) => {
-      const row = ws.addRow([
-        o.businessName, o.workTypes, o.orderDate, o.installCompleteDate,
-        o.supplyAmount, o.adjustedProfit, o.subtotalWithProfit, o.vat, o.grandTotal,
-      ])
-      row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-      totalSupply += o.supplyAmount
-      totalProfit += o.adjustedProfit
-      totalSubtotal += o.subtotalWithProfit
-      totalVat += o.vat
-      totalGrand += o.grandTotal
+    ws.columns = [{ width: 22 }, { width: 12 }, { width: 15 }, { width: 15 }, { width: 18 }, { width: 14 }, { width: 18 }]
+    applySectionTitle(ws, 1, `[ ${key} ] ${monthLabel} 정산 요약`, 7)
+    ws.addRow([])
+    const hdr = ws.addRow(['사업자명', '작업종류', '발주일', '설치완료일', '소계(부가세별도)', '부가세', '합계(VAT포함)']); applyHeaderStyle(hdr)
+    
+    const summaryRows: { row: ExcelJS.Row; bizName: string }[] = []
+    orders.forEach(o => { 
+      const r = ws.addRow([o.businessName, o.workTypes, o.orderDate, o.installCompleteDate, 0, 0, 0])
+      summaryRows.push({ row: r, bizName: o.businessName }); r.eachCell(c => applyDataCellStyle(c, '#,##0')) 
     })
+    
+    const sStart = hdr.number + 1; const sEnd = ws.rowCount
+    ws.addRow([])
+    const totRow = ws.addRow(['', '', '', '합 계', 0, 0, 0])
+    totRow.getCell(5).value = { formula: `SUM(E${sStart}:E${sEnd})`, result: 0 }
+    totRow.getCell(6).value = { formula: `SUM(F${sStart}:F${sEnd})`, result: 0 }
+    totRow.getCell(7).value = { formula: `SUM(G${sStart}:G${sEnd})`, result: 0 }
+    applyTotalRowStyle(totRow)
+    installSheetTotalCells[key] = `'${sheetName}'!G${totRow.number}`
 
-    // 합계행
-    ws.addRow([]) // 빈 행
-    const totalRow = ws.addRow([
-      '', '', '', '합 계',
-      totalSupply, totalProfit, totalSubtotal, totalVat, totalGrand,
-    ])
-    applyTotalRowStyle(totalRow)
-
-    ws.addRow([]) // 빈 행
-    ws.addRow([]) // 빈 행
-
-    // ── 하단: 사업자별 견적서 상세 ──
-    applySectionTitle(ws, ws.rowCount + 1, `[ ${affiliate} ] 견적서 상세`, 9)
-    ws.addRow([]) // 빈 행
-
-    orders.forEach((o) => {
-      if (!o.quoteItems || o.quoteItems.length === 0) return
-
-      // 사업자 구분 헤더 (연한 파란 배경)
-      const bizRow = ws.addRow([`▸ ${o.businessName}  (${o.workTypes})`])
-      bizRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = BUSINESS_HEADER_FILL
-        cell.font = TOTAL_FONT
-        cell.border = THIN_BORDER
-      })
-      ws.mergeCells(bizRow.number, 1, bizRow.number, 7)
-
-      // 서브 헤더 (연한 회색 배경)
-      const subHeaderRow = ws.addRow(['', '구분', '품목명', '모델명', '수량', '단가', '금액'])
-      subHeaderRow.eachCell({ includeEmpty: true }, (cell) => {
-        cell.fill = SUB_HEADER_FILL
-        cell.font = { ...DEFAULT_FONT, bold: true }
-        cell.alignment = { horizontal: 'center', vertical: 'middle' }
-        cell.border = THIN_BORDER
-      })
-
-      const equipItems = o.quoteItems.filter((q) => q.category === '장비비')
-      const installItems = o.quoteItems.filter((q) => q.category === '설치비')
-
-      // 장비비 항목
-      if (equipItems.length > 0) {
-        equipItems.forEach((q) => {
-          const row = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, q.totalPrice])
-          row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-        })
-        // 장비비 절사
-        if (o.equipRounding > 0) {
-          const row = ws.addRow(['', '', '', '', '', '장비비 절사', -o.equipRounding])
-          row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-          row.getCell(6).font = { ...DEFAULT_FONT, italic: true, color: { argb: 'FF888888' } }
-          row.getCell(7).font = { ...DEFAULT_FONT, italic: true, color: { argb: 'FF888888' } }
-        }
+    ws.addRow([]); ws.addRow([])
+    applySectionTitle(ws, ws.rowCount + 1, `[ ${key} ] 견적서 상세`, 7)
+    ws.addRow([])
+    orders.forEach((o, idx) => {
+      const bRow = ws.addRow([`▸ ${o.businessName}  (${o.workTypes})`]); bRow.eachCell(c => { c.fill = BUSINESS_HEADER_FILL; c.font = TOTAL_FONT; c.border = THIN_BORDER }); ws.mergeCells(bRow.number, 1, bRow.number, 7)
+      const subHdr = ws.addRow(['', '구분', '품목명', '모델명', '수량', '단가', '금액']); subHdr.eachCell(c => { c.fill = SUB_HEADER_FILL; c.font = { ...DEFAULT_FONT, bold: true }; c.alignment = { horizontal: 'center' }; c.border = THIN_BORDER })
+      
+      const eqs = o.quoteItems.filter(q => q.category === '장비비'); const ins = o.quoteItems.filter(q => q.category === '설치비')
+      let eqSub: ExcelJS.Row | null = null
+      if (eqs.length > 0) {
+        const start = ws.rowCount + 1
+        eqs.forEach(q => { const r = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, { formula: `E${ws.rowCount+1}*F${ws.rowCount+1}`, result: q.totalPrice }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
+        if (o.equipRounding > 0) { const r = ws.addRow(['', '', '', '', '', '장비비 절사', -o.equipRounding]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) }
+        eqSub = ws.addRow(['', '', '', '', '', '장비비 소계', { formula: `SUM(G${start}:G${ws.rowCount})`, result: 0 }]); eqSub.eachCell(c => { if (c.col >= 6) { c.font = TOTAL_FONT; c.border = THIN_BORDER; c.numFmt = '#,##0'; c.alignment = { horizontal: 'right' } } })
       }
-
-      // 설치비 항목
-      if (installItems.length > 0) {
-        installItems.forEach((q) => {
-          const row = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, q.totalPrice])
-          row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-        })
-        // 설치비 절사
-        if (o.installRounding > 0) {
-          const row = ws.addRow(['', '', '', '', '', '설치비 절사', -o.installRounding])
-          row.eachCell({ includeEmpty: true }, (cell) => applyDataCellStyle(cell))
-          row.getCell(6).font = { ...DEFAULT_FONT, italic: true, color: { argb: 'FF888888' } }
-          row.getCell(7).font = { ...DEFAULT_FONT, italic: true, color: { argb: 'FF888888' } }
-        }
-      }
-
-      // 공급가액 / 기업이윤 / 소계 / VAT / 합계 — 요약 라인
-      ws.addRow([]) // 빈 행
-      const summaryLabels = [
-        ['공급가액', o.supplyAmount],
-        ['기업이윤(3%)', o.adjustedProfit],
-        ['소계(부가세별도)', o.subtotalWithProfit],
-        ['부가세(10%)', o.vat],
-        ['합계(VAT포함)', o.grandTotal],
-      ] as const
-
-      summaryLabels.forEach(([label, value]) => {
-        const row = ws.addRow(['', '', '', '', '', label, value])
-        row.getCell(6).font = { ...DEFAULT_FONT, bold: true }
-        row.getCell(6).alignment = { horizontal: 'right', vertical: 'middle' }
-        row.getCell(6).border = THIN_BORDER
-        row.getCell(7).font = { ...DEFAULT_FONT, bold: true }
-        row.getCell(7).alignment = { horizontal: 'right', vertical: 'middle' }
-        row.getCell(7).numFmt = '#,##0'
-        row.getCell(7).border = THIN_BORDER
+      const iStart = ws.rowCount + 1
+      ins.forEach(q => { const r = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, { formula: `E${ws.rowCount+1}*F${ws.rowCount+1}`, result: q.totalPrice }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
+      if (o.installRounding > 0) { const r = ws.addRow(['', '', '', '', '', '설치비 절사', -o.installRounding]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) }
+      const iSub = ws.addRow(['', '', '', '', '', '설치비 소계', { formula: `SUM(G${iStart}:G${ws.rowCount})`, result: 0 }]); iSub.eachCell(c => { if (c.col >= 6) { c.font = TOTAL_FONT; c.border = THIN_BORDER; c.numFmt = '#,##0'; c.alignment = { horizontal: 'right' } } })
+      
+      ws.addRow([])
+      const rowS = ws.addRow(['', '', '', '', '', '공급가액', { formula: `${eqSub ? `G${eqSub.number}` : '0'}+G${iSub.number}`, result: o.supplyAmount }])
+      const rowP = ws.addRow(['', '', '', '', '', '기업이윤(3%)', { formula: `FLOOR(G${rowS.number}+ROUND(SUM(G${iStart}:G${iSub.number-1})*0.03, 0), 1000)-G${rowS.number}`, result: o.adjustedProfit }])
+      const rowSt = ws.addRow(['', '', '', '', '', '소계(부가세별도)', { formula: `G${rowS.number}+G${rowP.number}`, result: o.subtotalWithProfit }])
+      const rowV = ws.addRow(['', '', '', '', '', '부가세(10%)', { formula: `ROUND(G${rowSt.number}*0.1, 0)`, result: o.vat }])
+      const rowG = ws.addRow(['', '', '', '', '', '합계(VAT포함)', { formula: `G${rowSt.number}+G${rowV.number}`, result: o.grandTotal }])
+      
+      const summRows = [rowS, rowP, rowSt, rowV, rowG]
+      summRows.forEach((r, si) => { 
+        r.getCell(6).font = TOTAL_FONT; r.getCell(6).alignment = { horizontal: 'right' }; r.getCell(6).border = THIN_BORDER
+        r.getCell(7).font = TOTAL_FONT; r.getCell(7).alignment = { horizontal: 'right' }; r.getCell(7).numFmt = '#,##0'; r.getCell(7).border = (si === 4 ? TOTAL_BORDER : THIN_BORDER)
+        if (si === 4) { r.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(6).border = TOTAL_BORDER }
       })
-
-      // 합계(VAT포함) 행 — 이중 테두리로 강조
-      const lastDataRow = ws.getRow(ws.rowCount)
-      lastDataRow.getCell(6).border = TOTAL_BORDER
-      lastDataRow.getCell(7).border = TOTAL_BORDER
-
-      ws.addRow([]) // 빈 행 (사업자 간 구분)
-    })
-  })
-
-  // ═══════════════════════════════════════════════════
-  //  AS정산 시트 (계열사별)
-  // ═══════════════════════════════════════════════════
-  if (asAffiliateData && asColumns) {
-    Object.entries(asAffiliateData).forEach(([affiliate, data]) => {
-      const sheetName = `AS_${affiliate}`.substring(0, 31)
-      const ws = wb.addWorksheet(sheetName)
-      ws.columns = asColumns.map((c) => ({ width: c.width ?? 15 }))
-
-      const headerRow = ws.addRow(asColumns.map((c) => c.header))
-      applyHeaderStyle(headerRow)
-
-      // AS비용/접수비/합계 누적 합산
-      let sumAsCost = 0
-      let sumReceptionFee = 0
-      let sumTotalAmount = 0
-
-      data.forEach((item) => {
-        const values = extractRowValues(item, asColumns)
-        const row = ws.addRow(values)
-        row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
-          const col = asColumns[colNumber - 1]
-          applyDataCellStyle(cell, col?.numberFormat)
-        })
-        sumAsCost += ((item.asCost as number) || 0)
-        sumReceptionFee += ((item.receptionFee as number) || 0)
-        sumTotalAmount += ((item.totalAmount as number) || 0)
-      })
-
-      // ── AS 시트 하단: 합계 + 단위절사 + 부가세 요약 ──
-      if (data.length > 0) {
-        ws.addRow([]) // 빈 행
-
-        // asColumns에서 AS비용/접수비/합계 컬럼 인덱스 찾기 (1-based)
-        const asCostIdx = asColumns.findIndex((c) => c.key === 'asCost') + 1
-        const receptionFeeIdx = asColumns.findIndex((c) => c.key === 'receptionFee') + 1
-        const totalAmountIdx = asColumns.findIndex((c) => c.key === 'totalAmount') + 1
-
-        // 합계행: AS비용/접수비/합계 각각 합산
-        const totalRow = ws.addRow([])
-        // "합 계" 라벨을 첫 번째 셀에
-        totalRow.getCell(1).value = '합 계'
-        if (asCostIdx > 0) totalRow.getCell(asCostIdx).value = sumAsCost
-        if (receptionFeeIdx > 0) totalRow.getCell(receptionFeeIdx).value = sumReceptionFee
-        if (totalAmountIdx > 0) totalRow.getCell(totalAmountIdx).value = sumTotalAmount
-        applyTotalRowStyle(totalRow)
-
-        ws.addRow([]) // 빈 행
-
-        // 단위절사 / 부가세 / VAT포함 계산 (합계 컬럼 위치에 맞춰 표시)
-        // 라벨은 접수비 컬럼, 값은 합계 컬럼 위치 사용
-        const labelIdx = receptionFeeIdx > 0 ? receptionFeeIdx : (totalAmountIdx > 0 ? totalAmountIdx - 1 : asColumns.length - 1)
-        const valueIdx = totalAmountIdx > 0 ? totalAmountIdx : asColumns.length
-
-        const truncated = Math.floor(sumTotalAmount / 1000) * 1000
-        const rounding = sumTotalAmount - truncated
-        const vatAmount = Math.floor(truncated * 0.1)
-        const grandTotal = truncated + vatAmount
-
-        const asSummaryLines: [string, number][] = [
-          ['합계(부가세별도)', sumTotalAmount],
-          ['단위절사(천원)', rounding > 0 ? -rounding : 0],
-          ['소계', truncated],
-          ['부가세(10%)', vatAmount],
-          ['합계(VAT포함)', grandTotal],
-        ]
-
-        asSummaryLines.forEach(([label, value], idx) => {
-          const row = ws.addRow([])
-          row.getCell(labelIdx).value = label
-          row.getCell(valueIdx).value = value
-          row.getCell(labelIdx).font = { ...DEFAULT_FONT, bold: true }
-          row.getCell(labelIdx).alignment = { horizontal: 'right', vertical: 'middle' }
-          row.getCell(labelIdx).border = THIN_BORDER
-          row.getCell(valueIdx).font = { ...DEFAULT_FONT, bold: true }
-          row.getCell(valueIdx).alignment = { horizontal: 'right', vertical: 'middle' }
-          row.getCell(valueIdx).numFmt = '#,##0'
-          row.getCell(valueIdx).border = THIN_BORDER
-          // 마지막 행(VAT포함) 이중 테두리 강조
-          if (idx === asSummaryLines.length - 1) {
-            row.getCell(labelIdx).border = TOTAL_BORDER
-            row.getCell(valueIdx).border = TOTAL_BORDER
-          }
-        })
-      }
+      
+      const sR = summaryRows[idx].row; sR.getCell(5).value = { formula: `G${rowSt.number}`, result: 0 }; sR.getCell(6).value = { formula: `G${rowV.number}`, result: 0 }; sR.getCell(7).value = { formula: `G${rowG.number}`, result: 0 }
+      detailBusinessRows.push({ sheetKey: key, bizName: o.businessName, cellRef: `'${sheetName}'!G${sR.number}`, isAs: false })
+      ws.addRow([])
     })
   }
 
+  if (asAffiliateData && asColumns) {
+    for (const [affiliate, data] of Object.entries(asAffiliateData)) {
+      const sName = `AS_${affiliate}`.substring(0, 31); const ws = wb.addWorksheet(sName); ws.columns = asColumns.map(c => ({ width: c.width ?? 15 }))
+      const hRow = ws.addRow(asColumns.map(c => c.header)); applyHeaderStyle(hRow)
+      const start = ws.rowCount + 1; const totalIdx = asColumns.findIndex(c => c.key === 'totalAmount') + 1
+      data.forEach(item => { const r = ws.addRow(extractRowValues(item, asColumns)); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
+      if (data.length === 0) ws.addRow(['데이터 없음'])
+      const end = ws.rowCount
+      ws.addRow([])
+      const asCostIdx = asColumns.findIndex(c => c.key === 'asCost') + 1; const recIdx = asColumns.findIndex(c => c.key === 'receptionFee') + 1
+      const totalRow = ws.addRow([]); totalRow.getCell(1).value = '합 계'
+      if (asCostIdx > 0) totalRow.getCell(asCostIdx).value = { formula: `SUM(${ws.getColumn(asCostIdx).letter}${start}:${ws.getColumn(asCostIdx).letter}${end})`, result: 0 }
+      if (recIdx > 0) totalRow.getCell(recIdx).value = { formula: `SUM(${ws.getColumn(recIdx).letter}${start}:${ws.getColumn(recIdx).letter}${end})`, result: 0 }
+      if (totalIdx > 0) totalRow.getCell(totalIdx).value = { formula: `SUM(${ws.getColumn(totalIdx).letter}${start}:${ws.getColumn(totalIdx).letter}${end})`, result: 0 }
+      applyTotalRowStyle(totalRow)
+      ws.addRow([])
+      const lIdx = recIdx > 0 ? recIdx : totalIdx - 1; const vIdx = totalIdx > 0 ? totalIdx : asColumns.length; const tCol = ws.getColumn(totalIdx).letter
+      const rowRa = ws.addRow([]); rowRa.getCell(lIdx).value = '합계(부가세별도)'; rowRa.getCell(vIdx).value = { formula: `${tCol}${totalRow.number}`, result: 0 }
+      const rowTr = ws.addRow([]); rowTr.getCell(lIdx).value = '단위절사(천원)'; rowTr.getCell(vIdx).value = { formula: `-( ${tCol}${totalRow.number} - FLOOR(${tCol}${totalRow.number}, 1000) )`, result: 0 }
+      const rowSu = ws.addRow([]); rowSu.getCell(lIdx).value = '소계'; rowSu.getCell(vIdx).value = { formula: `${ws.getColumn(vIdx).letter}${rowRa.number}+${ws.getColumn(vIdx).letter}${rowTr.number}`, result: 0 }
+      const rowVa = ws.addRow([]); rowVa.getCell(lIdx).value = '부가세(10%)'; rowVa.getCell(vIdx).value = { formula: `ROUND(${ws.getColumn(vIdx).letter}${rowSu.number}*0.1, 0)`, result: 0 }
+      const rowGr = ws.addRow([]); rowGr.getCell(lIdx).value = '합계(VAT포함)'; rowGr.getCell(vIdx).value = { formula: `${ws.getColumn(vIdx).letter}${rowSu.number}+${ws.getColumn(vIdx).letter}${rowVa.number}`, result: 0 }
+      const asSummRows = [rowRa, rowTr, rowSu, rowVa, rowGr]
+      asSummRows.forEach((r, ai) => { r.getCell(lIdx).font = TOTAL_FONT; r.getCell(lIdx).alignment = { horizontal: 'right' }; r.getCell(lIdx).border = THIN_BORDER; r.getCell(vIdx).font = TOTAL_FONT; r.getCell(vIdx).alignment = { horizontal: 'right' }; r.getCell(vIdx).numFmt = '#,##0'; r.getCell(vIdx).border = (ai === 4 ? TOTAL_BORDER : THIN_BORDER); if (ai === 4) { r.getCell(lIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; r.getCell(vIdx).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFF0E0' } }; r.getCell(lIdx).border = TOTAL_BORDER } })
+      const gTRef = `'${sName}'!${ws.getColumn(vIdx).letter}${rowGr.number}`
+      asSheetTotalCells[affiliate] = gTRef
+      detailBusinessRows.push({ sheetKey: `AS_${affiliate}`, bizName: `${affiliate} AS 합계`, cellRef: gTRef, isAs: true })
+    }
+  }
+
+  // 2. 요약 시트 채우기 (교원 업무 표준 양식)
+  summaryWs.columns = [{ width: 25 }, { width: 12 }, { width: 22 }, { width: 5 }, { width: 25 }, { width: 12 }, { width: 22 }]
+  applySectionTitle(summaryWs, 1, `${monthLabel} 정산 통합 요약`, 7)
+  summaryWs.addRow([])
+  const finalSec = summaryWs.addRow(['최종 정산 통합금액']); finalSec.getCell(1).font = { ...TOTAL_FONT, size: 12, bold: true }
+  const finalHdr = summaryWs.addRow(['구분', '건수', '합계(VAT포함)']); applyHeaderStyle(finalHdr)
+  const finInstRow = summaryWs.addRow(['설치 정산 합계', 0, 0]); const finAsRow = summaryWs.addRow(['AS 정산 합계', 0, 0]); const finTotRow = summaryWs.addRow(['총 합계', 0, 0])
+  finInstRow.eachCell(c => applyDataCellStyle(c, '#,##0')); finAsRow.eachCell(c => applyDataCellStyle(c, '#,##0')); applyTotalRowStyle(finTotRow); finTotRow.eachCell(c => { c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFE0' } }; if (c.col >= 2) c.numFmt = '#,##0' })
+  
+  summaryWs.addRow([]); summaryWs.addRow([])
+  const subTitle = summaryWs.addRow([]); subTitle.getCell(1).value = '설치 정산 상세 요약'; subTitle.getCell(1).font = { ...TOTAL_FONT, size: 11, color: { argb: 'FF0D9488' } }; subTitle.getCell(5).value = 'AS 정산 상세 요약'; subTitle.getCell(5).font = { ...TOTAL_FONT, size: 11, color: { argb: 'FFEA580C' } }
+  const subHdr = summaryWs.addRow([]); ['상세 시트명', '건수', '합계(VAT포함)'].forEach((h, i) => { subHdr.getCell(i + 1).value = h }); ['상세 시트명', '건수', '합계(VAT포함)'].forEach((h, i) => { subHdr.getCell(i + 5).value = h })
+  subHdr.eachCell({ includeEmpty: false }, c => { if (c.col !== 4) { c.fill = HEADER_FILL; c.font = HEADER_FONT; c.alignment = { horizontal: 'center' }; c.border = THIN_BORDER } })
+  
+  const instKeys = Object.keys(affiliateData); const asKeys = asAffiliateData ? Object.keys(asAffiliateData) : []; const maxRows = Math.max(instKeys.length, asKeys.length); const tStart = subHdr.number + 1
+  for (let i = 0; i < maxRows; i++) {
+    const r = summaryWs.addRow([])
+    if (i < instKeys.length) { const k = instKeys[i]; r.getCell(1).value = k; r.getCell(2).value = affiliateData[k].length; if (installSheetTotalCells[k]) r.getCell(3).value = { formula: installSheetTotalCells[k], result: 0 }; [1, 2, 3].forEach(c => applyDataCellStyle(r.getCell(c), '#,##0')) }
+    if (i < asKeys.length) { const k = asKeys[i]; r.getCell(5).value = `AS_${k}`; r.getCell(6).value = asAffiliateData[k].length; if (asSheetTotalCells[k]) r.getCell(7).value = { formula: asSheetTotalCells[k], result: 0 }; [5, 6, 7].forEach(c => applyDataCellStyle(r.getCell(c), '#,##0')) }
+  }
+  const tEnd = summaryWs.rowCount; const subTot = summaryWs.addRow([]); subTot.getCell(1).value = '설치 합계'; subTot.getCell(2).value = { formula: `SUM(B${tStart}:B${tEnd})`, result: 0 }; subTot.getCell(3).value = { formula: `SUM(C${tStart}:C${tEnd})`, result: 0 }; subTot.getCell(5).value = 'AS 합계'; subTot.getCell(6).value = { formula: `SUM(F${tStart}:F${tEnd})`, result: 0 }; subTot.getCell(7).value = { formula: `SUM(G${tStart}:G${tEnd})`, result: 0 }
+  const appSubS = (sc: number) => { [0, 1, 2].forEach(i => { const c = subTot.getCell(sc + i); c.font = TOTAL_FONT; c.border = TOTAL_BORDER; c.alignment = { horizontal: i === 0 ? 'left' : 'right' }; if (i > 0) c.numFmt = '#,##0' }) }; appSubS(1); appSubS(5)
+  finInstRow.getCell(2).value = { formula: `B${subTot.number}`, result: 0 }; finInstRow.getCell(3).value = { formula: `C${subTot.number}`, result: 0 }; finAsRow.getCell(2).value = { formula: `F${subTot.number}`, result: 0 }; finAsRow.getCell(3).value = { formula: `G${subTot.number}`, result: 0 }; finTotRow.getCell(2).value = { formula: `B${finInstRow.number}+B${finAsRow.number}`, result: 0 }; finTotRow.getCell(3).value = { formula: `C${finInstRow.number}+C${finAsRow.number}`, result: 0 }
+  
+  summaryWs.addRow([]); summaryWs.addRow([]); const bTitle = summaryWs.addRow(['시트별/사업자별 정산 내역 요약 (상세 시트 순서)']); bTitle.getCell(1).font = { ...TOTAL_FONT, size: 12, color: { argb: 'FF1E293B' } }
+  const bHdr = summaryWs.addRow(['정산 구분 (시트명)', '사업자명', '정산 금액(VAT포함)']); applyHeaderStyle(bHdr)
+  const bStart = summaryWs.rowCount + 1; detailBusinessRows.forEach(item => { const r = summaryWs.addRow([item.sheetKey, item.bizName, { formula: item.cellRef, result: 0 }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')); r.getCell(1).font = { ...DEFAULT_FONT, color: { argb: item.isAs ? 'FFEA580C' : 'FF0D9488' } } })
+  const bEnd = summaryWs.rowCount; const bTot = summaryWs.addRow(['합계 확인', '', { formula: `SUM(C${bStart}:C${bEnd})`, result: 0 }]); applyTotalRowStyle(bTot); bTot.getCell(1).alignment = { horizontal: 'left' }
   await downloadWorkbook(wb, fileName)
 }
 
-/**
- * 파일명 생성 유틸
- * @returns `페이지명_탭명_2026-02-13` 형식 (탭명이 없으면 `페이지명_2026-02-13`)
+/** 
+ * 멜레아 배송/매입 내역 엑셀 (셀 병합 + 주문별 구분 스타일)
+ * 내부정산 및 배송관리 페이지 공용
  */
-export function buildExcelFileName(pageName: string, tabName?: string): string {
-  const today = new Date()
-  const yyyy = today.getFullYear()
-  const mm = String(today.getMonth() + 1).padStart(2, '0')
-  const dd = String(today.getDate()).padStart(2, '0')
-  const dateStr = `${yyyy}-${mm}-${dd}`
+export async function exportDeliveryPurchaseExcel(options: { 
+  orders?: any[], 
+  items?: any[], 
+  fileName: string, 
+  monthLabel: string,
+  hidePricing?: boolean // 가격 정보 숨김 옵션 추가
+}) {
+  const { orders, items, fileName, monthLabel, hidePricing = false } = options
+  const wb = new ExcelJS.Workbook(); const ws = wb.addWorksheet('배송 및 매입 내역')
+  
+  // 1. 컬럼 정의
+  const baseColumns = [
+    { header: '계열사', width: 12 }, 
+    { header: '사업자명', width: 22 }, 
+    { header: '현장주소', width: 35 }, 
+    { header: '매입처', width: 12 }, 
+    { header: '주문번호', width: 18 }, 
+    { header: '주문일', width: 14 }, 
+    { header: '배송예정일', width: 14 }, 
+    { header: '배송확정일', width: 14 }, 
+    { header: '모델명', width: 22 }, 
+    { header: '수량', width: 8 }, 
+  ]
+  
+  const pricingColumns = [
+    { header: '매입단가', width: 15 }, 
+    { header: '매입금액', width: 18 }, 
+    { header: '매입금액(VAT포함)', width: 18 }, 
+  ]
+  
+  const warehouseColumns = [
+    { header: '창고명', width: 15 }, 
+    { header: '창고주소', width: 35 }
+  ]
 
-  if (tabName) {
-    return `${pageName}_${tabName}_${dateStr}`
+  // hidePricing 옵션에 따라 컬럼 구성
+  ws.columns = hidePricing 
+    ? [...baseColumns, ...warehouseColumns] 
+    : [...baseColumns, ...pricingColumns, ...warehouseColumns]
+  
+  applySectionTitle(ws, 1, monthLabel ? `${monthLabel} 정산 내역` : '배송 및 매입 내역 상세', ws.columns.length); ws.addRow([])
+  const headerRow = ws.addRow(ws.columns.map(c => c.header)); applyHeaderStyle(headerRow)
+  
+  const warehouseCache = (typeof window !== 'undefined' && (window as any)._warehouseCache) || []
+  let currentIdx = headerRow.number + 1
+
+  // 데이터 통합 로직 동일...
+  let flatData: any[] = []
+  if (orders && Array.isArray(orders)) {
+    orders.forEach(order => {
+      const equipmentItems = (order.equipmentItems && order.equipmentItems.length > 0)
+        ? order.equipmentItems 
+        : [{ componentName: '정보없음' }]
+      equipmentItems.forEach((item: any) => {
+        flatData.push({ ...item, _order: order, orderId: order.id })
+      })
+    })
+  } else if (items && Array.isArray(items)) {
+    flatData = items.map(item => ({ ...item, orderId: item.orderId || item.id }))
   }
+
+  const groups: Record<string, any[]> = {}
+  flatData.forEach(item => {
+    const key = item.orderId || 'unknown'
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
+  })
+
+  Object.values(groups).forEach((groupItems) => {
+    const startR = currentIdx
+    groupItems.forEach((item: any) => {
+      const order = item._order || item
+      const warehouse = warehouseCache.find((w: any) => w.id === item.warehouseId)
+      
+      // 날짜 필드 보정 (우선순위: item 레벨 -> order 레벨)
+      const orderDate = item.orderDate || order.orderDate || item.orderDateDisplay || '-'
+      const scheduledDate = item.scheduledDeliveryDate || order.scheduledDeliveryDate || '-'
+      const confirmedDate = item.confirmedDeliveryDate || order.confirmedDeliveryDate || '-'
+      
+      const rowValues = [
+        order.affiliate || item.affiliate || '기타',
+        order.businessName || item.businessName || '-',
+        order.address || item.address || item.siteAddress || '-',
+        item.supplier || '삼성전자',
+        item.orderNumber || order.samsungOrderNumber || item.samsungOrderNumber || '-',
+        orderDate,      // 주문일
+        scheduledDate,  // 배송예정일
+        confirmedDate,  // 배송확정일
+        item.componentModel || '-',
+        Number(item.quantity) || 0,
+      ]
+
+      if (!hidePricing) {
+        const qty = Number(item.quantity) || 0
+        const price = Number(item.unitPrice) || 0
+        rowValues.push(price, 0, 0) // 매입단가, 매입금액, VAT포함 (금액은 수식으로 아래에서 처리)
+      }
+
+      rowValues.push(
+        warehouse?.name || item.warehouseName || '-',
+        warehouse?.address || item.warehouseAddress || '-'
+      )
+
+      const row = ws.addRow(rowValues)
+      const ri = row.number
+
+      if (!hidePricing) {
+        // 가격 정보가 있을 때만 수식 적용 (J:10, K:11, L:12, M:13)
+        row.getCell(12).value = { formula: `J${ri}*K${ri}`, result: (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) }
+        row.getCell(13).value = { formula: `L${ri}*1.1`, result: Math.round((Number(item.quantity) || 0) * (Number(item.unitPrice) || 0) * 1.1) }
+      }
+      
+      row.eachCell({ includeEmpty: true }, (c) => { 
+        // 숫자 데이터 스타일 적용 (J열 이후부터)
+        if (c.col >= 10 && c.col <= (hidePricing ? 10 : 13)) {
+          applyDataCellStyle(c, '#,##0')
+        } else {
+          applyDataCellStyle(c)
+        }
+        if (c.col === 5) { c.alignment = { horizontal: 'center' }; c.numFmt = '@' } 
+      })
+      currentIdx++
+    })
+    
+    const endR = currentIdx - 1
+    if (endR > startR) {
+      // 병합할 컬럼 인덱스 (계열사, 사업자명, 현장주소, 주문번호 + 창고정보)
+      // hidePricing일 때 창고정보는 11, 12번 컬럼임
+      const mergeCols = hidePricing ? [1, 2, 3, 5, 11, 12] : [1, 2, 3, 5, 14, 15]
+      mergeCols.forEach(col => {
+        ws.mergeCells(startR, col, endR, col)
+        const cell = ws.getCell(startR, col)
+        cell.alignment = { vertical: 'middle', horizontal: (col === 3 || col === (hidePricing ? 12 : 15)) ? 'left' : 'center', wrapText: true }
+      })
+    }
+    ws.getRow(endR).eachCell(c => { c.border = { ...c.border, bottom: { style: 'medium', color: { argb: 'FF2B3A67' } } } })
+  })
+  
+  await downloadWorkbook(wb, fileName)
+}
+
+function summaryRowsStyle(rowS: ExcelJS.Row, rowP: ExcelJS.Row, rowSt: ExcelJS.Row, rowV: ExcelJS.Row, rowG: ExcelJS.Row) {
+  const rows = [rowS, rowP, rowSt, rowV, rowG]
+  rows.forEach((r, i) => { 
+    r.getCell(6).font = TOTAL_FONT; r.getCell(6).alignment = { horizontal: 'right' }; r.getCell(6).border = THIN_BORDER
+    r.getCell(7).font = TOTAL_FONT; r.getCell(7).alignment = { horizontal: 'right' }; r.getCell(7).numFmt = '#,##0'; r.getCell(7).border = (i === 4 ? TOTAL_BORDER : THIN_BORDER)
+    if (i === 4) { r.getCell(6).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(7).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0FDFA' } }; r.getCell(6).border = TOTAL_BORDER }
+  })
+}
+
+export function buildExcelFileName(pageName: string, tabName?: string): string {
+  const t = new Date(); const y = t.getFullYear(); const m = String(t.getMonth() + 1).padStart(2, '0'); const d = String(t.getDate()).padStart(2, '0'); const dateStr = `${y}-${m}-${d}`
+  if (tabName) return `${pageName}_${tabName}_${dateStr}`
   return `${pageName}_${dateStr}`
 }
