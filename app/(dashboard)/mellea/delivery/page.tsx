@@ -14,6 +14,7 @@ import { fetchOrders, updateOrder, updateDeliveryStatus, saveEquipmentItems, can
 import { fetchWarehouses } from '@/lib/supabase/dal'
 import { setWarehouseCache } from '@/lib/delivery-utils'
 import type { Order, DeliveryStatus, EquipmentItem } from '@/types/order'
+import type { Warehouse } from '@/types/warehouse' // Warehouse 타입 추가
 import { DeliveryTable } from '@/components/delivery/delivery-table'
 import { DeliveryInputDialog } from '@/components/delivery/delivery-input-dialog'
 import { OrderDetailDialog } from '@/components/orders/order-detail-dialog'
@@ -30,7 +31,7 @@ export default function DeliveryPage() {
 
   // Supabase에서 데이터 로드
   const [orders, setOrders] = useState<Order[]>([])
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]) // 창고 정보를 담을 상태 추가
+  const [warehouses, setWarehouses] = useState<Warehouse[]>([]) // Warehouse 타입 적용
   const [isLoading, setIsLoading] = useState(true)
 
   useEffect(() => {
