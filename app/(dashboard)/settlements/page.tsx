@@ -61,20 +61,27 @@ const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
  * - 구분자 없으면 마지막 단어가 삼성 모델번호(영문+숫자 6자 이상)인지 판별
  */
 function splitItemName(itemName: string): { product: string; model: string } {
-  if (itemName.includes('|||')) {
-    const [product, model] = itemName.split('|||')
-    return { product, model }
+  const normalized = itemName.trim()
+  if (!normalized) return { product: '', model: '' }
+  if (normalized.includes('|||')) {
+    const [product, ...rest] = normalized.split('|||')
+    return { product: product.trim(), model: rest.join('|||').trim() }
   }
-  // 기존 데이터 호환: 마지막 단어가 모델번호 패턴이면 분리
-  const parts = itemName.trim().split(' ')
+  const slashIdx = normalized.lastIndexOf('/')
+  if (slashIdx > 0 && slashIdx < normalized.length - 1) {
+    const product = normalized.slice(0, slashIdx).trim()
+    const model = normalized.slice(slashIdx + 1).trim()
+    const looksLikeModel = /[A-Za-z]/.test(model) && /[0-9]/.test(model)
+    if (product && looksLikeModel) return { product, model }
+  }
+  const parts = normalized.split(' ')
   if (parts.length >= 2) {
     const last = parts[parts.length - 1]
-    // 삼성 모델번호: 영문대문자+숫자 조합, 6자 이상 (예: AR60F13C13WS, AP072BAPPBH2S)
-    if (/^[A-Z0-9]{6,}$/.test(last) && /[A-Z]/.test(last) && /[0-9]/.test(last)) {
+    if (/^[A-Za-z0-9][A-Za-z0-9._-]{5,}$/.test(last) && /[A-Za-z]/.test(last) && /[0-9]/.test(last)) {
       return { product: parts.slice(0, -1).join(' '), model: last }
     }
   }
-  return { product: itemName, model: '' }
+  return { product: normalized, model: '' }
 }
 
 /** 발주 1건의 정산 금액 계산 (공통 로직) */

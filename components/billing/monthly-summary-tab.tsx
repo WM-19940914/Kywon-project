@@ -63,18 +63,27 @@ const WORK_TYPE_ICON_MAP: Record<string, LucideIcon> = {
 
 /** itemName에서 품목/모델명 분리 */
 function splitItemName(itemName: string): { product: string; model: string } {
-  if (itemName.includes('|||')) {
-    const [product, model] = itemName.split('|||')
-    return { product, model }
+  const normalized = itemName.trim()
+  if (!normalized) return { product: '', model: '' }
+  if (normalized.includes('|||')) {
+    const [product, ...rest] = normalized.split('|||')
+    return { product: product.trim(), model: rest.join('|||').trim() }
   }
-  const parts = itemName.trim().split(' ')
+  const slashIdx = normalized.lastIndexOf('/')
+  if (slashIdx > 0 && slashIdx < normalized.length - 1) {
+    const product = normalized.slice(0, slashIdx).trim()
+    const model = normalized.slice(slashIdx + 1).trim()
+    const looksLikeModel = /[A-Za-z]/.test(model) && /[0-9]/.test(model)
+    if (product && looksLikeModel) return { product, model }
+  }
+  const parts = normalized.split(' ')
   if (parts.length >= 2) {
     const last = parts[parts.length - 1]
-    if (/^[A-Z0-9]{6,}$/.test(last) && /[A-Z]/.test(last) && /[0-9]/.test(last)) {
+    if (/^[A-Za-z0-9][A-Za-z0-9._-]{5,}$/.test(last) && /[A-Za-z]/.test(last) && /[0-9]/.test(last)) {
       return { product: parts.slice(0, -1).join(' '), model: last }
     }
   }
-  return { product: itemName, model: '' }
+  return { product: normalized, model: '' }
 }
 
 /** 발주 1건의 정산 금액 계산 */
@@ -385,8 +394,120 @@ function AffiliateGroup({ affiliateName, categoryLabel, orders, onViewOrder, onQ
 }
 
 function QuoteSnapshotDetail({ snapshot, businessName }: { snapshot: any; businessName: string }) {
-  const eqs = snapshot.equipItems || []; const ins = snapshot.installItems || []
-  return (<div className="mx-4 my-3"><div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md"><div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600"><Receipt className="h-4 w-4 text-white" /><span className="text-sm font-bold text-white tracking-wide">견적서</span><span className="text-xs text-teal-200 ml-2">— {businessName}</span></div><table className="w-full text-sm"><thead><tr className="border-b-2 border-slate-800 bg-slate-50/80 text-xs text-slate-500 font-semibold uppercase"><th className="py-2 px-2 text-center w-10">No.</th><th className="py-2 px-2 text-center">품목 / 모델명</th><th className="py-2 px-2 text-center w-16">수량</th><th className="py-2 px-2 text-right w-28">단가</th><th className="py-2 px-2 text-right w-32">금액</th></tr></thead><tbody><tr className="bg-slate-100"><td colSpan={5} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">[ 장비 ]</td></tr>{eqs.length > 0 ? eqs.map((i: any, idx: number) => { const { product, model } = splitItemName(i.itemName); return (<tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40"><td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td><td className="py-2 px-2 text-center text-slate-800 font-medium">{product} {model && <span className="text-slate-400 ml-1">({model})</span>}</td><td className="py-2 px-2 text-center">{i.quantity}</td><td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td><td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td></tr>) }) : <tr><td colSpan={5} className="py-3 text-center text-xs text-slate-400">장비 항목 없음</td></tr>}{snapshot.equipRounding > 0 && <tr className="border-t border-dashed"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td><td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.equipRounding.toLocaleString()}</td></tr>}<tr className="bg-slate-50 font-bold text-xs"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-700">장비비 소계</td><td className="py-1.5 px-2 text-right text-slate-700">{snapshot.equipSubtotal.toLocaleString()}</td></tr><tr className="bg-slate-100"><td colSpan={5} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">[ 설치비 ]</td></tr>{ins.length > 0 ? ins.map((i: any, idx: number) => { const { product, model } = splitItemName(i.itemName); return (<tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40"><td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td><td className="py-2 px-2 text-center text-slate-800 font-medium">{product} {model && <span className="text-slate-400 ml-1">({model})</span>}</td><td className="py-2 px-2 text-center">{i.quantity}</td><td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td><td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td></tr>) }) : <tr><td colSpan={5} className="py-3 text-center text-xs text-slate-400">설치비 항목 없음</td></tr>}{snapshot.installRounding > 0 && <tr className="border-t border-dashed"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-500 text-xs">단위절사</td><td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.installRounding.toLocaleString()}</td></tr>}<tr className="bg-slate-50 font-bold text-xs border-b-2 border-slate-300"><td colSpan={4} className="py-1.5 px-2 text-right text-slate-700">설치비 소계</td><td className="py-1.5 px-2 text-right text-slate-700">{snapshot.installSubtotal.toLocaleString()}</td></tr></tbody><tfoot><tr><td colSpan={5} className="p-3 pt-4 flex justify-end"><div className="w-[300px] rounded-xl border border-slate-200 overflow-hidden shadow-sm"><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs"><span>공급가액</span><span>{snapshot.supplyAmount.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-gold-600 font-semibold"><span>기업이윤 (3%)</span><span>+{snapshot.adjustedProfit.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-white text-xs font-bold border-y border-slate-100"><span>소계 (VAT별도)</span><span>{snapshot.subtotalWithProfit.toLocaleString()}</span></div><div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-slate-500"><span>부가세 (10%)</span><span>+{snapshot.vat.toLocaleString()}</span></div><div className="flex justify-between px-4 py-3 bg-teal-600 text-white font-black text-sm"><span>최종금액</span><span>{snapshot.grandTotal.toLocaleString()}원</span></div></div></td></tr></tfoot></table></div></div>)
+  const eqs = snapshot.equipItems || []
+  const ins = snapshot.installItems || []
+
+  return (
+    <div className="mx-4 my-3">
+      <div className="border-2 border-teal-300 rounded-xl overflow-hidden bg-white shadow-md">
+        <div className="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-teal-700 to-teal-600">
+          <Receipt className="h-4 w-4 text-white" />
+          <span className="text-sm font-bold text-white tracking-wide">{'\uacac\uc801\uc11c'}</span>
+          <span className="text-xs text-teal-200 ml-2">- {businessName}</span>
+        </div>
+
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b-2 border-slate-800 bg-slate-50/80 text-xs text-slate-500 font-semibold uppercase">
+              <th className="py-2 px-2 text-center w-10">No.</th>
+              <th className="py-2 px-2 text-center">{'\ud488\ubaa9'}</th>
+              <th className="py-2 px-2 text-center">{'\ubaa8\ub378\uba85'}</th>
+              <th className="py-2 px-2 text-center w-16">{'\uc218\ub7c9'}</th>
+              <th className="py-2 px-2 text-right w-28">{'\ub2e8\uac00'}</th>
+              <th className="py-2 px-2 text-right w-32">{'\uae08\uc561'}</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr className="bg-slate-100">
+              <td colSpan={6} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">{'[ \uc7a5\ube44 ]'}</td>
+            </tr>
+            {eqs.length > 0 ? eqs.map((i: any, idx: number) => {
+              const { product, model } = splitItemName(i.itemName)
+              return (
+                <tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40">
+                  <td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td>
+                  <td className="py-2 px-2 text-center text-slate-800 font-medium">{product || '-'}</td>
+                  <td className="py-2 px-2 text-center text-slate-500">{model || '-'}</td>
+                  <td className="py-2 px-2 text-center">{i.quantity}</td>
+                  <td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td>
+                  <td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td>
+                </tr>
+              )
+            }) : (
+              <tr>
+                <td colSpan={6} className="py-3 text-center text-xs text-slate-400">{'\uc7a5\ube44 \ud56d\ubaa9 \uc5c6\uc74c'}</td>
+              </tr>
+            )}
+            {snapshot.equipRounding > 0 && (
+              <tr className="border-t border-dashed">
+                <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">{'\ub2e8\uc704\uc808\uc0ac'}</td>
+                <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.equipRounding.toLocaleString()}</td>
+              </tr>
+            )}
+            <tr className="bg-slate-50 font-bold text-xs">
+              <td colSpan={5} className="py-1.5 px-2 text-right text-slate-700">{'\uc7a5\ube44\ube44 \uc18c\uacc4'}</td>
+              <td className="py-1.5 px-2 text-right text-slate-700">{snapshot.equipSubtotal.toLocaleString()}</td>
+            </tr>
+
+            <tr className="bg-slate-100">
+              <td colSpan={6} className="py-1.5 px-3 text-xs font-bold text-slate-600 uppercase tracking-widest">{'[ \uc124\uce58\ube44 ]'}</td>
+            </tr>
+            {ins.length > 0 ? ins.map((i: any, idx: number) => {
+              const { product, model } = splitItemName(i.itemName)
+              return (
+                <tr key={idx} className="border-b border-slate-100 hover:bg-teal-50/40">
+                  <td className="py-2 px-2 text-center text-slate-400">{idx + 1}</td>
+                  <td className="py-2 px-2 text-center text-slate-800 font-medium">{product || '-'}</td>
+                  <td className="py-2 px-2 text-center text-slate-500">{model || '-'}</td>
+                  <td className="py-2 px-2 text-center">{i.quantity}</td>
+                  <td className="py-2 px-2 text-right tabular-nums">{i.unitPrice.toLocaleString()}</td>
+                  <td className="py-2 px-2 text-right font-bold text-slate-800 tabular-nums">{i.totalPrice.toLocaleString()}</td>
+                </tr>
+              )
+            }) : (
+              <tr>
+                <td colSpan={6} className="py-3 text-center text-xs text-slate-400">{'\uc124\uce58\ube44 \ud56d\ubaa9 \uc5c6\uc74c'}</td>
+              </tr>
+            )}
+            {snapshot.installRounding > 0 && (
+              <tr className="border-t border-dashed">
+                <td colSpan={5} className="py-1.5 px-2 text-right text-slate-500 text-xs">{'\ub2e8\uc704\uc808\uc0ac'}</td>
+                <td className="py-1.5 px-2 text-right text-brick-500 font-medium text-xs">-{snapshot.installRounding.toLocaleString()}</td>
+              </tr>
+            )}
+            <tr className="bg-slate-50 font-bold text-xs border-b-2 border-slate-300">
+              <td colSpan={5} className="py-1.5 px-2 text-right text-slate-700">{'\uc124\uce58\ube44 \uc18c\uacc4'}</td>
+              <td className="py-1.5 px-2 text-right text-slate-700">{snapshot.installSubtotal.toLocaleString()}</td>
+            </tr>
+          </tbody>
+        </table>
+        <div className="p-3 pt-4 flex justify-end">
+          <div className="w-[300px] rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+            <div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs">
+              <span>{'\uacf5\uae09\uac00\uc561'}</span>
+              <span>{snapshot.supplyAmount.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-gold-600 font-semibold">
+              <span>{'\uae30\uc5c5\uc774\uc724 (3%)'}</span>
+              <span>+{snapshot.adjustedProfit.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 bg-white text-xs font-bold border-y border-slate-100">
+              <span>{'\uc18c\uacc4 (VAT\ubcc4\ub3c4)'}</span>
+              <span>{snapshot.subtotalWithProfit.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between px-4 py-2 bg-slate-50/50 text-xs text-slate-500">
+              <span>{'\ubd80\uac00\uc138 (10%)'}</span>
+              <span>+{snapshot.vat.toLocaleString()}</span>
+            </div>
+            <div className="flex justify-between px-4 py-3 bg-teal-600 text-white font-black text-sm">
+              <span>{'\ucd5c\uc885\uae08\uc561'}</span>
+              <span>{snapshot.grandTotal.toLocaleString()}{'\uc6d0'}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 function ASAffiliateGroup({ affiliateName, requests }: { affiliateName: string; requests: ASRequest[] }) {
