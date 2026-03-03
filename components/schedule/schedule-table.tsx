@@ -95,7 +95,15 @@ function normalizeDate(raw: string): string {
 }
 
 /** 날짜 입력 컴포넌트 (텍스트 직접 입력 + 달력 버튼) */
-function DateInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+function DateInput({
+  value,
+  onChange,
+  emphasize = false,
+}: {
+  value: string
+  onChange: (val: string) => void
+  emphasize?: boolean
+}) {
   const dateRef = useRef<HTMLInputElement>(null)
   const [localValue, setLocalValue] = useState(value)
 
@@ -136,7 +144,11 @@ function DateInput({ value, onChange }: { value: string; onChange: (val: string)
           onChange(normalized)
         }}
         placeholder="YYYY-MM-DD"
-        className="h-5 !text-[10px] border-gray-200 pr-7 placeholder:!text-[9px]"
+        className={`h-5 !text-[10px] pr-7 placeholder:!text-[9px] ${
+          emphasize
+            ? 'border-carrot-300 bg-carrot-50/60 focus-visible:ring-carrot-300'
+            : 'border-gray-200'
+        }`}
       />
       <button
         type="button"
@@ -598,8 +610,13 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   // 설치완료일 입력값 (다이얼로그 내에서 수동 입력)
   const [completeDate, setCompleteDate] = useState('')
 
-  // 설치예정일 확인 다이얼로그 (일정미정 탭에서 날짜 입력 시)
-  const [scheduleTarget, setScheduleTarget] = useState<{ orderId: string; businessName: string; date: string } | null>(null)
+  // 설치예정 확인 다이얼로그 (일정미정 → 설치예정 이동)
+  const [scheduleTarget, setScheduleTarget] = useState<{
+    orderId: string
+    businessName: string
+    date: string
+    force: boolean
+  } | null>(null)
 
   // 발주 취소 다이얼로그
   const [cancelTarget, setCancelTarget] = useState<{ orderId: string; businessName: string } | null>(null)
@@ -635,11 +652,25 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   const handleScheduleDateChange = (order: Order, val: string) => {
     // 빈 값이면 날짜 삭제
     if (val === '') {
-      handleFieldChange(order.id, 'installScheduleDate', '')
+      if (activeTab === 'scheduled') {
+        onUpdateOrder(order.id, {
+          installScheduleDate: '',
+          status: 'received',
+        })
+      } else {
+        handleFieldChange(order.id, 'installScheduleDate', '')
+      }
       return
     }
     const isValidDate = /^\d{4}-\d{2}-\d{2}$/.test(val)
     if (isValidDate) {
+      if (activeTab === 'unscheduled') {
+        onUpdateOrder(order.id, {
+          installScheduleDate: val,
+          status: 'in-progress',
+        })
+        return
+      }
       handleFieldChange(order.id, 'installScheduleDate', val)
     }
   }
@@ -650,10 +681,20 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
    */
   const handleMoveToScheduled = (order: Order) => {
     if (!order.installScheduleDate) {
-      alert('설치예정일을 먼저 입력해주세요')
+      setScheduleTarget({
+        orderId: order.id,
+        businessName: order.businessName,
+        date: '',
+        force: true,
+      })
       return
     }
-    setScheduleTarget({ orderId: order.id, businessName: order.businessName, date: order.installScheduleDate })
+    setScheduleTarget({
+      orderId: order.id,
+      businessName: order.businessName,
+      date: order.installScheduleDate,
+      force: false,
+    })
   }
 
   /** 설치완료 처리 (수동 입력된 날짜 사용) */
@@ -665,6 +706,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   const [revertTarget, setRevertTarget] = useState<{
     orderId: string
     businessName: string
+    source: 'scheduled' | 'completed'
     /** 되돌릴 탭: 'unscheduled' 또는 'scheduled' */
     destination: 'unscheduled' | 'scheduled'
   } | null>(null)
@@ -673,12 +715,20 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
   const handleRevert = () => {
     if (!revertTarget) return
     if (revertTarget.destination === 'unscheduled') {
-      // 일정미정: 설치완료일 제거 + 설치예정일 제거 + status를 received로
-      onUpdateOrder(revertTarget.orderId, {
-        installCompleteDate: '',
-        installScheduleDate: '',
-        status: 'received',
-      })
+      if (revertTarget.source === 'completed') {
+        // 설치완료 -> 일정미정
+        onUpdateOrder(revertTarget.orderId, {
+          installCompleteDate: '',
+          installScheduleDate: '',
+          status: 'received',
+        })
+      } else {
+        // 설치예정 -> 일정미정
+        onUpdateOrder(revertTarget.orderId, {
+          installScheduleDate: '',
+          status: 'received',
+        })
+      }
     } else {
       // 설치예정: 설치완료일만 제거 (예정일/status 유지)
       onUpdateOrder(revertTarget.orderId, {
@@ -876,10 +926,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
 
                     {/* 일정미정/설치예정: 설치예정일(편집) */}
                     {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
-                      <td className="p-3" onClick={(e) => e.stopPropagation()}>
+                      <td className={`p-3 ${activeTab === 'unscheduled' ? 'bg-carrot-50/40' : ''}`} onClick={(e) => e.stopPropagation()}>
                         <DateInput
                           value={order.installScheduleDate || ''}
                           onChange={(val) => handleScheduleDateChange(order, val)}
+                          emphasize={activeTab === 'unscheduled'}
                         />
                       </td>
                     )}
@@ -977,7 +1028,8 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                         <div className="flex items-center justify-center gap-1">
                           <Button
                             size="sm"
-                            className="bg-teal-600 hover:bg-teal-700 text-white text-[11px] px-2 h-6"
+                            variant="outline"
+                            className="text-[11px] px-2 h-6 border-gray-300 text-gray-600 hover:text-teal-700 hover:border-teal-300 hover:bg-teal-50"
                             onClick={() => handleMoveToScheduled(order)}
                           >
                             설치예정 →
@@ -1000,6 +1052,14 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                     {activeTab === 'scheduled' && (
                       <td className={`p-3 text-center sticky right-0 z-10 shadow-[-4px_0_8px_-4px_rgba(0,0,0,0.08)] ${urgency === 'overdue' ? 'bg-brick-50' : urgency === 'today' ? 'bg-carrot-50' : urgency === 'tomorrow' ? 'bg-teal-50' : urgency === 'no-equipment' ? 'bg-yellow-50' : 'bg-white'}`} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="text-[11px] px-2 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
+                            onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, source: 'scheduled', destination: 'unscheduled' })}
+                          >
+                            일정미정
+                          </Button>
                           <Button
                             size="sm"
                             className="bg-olive-600 hover:bg-olive-700 text-white text-[11px] px-2 h-6"
@@ -1028,7 +1088,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                           size="sm"
                           variant="outline"
                           className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
-                          onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
+                          onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, source: 'completed', destination: 'unscheduled' })}
                         >
                           <Undo2 className="h-2.5 w-2.5 mr-0.5" />
                           일정미정
@@ -1147,10 +1207,13 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                 {(activeTab === 'unscheduled' || activeTab === 'scheduled') && (
                   <div className="grid grid-cols-2 gap-2" onClick={(e) => e.stopPropagation()}>
                     <div>
-                      <label className="text-[10px] text-gray-400">설치예정일</label>
+                      <label className={`text-[10px] ${activeTab === 'unscheduled' ? 'font-semibold text-carrot-700' : 'text-gray-400'}`}>
+                        설치예정일
+                      </label>
                       <DateInput
                         value={order.installScheduleDate || ''}
                         onChange={(val) => handleScheduleDateChange(order, val)}
+                        emphasize={activeTab === 'unscheduled'}
                       />
                     </div>
                     <div className="flex items-end gap-2">
@@ -1243,24 +1306,42 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   </div>
                 )}
 
-                {/* 일정미정 탭: 취소 버튼 */}
-                {activeTab === 'unscheduled' && onCancelOrder && (
-                  <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+                {/* 일정미정 탭: 설치예정 이동 버튼 + 취소 버튼 */}
+                {activeTab === 'unscheduled' && (
+                  <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
                     <Button
                       size="sm"
-                      variant="ghost"
-                      className="text-[11px] px-2 h-6 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
-                      onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                      variant="outline"
+                      className="text-[11px] px-2 h-6 border-gray-300 text-gray-600 hover:text-teal-700 hover:border-teal-300 hover:bg-teal-50"
+                      onClick={() => handleMoveToScheduled(order)}
                     >
-                      <XCircle className="h-3 w-3 mr-1" />
-                      발주취소
+                      설치예정 →
                     </Button>
+                    {onCancelOrder && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="text-[11px] px-2 h-6 text-gray-400 hover:text-brick-600 hover:bg-brick-50"
+                        onClick={() => { setCancelReason(''); setCancelTarget({ orderId: order.id, businessName: order.businessName }) }}
+                      >
+                        <XCircle className="h-3 w-3 mr-1" />
+                        발주취소
+                      </Button>
+                    )}
                   </div>
                 )}
 
                 {/* 설치완료 버튼 + 취소 (설치예정 탭) */}
                 {activeTab === 'scheduled' && (
                   <div className="flex justify-end gap-1" onClick={(e) => e.stopPropagation()}>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="text-[11px] px-2 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
+                      onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, source: 'scheduled', destination: 'unscheduled' })}
+                    >
+                      일정미정
+                    </Button>
                     <Button
                       size="sm"
                       className="bg-olive-600 hover:bg-olive-700 text-white text-[11px] px-2 h-6"
@@ -1288,7 +1369,7 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                       size="sm"
                       variant="outline"
                       className="text-[11px] px-1.5 h-6 text-gray-600 hover:text-carrot-700 hover:border-carrot-300 hover:bg-carrot-50"
-                      onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, destination: 'unscheduled' })}
+                      onClick={() => setRevertTarget({ orderId: order.id, businessName: order.businessName, source: 'completed', destination: 'unscheduled' })}
                     >
                       <Undo2 className="h-2.5 w-2.5 mr-0.5" />
                       일정미정
@@ -1312,37 +1393,57 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
         })}
       </div>
 
-      {/* ─── 설치예정일 확인 다이얼로그 (일정미정 → 설치예정 이동) ─── */}
+      {/* ─── 설치예정 확인 다이얼로그 (일반 이동/강제 이동) ─── */}
       <AlertDialog open={!!scheduleTarget} onOpenChange={(open) => { if (!open) setScheduleTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>설치예정일 등록</AlertDialogTitle>
+            <AlertDialogTitle>{scheduleTarget?.force ? '설치예정 강제 전환' : '설치예정일 등록'}</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
-                <p>
-                  &ldquo;{scheduleTarget?.businessName}&rdquo; 현장의 설치예정일을
-                  <span className="font-semibold text-teal-600 mx-1">
-                    {scheduleTarget?.date.replace(/-/g, '.')}
-                  </span>
-                  (으)로 등록하시겠습니까?
-                </p>
-                <p className="text-xs text-gray-500">
-                  확인하면 설치예정 탭으로 이동합니다.
-                </p>
+                {scheduleTarget?.force ? (
+                  <div className="space-y-2">
+                    <p>
+                      &ldquo;{scheduleTarget?.businessName}&rdquo; 현장은 설치예정일이 등록되지 않았습니다.
+                    </p>
+                    <p className="text-sm text-gray-700">
+                      설치예정일 없이도 강제로 설치예정 상태로 전환하시겠습니까?
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <p>
+                      &ldquo;{scheduleTarget?.businessName}&rdquo; 현장의 설치예정일을
+                      <span className="font-semibold text-teal-600 mx-1">
+                        {scheduleTarget?.date.replace(/-/g, '.')}
+                      </span>
+                      (으)로 등록하시겠습니까?
+                    </p>
+                    <p className="text-xs text-gray-500">
+                      확인하면 설치예정 탭으로 이동합니다.
+                    </p>
+                  </div>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>취소</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-teal-600 hover:bg-teal-700 text-white"
+              className={scheduleTarget?.force
+                ? 'bg-gray-700 hover:bg-gray-800 text-white'
+                : 'bg-teal-600 hover:bg-teal-700 text-white'}
               onClick={() => {
                 if (scheduleTarget) {
-                  // 설치예정일 저장 + status를 in-progress로 변경 → 설치예정 탭으로 이동
-                  onUpdateOrder(scheduleTarget.orderId, {
-                    installScheduleDate: scheduleTarget.date,
-                    status: 'in-progress'
-                  })
+                  if (scheduleTarget.force) {
+                    onUpdateOrder(scheduleTarget.orderId, {
+                      status: 'in-progress'
+                    })
+                  } else {
+                    onUpdateOrder(scheduleTarget.orderId, {
+                      installScheduleDate: scheduleTarget.date,
+                      status: 'in-progress'
+                    })
+                  }
                 }
                 setScheduleTarget(null)
               }}
@@ -1353,11 +1454,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* ─── 설치완료 → 되돌리기 확인 다이얼로그 ─── */}
+      {/* ─── 상태 되돌리기 확인 다이얼로그 ─── */}
       <AlertDialog open={!!revertTarget} onOpenChange={(open) => { if (!open) setRevertTarget(null) }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>설치완료 되돌리기</AlertDialogTitle>
+            <AlertDialogTitle>일정 상태 되돌리기</AlertDialogTitle>
             <AlertDialogDescription asChild>
               <div className="space-y-2">
                 <p>
@@ -1368,9 +1469,11 @@ export function ScheduleTable({ orders, activeTab, onUpdateOrder, onViewDetail, 
                   탭으로 되돌리시겠습니까?
                 </p>
                 <p className="text-xs text-gray-500">
-                  {revertTarget?.destination === 'unscheduled'
-                    ? '설치완료일과 설치예정일이 모두 초기화됩니다.'
-                    : '설치완료일이 초기화되고 설치예정 탭으로 이동합니다.'}
+                  {revertTarget?.source === 'scheduled'
+                    ? '설치예정일이 초기화되고 일정미정 탭으로 이동합니다.'
+                    : (revertTarget?.destination === 'unscheduled'
+                      ? '설치완료일과 설치예정일이 모두 초기화됩니다.'
+                      : '설치완료일이 초기화되고 설치예정 탭으로 이동합니다.')}
                 </p>
               </div>
             </AlertDialogDescription>

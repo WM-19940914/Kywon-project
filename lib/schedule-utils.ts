@@ -20,7 +20,7 @@ import { getToday, daysDiff } from '@/lib/delivery-utils'
  *
  * 규칙:
  * - installCompleteDate 있음 → 'completed' (설치완료)
- * - installScheduleDate 있음 → 'scheduled' (설치예정)
+ * - status가 in-progress → 'scheduled' (설치예정, 예외 강제 전환 포함)
  * - 둘 다 없음 → 'unscheduled' (일정미정)
  *
  * @param order - 발주 정보
@@ -28,8 +28,8 @@ import { getToday, daysDiff } from '@/lib/delivery-utils'
  */
 export function computeInstallScheduleStatus(order: Order): InstallScheduleStatus {
   if (order.installCompleteDate) return 'completed'
-  // status가 in-progress여야 설치예정 탭 (버튼으로 명시적 이동)
-  if (order.status === 'in-progress' && order.installScheduleDate) return 'scheduled'
+  // status가 in-progress면 설치예정 탭 (설치예정일 미등록 예외 전환 포함)
+  if (order.status === 'in-progress') return 'scheduled'
   return 'unscheduled'
 }
 
