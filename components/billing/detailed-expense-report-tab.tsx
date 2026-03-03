@@ -16,6 +16,7 @@ import type { ASRequest } from '@/types/as'
 import {
   fetchASRequests,
   fetchPriceTable,
+  fetchPurchaseReport,
   fetchExpenseReport,
   saveExpenseReport,
   updateExpenseReportWithItems,
@@ -23,7 +24,7 @@ import {
 import type { ExpenseReport, ExpenseReportItem } from '@/lib/supabase/dal'
 import { FileText, Download, Plus, RefreshCw, CheckCircle2, Loader2, Pencil, Save, X, GripVertical, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-import { exportToExcel, buildExcelFileName, exportDeliveryPurchaseExcel } from '@/lib/excel-export'
+import { exportToExcel, buildExcelFileName } from '@/lib/excel-export'
 import type { ExcelColumn } from '@/lib/excel-export'
 import { toast } from 'sonner' // ✅ 예쁜 알림창 라이브러리 추가
 
@@ -88,6 +89,74 @@ function calcTotals(items: ExpenseReportItem[]) {
   )
 }
 
+/**
+ * 배송/매입내역과 지출결의서를 연결할 때 사용하는 기본 DC율
+ *
+ * 왜 필요한가:
+ * - 매입내역에서 반출가(listPrice) 컬럼이 비어 있는 과거 데이터도 있을 수 있어,
+ *   "매입단가를 반출가로 역산"할 때 공통 기준이 필요합니다.
+ *
+ * 수정 영향:
+ * - 값을 바꾸면 "매입내역 값으로 지출결의서를 보정"할 때의 역산 기준이 달라집니다.
+ * - 현재 업무 기준(45%)을 유지하기 위해 상수로 고정합니다.
+ */
+const DEFAULT_PURCHASE_DISCOUNT_RATE = 0.45
+
+/** 매입내역 항목의 DC율을 안전하게 가져옵니다. */
+function getSafePurchaseDiscountRate(discountRate?: number): number {
+  // 0%는 유효한 업무 입력값이므로 허용합니다.
+  // (기존에는 0을 미입력으로 오해해서 45%로 되돌아가는 문제가 있었습니다.)
+  if (typeof discountRate === 'number' && Number.isFinite(discountRate) && discountRate >= 0 && discountRate < 1) {
+    return discountRate
+  }
+  return DEFAULT_PURCHASE_DISCOUNT_RATE
+}
+
+/**
+ * 매입내역 항목의 반출가를 안전하게 계산합니다.
+ * 1) 저장된 반출가가 있으면 우선 사용
+ * 2) 없으면 매입단가 / (1 - DC율) 역산
+ */
+function getSafePurchaseListPrice(item: { listPrice?: number; unitPrice: number; discountRate?: number }): number {
+  if (typeof item.listPrice === 'number' && item.listPrice > 0) {
+    return item.listPrice
+  }
+  const discountRate = getSafePurchaseDiscountRate(item.discountRate)
+  if (!item.unitPrice || discountRate >= 1) return 0
+  return Math.round(item.unitPrice / (1 - discountRate))
+}
+
+/**
+ * 문자열 비교용 정규화
+ * - 공백/대소문자 차이 때문에 "같은 구성품명인데 매칭 실패"가 나는 것을 줄이기 위해 사용합니다.
+ * - 지출결의서 제안가 매핑의 안정성을 높이는 보조 함수입니다.
+ */
+function normalizeTextKey(value?: string): string {
+  return (value || '').replace(/\s+/g, '').toLowerCase()
+}
+
+/**
+ * 발주(Order)의 "현장 실질 장비 제안가 합계"를 계산합니다.
+ *
+ * 왜 이 값이 필요한가:
+ * - 가격표 기반 제안가는 표준가라서, 월별 현장 협의가가 반영되지 않을 수 있습니다.
+ * - 지출결의서는 월 정산 문서이므로, 실제 계약/견적에서 확정된 장비 제안가를 우선 반영하는 것이 실무에 맞습니다.
+ *
+ * 계산 기준:
+ * - 소비자 견적(customerQuote) 항목 중 장비(equipment) 항목 totalPrice 합계
+ * - 값이 없으면 0 반환(= 기존 가격표 로직 유지)
+ *
+ * 수정 시 영향:
+ * - 이 함수의 기준을 바꾸면 "현장 실가격 우선 반영" 범위가 달라집니다.
+ * - 현재는 장비 항목만 반영하며, 설치비 항목은 기존 계산 로직을 그대로 사용합니다.
+ */
+function getOrderEquipmentQuoteTotal(order: Order): number {
+  const quoteItems = order.customerQuote?.items || []
+  const equipmentItems = quoteItems.filter(item => item.category === 'equipment')
+  const total = equipmentItems.reduce((sum, item) => sum + (Number(item.totalPrice) || 0), 0)
+  return total > 0 ? total : 0
+}
+
 export function DetailedExpenseReportTab({
   orders,
   calcAmounts,
@@ -125,18 +194,71 @@ export function DetailedExpenseReportTab({
    */
   const generateRows = useCallback(async (): Promise<ExpenseReportItem[]> => {
     const rows: ExpenseReportItem[] = []
-    const [asData, ptData] = await Promise.all([
+    const [asData, ptData, purchaseReport] = await Promise.all([
       fetchASRequests(),
       fetchPriceTable(selectedYear),
+      fetchPurchaseReport(selectedYear, selectedMonth),
     ])
 
-    const setModelInfoMap: Record<string, { listPrice: number; price: number; componentCount: number }> = {}
+    const setModelInfoMap: Record<string, { listPrice: number; price: number; componentCount: number; componentSaleTotal: number }> = {}
+    // 구성품 모델코드(예: AP072BNPPBH1) -> 제안단가 매핑
+    // 이유: setModel이 비어 있거나 가격표 SET 매칭이 실패해도 제안가를 살릴 수 있어야 하기 때문입니다.
+    const componentSalePriceMap: Record<string, number> = {}
+    // setModel + 구성품명(예: 실외기) -> 제안단가 매핑
+    // 이유: 모델코드가 없는 과거 데이터에서도 구성품명을 기준으로 최대한 제안가를 찾기 위해 사용합니다.
+    const setComponentSalePriceMap: Record<string, number> = {}
     ptData.forEach(row => {
+      const componentSaleTotal = row.components.reduce((sum, comp) => {
+        const salePrice = Number(comp.salePrice) || 0
+        const quantity = Number(comp.quantity) || 1
+        return sum + (salePrice * quantity)
+      }, 0)
+
       setModelInfoMap[row.model] = {
         listPrice: row.listPrice,
         price: row.price,
         componentCount: row.components.length || 1,
+        componentSaleTotal,
       }
+
+      row.components.forEach(comp => {
+        if (comp.model && comp.salePrice > 0) {
+          componentSalePriceMap[comp.model] = comp.salePrice
+        }
+        if (row.model && comp.type && comp.salePrice > 0) {
+          const setComponentKey = `${row.model}__${normalizeTextKey(comp.type)}`
+          setComponentSalePriceMap[setComponentKey] = comp.salePrice
+        }
+      })
+    })
+
+    /*
+      [배송/매입내역 ↔ 지출결의서 연결]
+      같은 월의 배송/매입내역(확정본)이 존재하면,
+      그 안에 저장된 수량/매입단가(및 반출가 표시용 값)를 지출결의서 생성에 우선 반영합니다.
+
+      왜 필요한가:
+      - 사용자가 배송/매입내역 탭에서 금액을 조정했는데,
+        지출결의서 생성 시 다시 단가표 기본값으로 돌아가면 업무 흐름이 끊기기 때문입니다.
+
+      주의:
+      - 배송/매입내역이 없는 월은 기존 로직(단가표/발주 원본) 그대로 동작합니다.
+      - 이미 확정 저장된 지출결의서는 자동 변경되지 않고, "재작성" 시 반영됩니다.
+    */
+    const purchaseItems = purchaseReport?.items || []
+
+    const getOrderSetKey = (orderId: string, setModel: string) => `${orderId}__${setModel || '_manual'}`
+
+    const purchaseItemsByOrder: Record<string, typeof purchaseItems> = {}
+    const purchaseItemsByOrderSet: Record<string, typeof purchaseItems> = {}
+
+    purchaseItems.forEach(item => {
+      if (!purchaseItemsByOrder[item.orderId]) purchaseItemsByOrder[item.orderId] = []
+      purchaseItemsByOrder[item.orderId].push(item)
+
+      const setKey = getOrderSetKey(item.orderId, item.setModel || '')
+      if (!purchaseItemsByOrderSet[setKey]) purchaseItemsByOrderSet[setKey] = []
+      purchaseItemsByOrderSet[setKey].push(item)
     })
 
     /** 지출결의서 계열사 정렬 순서: 구몬 → Wells 영업 → Wells 서비스 → 교육플랫폼 → 기타 → AS */
@@ -157,6 +279,23 @@ export function DetailedExpenseReportTab({
       const amounts = calcAmounts(order)
       const equipmentItems = order.equipmentItems || []
       const workTypes = Array.from(new Set(order.items.map(i => i.workType))).join(', ')
+      // 이 발주의 "현장 실질 장비 제안가 합계" (없으면 0)
+      const orderEquipmentQuoteTotal = getOrderEquipmentQuoteTotal(order)
+      // 이 발주에서 생성된 "장비 행"의 인덱스를 모아둡니다.
+      // 이유: 장비 행 생성이 끝난 뒤, 현장 실가격 비율로 일괄 보정하기 위함입니다.
+      const equipmentRowIndexes: number[] = []
+      // set 매칭 실패로 생성된 장비 행 인덱스
+      // 이유:
+      // - 사용자가 요청한 대로 "set 매칭 실패 행"은 정산관리 장비금액 기준으로 제안가를 맞추기 위해
+      //   별도 집계가 필요합니다.
+      const nonSetMatchedEquipmentRowIndexes: number[] = []
+      // 보정 전 기준 제안가 합계(가격표/모델매칭 기준)
+      let equipmentBaseSalesTotal = 0
+
+      // 같은 발주의 배송/매입내역 항목 목록(매칭용)
+      const orderPurchaseItems = purchaseItemsByOrder[order.id] || []
+      // set 단위 집계에 사용한 항목을 표시해, 아래 개별 매칭에서 중복 사용하지 않도록 관리
+      const usedPurchaseSortOrders = new Set<number>()
 
       if (equipmentItems.length > 0) {
         const setGroups: Record<string, typeof equipmentItems> = {}
@@ -185,11 +324,57 @@ export function DetailedExpenseReportTab({
               setQuantity = Math.round(items.length / ptInfo.componentCount) || 1
             }
 
-            const listPrice = ptInfo.listPrice
-            const discountRate = 0.45
-            const purchaseUnitPrice = Math.round(listPrice * (1 - discountRate))
-            const purchaseTotalPrice = purchaseUnitPrice * setQuantity
-            const salesUnitPrice = ptInfo.price
+            /*
+              가격표에 있는 모델이라도, 같은 월의 배송/매입내역 확정본이 있으면
+              해당 값을 우선 반영합니다.
+              (없으면 기존처럼 단가표 기본값 사용)
+            */
+            const orderSetKey = getOrderSetKey(order.id, setModel)
+            const setPurchaseItems = purchaseItemsByOrderSet[orderSetKey] || []
+
+            // 이 set의 매입내역 항목은 이후 개별 매칭에서 다시 쓰지 않도록 선사용 처리
+            setPurchaseItems.forEach(pi => {
+              if (typeof pi.sortOrder === 'number') usedPurchaseSortOrders.add(pi.sortOrder)
+            })
+
+            // set 수량도 매입내역 기준으로 보정 (수정된 수량 반영 목적)
+            if (setPurchaseItems.length > 0 && ptInfo.componentCount > 0) {
+              const totalComponentQty = setPurchaseItems.reduce((sum, pi) => sum + (pi.quantity || 0), 0)
+              const inferredSetQty = Math.round(totalComponentQty / ptInfo.componentCount)
+              if (inferredSetQty > 0) setQuantity = inferredSetQty
+            }
+
+            // 기본값(단가표 기준)
+            let listPrice = ptInfo.listPrice
+            let discountRate = 0.45
+            let purchaseUnitPrice = Math.round(listPrice * (1 - discountRate))
+            let purchaseTotalPrice = purchaseUnitPrice * setQuantity
+
+            // 보정값(매입내역 기준)
+            if (setPurchaseItems.length > 0 && setQuantity > 0) {
+              const purchaseTotalFromReport = setPurchaseItems.reduce((sum, pi) => sum + ((pi.unitPrice || 0) * (pi.quantity || 0)), 0)
+              const listTotalFromReport = setPurchaseItems.reduce((sum, pi) => sum + (getSafePurchaseListPrice(pi) * (pi.quantity || 0)), 0)
+
+              if (purchaseTotalFromReport > 0) {
+                purchaseUnitPrice = Math.round(purchaseTotalFromReport / setQuantity)
+                purchaseTotalPrice = purchaseTotalFromReport
+              }
+
+              if (listTotalFromReport > 0) {
+                listPrice = Math.round(listTotalFromReport / setQuantity)
+              }
+
+              if (listPrice > 0 && purchaseUnitPrice > 0) {
+                const computedDiscountRate = 1 - (purchaseUnitPrice / listPrice)
+                if (computedDiscountRate > 0 && computedDiscountRate < 1) {
+                  discountRate = Number(computedDiscountRate.toFixed(4))
+                }
+              }
+            }
+
+            // 제안가(판매단가)는 기본적으로 SET 판매가를 쓰되,
+            // 가격표에 SET 판매가가 비어 있는 경우 구성품 제안가 합계로 보정합니다.
+            const salesUnitPrice = ptInfo.price > 0 ? ptInfo.price : ptInfo.componentSaleTotal
             const salesTotalPrice = salesUnitPrice * setQuantity
             const mgRate = salesUnitPrice > 0 ? 1 - (purchaseUnitPrice / salesUnitPrice) : 0
             const frontMarginUnit = salesUnitPrice - purchaseUnitPrice
@@ -208,23 +393,203 @@ export function DetailedExpenseReportTab({
               incentiveGradeRebRate: 0.06, incentiveGradeReb, incentiveItemReb: 0, totalMargin,
               sourceType: 'order', orderDate: order.orderDate,
             })
+            // 장비 행 보정 대상 수집
+            equipmentRowIndexes.push(rows.length - 1)
+            equipmentBaseSalesTotal += salesTotalPrice
           } else {
             items.forEach(eqItem => {
+              /*
+                [규격(specification) 생성 우선순위 - 매우 중요]
+                1) componentModel: 실제 구성품 모델명 (예: AP072BNPPBH1)
+                2) setModel: 세트 모델명 (예: AP072BAPPBH2S)
+                3) componentName: 실내기/실외기 같은 구성품 이름
+
+                왜 이렇게 바꾸는가?
+                - 가격표에 없는 모델은 기존 로직에서 componentName을 먼저 사용해서
+                  지출결의서 규격 칸에 "실내기/실외기"가 들어갔습니다.
+                - 정산 문서의 규격은 장비 "모델명" 식별이 핵심이라서,
+                  모델명(componentModel 또는 setModel)을 최우선으로 사용해야
+                  사후 검증/대사(비교 확인) 시 혼동이 줄어듭니다.
+
+                수정 시 영향:
+                - 가격표 미등록 모델의 신규 생성 행부터 규격 값이 모델명 기준으로 저장됩니다.
+                - 이미 저장된 과거 지출결의서 데이터는 자동으로 바뀌지 않으므로,
+                  과거 달도 변경하려면 해당 월 지출결의서를 "재작성"해야 반영됩니다.
+              */
+              const specificationValue =
+                eqItem.componentModel || eqItem.setModel || eqItem.componentName || ''
+
+              /*
+                가격표 미등록 모델은 개별 구성품 행으로 생성됩니다.
+                이때도 배송/매입내역 확정본이 있으면 매입단가/수량/반출가를 우선 사용해서
+                "매입내역에서 조정한 값"이 지출결의서에 이어지도록 맞춥니다.
+              */
+              const matchedPurchaseIndex = orderPurchaseItems.findIndex(pi => {
+                // 이미 set 집계에서 사용한 항목은 제외
+                if (typeof pi.sortOrder === 'number' && usedPurchaseSortOrders.has(pi.sortOrder)) return false
+
+                // 1순위: 구성품 모델명이 동일
+                if (eqItem.componentModel && pi.componentModel) {
+                  return eqItem.componentModel === pi.componentModel
+                }
+                // 2순위: setModel + 구성품명 조합 일치
+                if (eqItem.setModel && pi.setModel && eqItem.componentName && pi.componentName) {
+                  return eqItem.setModel === pi.setModel && eqItem.componentName === pi.componentName
+                }
+                // 3순위: 구성품명 일치(모델 없는 구데이터 대응)
+                if (eqItem.componentName && pi.componentName) {
+                  return eqItem.componentName === pi.componentName
+                }
+                return false
+              })
+
+              const matchedPurchaseItem = matchedPurchaseIndex >= 0
+                ? orderPurchaseItems[matchedPurchaseIndex]
+                : null
+
+              if (matchedPurchaseItem && typeof matchedPurchaseItem.sortOrder === 'number') {
+                usedPurchaseSortOrders.add(matchedPurchaseItem.sortOrder)
+              }
+
+              const quantity = matchedPurchaseItem?.quantity || eqItem.quantity || 1
+              const purchaseUnitPrice = matchedPurchaseItem?.unitPrice || eqItem.unitPrice || 0
+              const purchaseTotalPrice = purchaseUnitPrice * quantity
+              const listPrice = matchedPurchaseItem ? getSafePurchaseListPrice(matchedPurchaseItem) : 0
+              const discountRate = matchedPurchaseItem
+                ? getSafePurchaseDiscountRate(matchedPurchaseItem.discountRate)
+                : 0
+              // 제안가 매핑 우선순위
+              // 1) 구성품 모델코드 기준 매칭
+              // 2) setModel + 구성품명 기준 매칭(모델코드가 없는 데이터 대응)
+              // 3) 없으면 0(수동 수정 가능)
+              const salesModelKey = eqItem.componentModel || matchedPurchaseItem?.componentModel || ''
+              const salesByModel = salesModelKey ? (componentSalePriceMap[salesModelKey] || 0) : 0
+              const salesSetComponentKey = `${eqItem.setModel || ''}__${normalizeTextKey(eqItem.componentName)}`
+              const salesBySetComponent = (eqItem.setModel && eqItem.componentName)
+                ? (setComponentSalePriceMap[salesSetComponentKey] || 0)
+                : 0
+              const salesUnitPrice = salesByModel > 0 ? salesByModel : salesBySetComponent
+              const salesTotalPrice = salesUnitPrice * quantity
+              const mgRate = salesUnitPrice > 0 ? 1 - (purchaseUnitPrice / salesUnitPrice) : 0
+              // 제안가를 끝까지 못 찾은 항목은(= salesUnitPrice 0)
+              // 기존 동작과 동일하게 마진 계산을 0으로 유지합니다.
+              // 이유: "제안가 미매칭"만으로 전체 마진 합계가 음수로 틀어지는 것을 막기 위함입니다.
+              const frontMarginUnit = salesUnitPrice > 0 ? (salesUnitPrice - purchaseUnitPrice) : 0
+              const frontMarginTotal = salesUnitPrice > 0 ? (frontMarginUnit * quantity) : 0
+              const totalMargin = frontMarginTotal
+
               rows.push({
                 sortOrder: sortOrder++,
                 businessName: order.businessName, affiliate: order.affiliate,
                 supplier: '삼성전자', itemType: '신규설치 장비',
-                specification: eqItem.componentName || eqItem.componentModel || '',
-                quantity: eqItem.quantity || 1, listPrice: 0, discountRate: 0, optionItem: '',
-                purchaseUnitPrice: eqItem.unitPrice || 0, purchaseTotalPrice: eqItem.totalPrice || 0,
-                mgRate: 0, salesUnitPrice: 0, salesTotalPrice: 0,
-                frontMarginUnit: 0, frontMarginTotal: 0,
-                incentiveGradeRebRate: 0.06, incentiveGradeReb: 0, incentiveItemReb: 0, totalMargin: 0,
+                specification: specificationValue,
+                quantity, listPrice, discountRate, optionItem: '',
+                purchaseUnitPrice, purchaseTotalPrice,
+                mgRate, salesUnitPrice, salesTotalPrice,
+                frontMarginUnit, frontMarginTotal,
+                incentiveGradeRebRate: 0.06, incentiveGradeReb: 0, incentiveItemReb: 0, totalMargin,
                 sourceType: 'order', orderDate: order.orderDate,
               })
+              // 장비 행 보정 대상 수집
+              equipmentRowIndexes.push(rows.length - 1)
+              nonSetMatchedEquipmentRowIndexes.push(rows.length - 1)
+              equipmentBaseSalesTotal += salesTotalPrice
             })
           }
         })
+      }
+
+      /*
+        [현장 실질 제안가 우선 반영]
+        - 소비자 견적의 장비 합계가 있는 경우,
+          방금 만든 장비 행들의 제안가를 "비율 보정"해서 월별 현장 가격을 반영합니다.
+
+        보정 방식:
+        - 보정계수 = 현장장비합계 / (가격표·모델매칭 기반 장비합계)
+        - 각 장비행 제안단가 = 기존 제안단가 × 보정계수 (반올림)
+        - 파생값(제안금액, MG율, 마진, 인센티브)은 recalcDerived로 일괄 재계산
+
+        왜 이렇게 하는가:
+        - 개별 모델명을 소비자견적 항목과 1:1로 완벽 매칭하기 어려운 데이터가 있어,
+          총액 기준 비율 보정이 가장 안정적으로 "현장 실가격"을 반영할 수 있습니다.
+      */
+      if (orderEquipmentQuoteTotal > 0 && equipmentBaseSalesTotal > 0 && equipmentRowIndexes.length > 0) {
+        const scale = orderEquipmentQuoteTotal / equipmentBaseSalesTotal
+        equipmentRowIndexes.forEach(rowIdx => {
+          const current = rows[rowIdx]
+          const scaledSalesUnitPrice = Math.max(0, Math.round((current.salesUnitPrice || 0) * scale))
+          const scaledRow = {
+            ...current,
+            salesUnitPrice: scaledSalesUnitPrice,
+          }
+          rows[rowIdx] = recalcDerived(scaledRow)
+        })
+      }
+
+      /*
+        [요청사항 반영 - set 매칭 실패 행 제안가]
+        set 매칭이 안 된 장비 행은 "정산관리 장비금액(equipSubtotal)"을 기준으로 제안가를 맞춥니다.
+
+        적용 규칙:
+        - 대상: nonSetMatchedEquipmentRowIndexes에 담긴 행만
+        - 합계 기준: amounts.equipSubtotal
+        - 배분 기준:
+          1) 매입금액 비율(가능하면)
+          2) 매입금액이 전부 0이면 수량 비율
+        - 배분 후 각 행은 recalcDerived로 파생값(MG율/마진 등) 재계산
+      */
+      if (nonSetMatchedEquipmentRowIndexes.length > 0) {
+        // 1순위: 정산관리 장비금액(equipSubtotal)
+        // 2순위: 현장 소비자견적 장비합계(orderEquipmentQuoteTotal)
+        // 3순위: set 미매칭 행 매입금액 합계
+        // 4순위: 기존 가격표/매칭 기준 합계
+        // 왜 이렇게 하냐면:
+        // - 사용자가 원하는 기준은 equipSubtotal이지만,
+        // - 데이터 누락으로 0이 들어오는 월도 있어서 그때 공란이 되지 않도록
+        //   안전한 대체 기준을 순서대로 둡니다.
+        const nonSetPurchaseTotal = nonSetMatchedEquipmentRowIndexes.reduce((sum, rowIdx) => {
+          return sum + (Number(rows[rowIdx]?.purchaseTotalPrice) || 0)
+        }, 0)
+        const targetTotal =
+          (amounts.equipSubtotal > 0 ? amounts.equipSubtotal : 0) ||
+          (orderEquipmentQuoteTotal > 0 ? orderEquipmentQuoteTotal : 0) ||
+          (nonSetPurchaseTotal > 0 ? nonSetPurchaseTotal : 0) ||
+          (equipmentBaseSalesTotal > 0 ? equipmentBaseSalesTotal : 0)
+
+        const weightedRows = nonSetMatchedEquipmentRowIndexes.map((rowIdx) => {
+          const row = rows[rowIdx]
+          const purchaseTotal = Number(row.purchaseTotalPrice) || 0
+          const quantity = Number(row.quantity) || 1
+          return {
+            rowIdx,
+            // 매입금액이 있으면 그 값을 우선 가중치로 사용
+            // 없으면 수량을 가중치로 사용
+            weight: purchaseTotal > 0 ? purchaseTotal : quantity,
+            quantity,
+          }
+        })
+
+        const weightSum = weightedRows.reduce((sum, r) => sum + r.weight, 0)
+        if (targetTotal > 0 && weightSum > 0) {
+          weightedRows.forEach((r, index) => {
+            const isLast = index === weightedRows.length - 1
+            const prevAllocated = weightedRows
+              .slice(0, index)
+              .reduce((sum, p) => sum + (rows[p.rowIdx].salesTotalPrice || 0), 0)
+
+            // 마지막 행은 잔액으로 맞춰서 합계 오차를 줄입니다.
+            const desiredSalesTotal = isLast
+              ? Math.max(0, targetTotal - prevAllocated)
+              : Math.max(0, Math.round(targetTotal * (r.weight / weightSum)))
+
+            const desiredSalesUnit = Math.max(0, Math.round(desiredSalesTotal / r.quantity))
+            const nextRow = {
+              ...rows[r.rowIdx],
+              salesUnitPrice: desiredSalesUnit,
+            }
+            rows[r.rowIdx] = recalcDerived(nextRow)
+          })
+        }
       }
 
       if (amounts.installCost > 0) {
@@ -468,17 +833,6 @@ export function DetailedExpenseReportTab({
     })
   }
 
-  /** 엑셀 다운로드 — 배송 및 매입 내역 상세 (요청 양식) */
-  const handleExportDeliveryExcel = () => {
-    const monthLabel = `${selectedYear}년 ${selectedMonth}월`
-    exportDeliveryPurchaseExcel({
-      orders,
-      fileName: buildExcelFileName('멜레아정산_배송매입내역', monthLabel),
-      monthLabel
-    })
-    toast.success('배송 및 매입 내역 엑셀 다운로드를 시작합니다.')
-  }
-
   // ─── 로딩/생성 중/다이얼로그 ───
   if (isLoading) {
     return (
@@ -633,9 +987,12 @@ export function DetailedExpenseReportTab({
               <Button variant="outline" size="sm" onClick={() => setShowRewriteConfirm(true)} className="gap-1.5 text-slate-600">
                 <RefreshCw className="h-3.5 w-3.5" />재작성
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportDeliveryExcel} className="gap-1.5 text-teal-700 border-teal-200 bg-teal-50 hover:bg-teal-100">
-                <Download className="h-3.5 w-3.5" />배송/매입 내역
-              </Button>
+              {/* 
+                지출결의서 탭은 "지출결의서 확정/수정/다운로드"에 집중된 화면이라서
+                사용자 요청에 따라 "배송/매입 내역" 엑셀 버튼은 여기서 노출하지 않습니다.
+                이 버튼을 다시 추가하면 내부정산 화면에서 기능 목적이 섞여 사용자가 혼란을 느낄 수 있으므로,
+                관련 내역 엑셀은 배송/매입 전용 화면에서만 제공하는 정책을 유지합니다.
+              */}
               <Button variant="outline" size="sm" onClick={handleExportExcel} className="gap-1.5">
                 <Download className="h-3.5 w-3.5" />지출결의서
               </Button>

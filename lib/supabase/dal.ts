@@ -2084,6 +2084,13 @@ export interface PurchaseReportItem {
   componentModel: string
   componentName: string
   setModel: string
+  // 화면/엑셀 표시 보조값:
+  // - 반출가(listPrice), DC율(discountRate)은 "매입가(단가)=반출가×(1-DC율)" 계산 근거를 보여주기 위한 값입니다.
+  // - 현재 purchase_report_items 테이블에는 해당 컬럼이 없으므로, 저장/수정 시 필수값으로 취급하지 않고(옵션),
+  //   생성 시점 또는 화면 렌더링 시점에 계산된 값을 사용합니다.
+  // - 영향: 기존 저장 구조를 깨지 않고, UI/엑셀에서만 계산 근거를 추가로 보여줄 수 있습니다.
+  listPrice?: number
+  discountRate?: number
   quantity: number
   unitPrice: number
   totalPrice: number
@@ -2159,6 +2166,18 @@ export async function fetchPurchaseReport(year: number, month: number): Promise<
       componentModel: item.component_model || '',
       componentName: item.component_name || '',
       setModel: item.set_model || '',
+      // DB 컬럼이 없을 수 있으므로 안전하게 기본값(0) 처리
+      // 이후 화면에서 0이면 unitPrice 기반으로 다시 계산해 표시합니다.
+      // list_price / discount_rate는 "실제 0값"과 "미입력(undefined)"을 구분해서 읽습니다.
+      // 이유:
+      // - 사용자가 DC율을 0%로 저장한 경우(유효 값)를 유지해야 하고,
+      // - 과거 스키마/데이터에서 컬럼이 비어 있는 경우에는 화면 기본값(45%) 보정이 필요하기 때문입니다.
+      listPrice: (item.list_price === null || item.list_price === undefined || item.list_price === '')
+        ? undefined
+        : (Number.isFinite(Number(item.list_price)) ? Number(item.list_price) : undefined),
+      discountRate: (item.discount_rate === null || item.discount_rate === undefined || item.discount_rate === '')
+        ? undefined
+        : (Number.isFinite(Number(item.discount_rate)) ? Number(item.discount_rate) : undefined),
       quantity: item.quantity || 1,
       unitPrice: Number(item.unit_price) || 0,
       totalPrice: Number(item.total_price) || 0,
@@ -2222,6 +2241,11 @@ export async function savePurchaseReport(
     component_model: item.componentModel,
     component_name: item.componentName,
     set_model: item.setModel,
+    // 반출가/DC율 편집값 저장
+    // - 저장 후 재조회 시 사용자가 수정한 값을 그대로 복원하기 위해 필요합니다.
+    // - null은 "미입력" 의미로 사용해서 기존 기본값 보정 로직과 충돌하지 않게 합니다.
+    list_price: (typeof item.listPrice === 'number' && Number.isFinite(item.listPrice)) ? item.listPrice : null,
+    discount_rate: (typeof item.discountRate === 'number' && Number.isFinite(item.discountRate)) ? item.discountRate : null,
     quantity: item.quantity,
     unit_price: item.unitPrice,
     total_price: item.totalPrice,
@@ -2229,9 +2253,48 @@ export async function savePurchaseReport(
     warehouse_address: item.warehouseAddress,
   }))
 
-  const { error: itemsError } = await supabase
+  let { error: itemsError } = await supabase
     .from('purchase_report_items')
     .insert(rows)
+
+  // 구버전 스키마 호환:
+  // 운영 DB에 list_price/discount_rate 컬럼이 아직 없으면
+  // 해당 컬럼을 제외한 행으로 한 번 더 저장 시도합니다.
+  if (itemsError) {
+    const message = (itemsError.message || '').toLowerCase()
+    const isMissingPricingColumnError =
+      message.includes('list_price') || message.includes('discount_rate')
+
+    if (isMissingPricingColumnError) {
+      const fallbackRows = rows.map(row => ({
+        report_id: row.report_id,
+        sort_order: row.sort_order,
+        order_id: row.order_id,
+        business_name: row.business_name,
+        affiliate: row.affiliate,
+        site_address: row.site_address,
+        order_date_display: row.order_date_display,
+        delivery_status: row.delivery_status,
+        supplier: row.supplier,
+        order_number: row.order_number,
+        item_order_date: row.item_order_date,
+        scheduled_delivery_date: row.scheduled_delivery_date,
+        confirmed_delivery_date: row.confirmed_delivery_date,
+        component_model: row.component_model,
+        component_name: row.component_name,
+        set_model: row.set_model,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        total_price: row.total_price,
+        warehouse_name: row.warehouse_name,
+        warehouse_address: row.warehouse_address,
+      }))
+      const fallbackInsert = await supabase
+        .from('purchase_report_items')
+        .insert(fallbackRows)
+      itemsError = fallbackInsert.error
+    }
+  }
 
   if (itemsError) {
     console.error('매입내역 항목 저장 실패:', itemsError.message)
@@ -2280,6 +2343,9 @@ export async function updatePurchaseReportWithItems(
     component_model: item.componentModel,
     component_name: item.componentName,
     set_model: item.setModel,
+    // 반출가/DC율 편집값 저장
+    list_price: (typeof item.listPrice === 'number' && Number.isFinite(item.listPrice)) ? item.listPrice : null,
+    discount_rate: (typeof item.discountRate === 'number' && Number.isFinite(item.discountRate)) ? item.discountRate : null,
     quantity: item.quantity,
     unit_price: item.unitPrice,
     total_price: item.totalPrice,
@@ -2287,9 +2353,46 @@ export async function updatePurchaseReportWithItems(
     warehouse_address: item.warehouseAddress,
   }))
 
-  const { error: insertError } = await supabase
+  let { error: insertError } = await supabase
     .from('purchase_report_items')
     .insert(rows)
+
+  // 구버전 스키마 호환(저장 함수와 동일)
+  if (insertError) {
+    const message = (insertError.message || '').toLowerCase()
+    const isMissingPricingColumnError =
+      message.includes('list_price') || message.includes('discount_rate')
+
+    if (isMissingPricingColumnError) {
+      const fallbackRows = rows.map(row => ({
+        report_id: row.report_id,
+        sort_order: row.sort_order,
+        order_id: row.order_id,
+        business_name: row.business_name,
+        affiliate: row.affiliate,
+        site_address: row.site_address,
+        order_date_display: row.order_date_display,
+        delivery_status: row.delivery_status,
+        supplier: row.supplier,
+        order_number: row.order_number,
+        item_order_date: row.item_order_date,
+        scheduled_delivery_date: row.scheduled_delivery_date,
+        confirmed_delivery_date: row.confirmed_delivery_date,
+        component_model: row.component_model,
+        component_name: row.component_name,
+        set_model: row.set_model,
+        quantity: row.quantity,
+        unit_price: row.unit_price,
+        total_price: row.total_price,
+        warehouse_name: row.warehouse_name,
+        warehouse_address: row.warehouse_address,
+      }))
+      const fallbackInsert = await supabase
+        .from('purchase_report_items')
+        .insert(fallbackRows)
+      insertError = fallbackInsert.error
+    }
+  }
 
   if (insertError) {
     console.error('매입내역 항목 재삽입 실패:', insertError.message)

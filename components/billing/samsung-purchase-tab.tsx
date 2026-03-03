@@ -5,7 +5,7 @@
  * - 생성 전: "X월 매입내역 생성하기" 버튼
  * - 생성: 정산 데이터 + 단가표 매칭 → DB 스냅샷 저장
  * - 생성 후: 확정본 아코디언 표시 + 수정/재작성 버튼
- * - 수정: 매입처, 매입단가, 수량 편집 → 매입금액 자동 계산 → DB 저장
+ * - 수정: 매입처, 매입가(단가), 수량 편집 → 매입가(금액) 자동 계산 → DB 저장
  */
 
 'use client'
@@ -34,6 +34,105 @@ import { buildExcelFileName, exportDeliveryPurchaseExcel } from '@/lib/excel-exp
 const SET_GROUP_COLORS = [
   '#3B82F6', '#8B5CF6', '#10B981', '#F59E0B', '#EC4899', '#06B6D4',
 ]
+
+/**
+ * 배송/매입내역 화면에서 사용하는 기본 DC율
+ *
+ * 왜 필요한가:
+ * - 요청사항대로 "반출가 × DC율 = 매입가(단가)"를 화면/엑셀에서 동일하게 보여주기 위해
+ *   기준 DC율이 필요합니다.
+ *
+ * 수정 영향:
+ * - 값을 바꾸면 화면 표시와 엑셀의 계산 기준이 함께 바뀝니다.
+ * - 기존 DB 저장 구조(unitPrice, totalPrice)는 그대로 유지됩니다.
+ */
+const DEFAULT_DISCOUNT_RATE = 0.45
+
+/**
+ * 행 데이터의 DC율을 안전하게 결정
+ * - 저장된 값이 있으면 그 값을 사용
+ * - 없으면 기본값(45%) 사용
+ */
+function getDiscountRate(item: PurchaseReportItem): number {
+  // DC율은 "미입력(undefined)"과 "실제 0%"를 구분해야 합니다.
+  // - 미입력: 기존 업무 기본값(45%) 사용
+  // - 0% 입력: 사용자가 직접 넣은 값이므로 그대로 유지
+  if (typeof item.discountRate === 'number' && Number.isFinite(item.discountRate) && item.discountRate >= 0 && item.discountRate < 1) {
+    return item.discountRate
+  }
+  return DEFAULT_DISCOUNT_RATE
+}
+
+/**
+ * 숫자 입력 문자열을 실제 숫자로 안전 변환
+ * - 콤마(,)나 퍼센트(%)가 포함되어도 입력 가능한 형태로 정리
+ * - 빈 문자열은 0으로 처리해서 "입력칸 비우기"를 허용
+ */
+function parseNumericInput(value: string): number {
+  const normalized = value.replace(/,/g, '').replace(/%/g, '').trim()
+  if (!normalized) return 0
+  const parsed = Number(normalized)
+  return Number.isFinite(parsed) ? parsed : 0
+}
+
+/**
+ * 숫자 입력칸 표시용 포맷
+ * - 0 또는 미입력은 빈 문자열로 보여서 "기본 0 때문에 입력 불편"을 줄입니다.
+ * - 1,000 단위 콤마를 보여서 금액 가독성을 높입니다.
+ */
+function formatNumericInput(value?: number): string {
+  if (typeof value !== 'number' || !Number.isFinite(value) || value <= 0) return ''
+  return Math.round(value).toLocaleString('ko-KR')
+}
+
+/**
+ * DC율 입력칸 표시용 포맷(퍼센트 숫자만 표시)
+ * - 내부 저장은 0~1 비율, 화면 표시만 0~100 퍼센트로 변환합니다.
+ */
+function formatPercentInput(rate?: number): string {
+  if (typeof rate !== 'number' || !Number.isFinite(rate) || rate < 0) return ''
+  return Number((rate * 100).toFixed(2)).toString()
+}
+
+/**
+ * 행 데이터의 반출가를 안전하게 계산
+ * - 저장된 반출가가 있으면 우선 사용
+ * - 없으면 현재 매입가(단가)와 DC율을 역산해서 보여줌
+ *
+ * 주의:
+ * - 이 함수는 "표시 목적"입니다.
+ * - DB에는 반출가 컬럼이 필수가 아니므로, 화면/엑셀에서 일관된 계산 근거를 보여주기 위해 씁니다.
+ */
+function getListPrice(item: PurchaseReportItem): number {
+  if (typeof item.listPrice === 'number' && item.listPrice > 0) {
+    return item.listPrice
+  }
+  const discountRate = getDiscountRate(item)
+  if (!item.unitPrice || discountRate >= 1) return 0
+  return Math.round(item.unitPrice / (1 - discountRate))
+}
+
+/**
+ * 행 데이터의 매입가(단가)를 안전하게 계산
+ * - 저장된 단가가 있으면 우선 사용
+ * - 단가가 비어 있으면 반출가 × (1-DC율)로 계산
+ */
+function getPurchaseUnitPrice(item: PurchaseReportItem): number {
+  if (item.unitPrice && item.unitPrice > 0) return item.unitPrice
+  const listPrice = getListPrice(item)
+  const discountRate = getDiscountRate(item)
+  return listPrice > 0 ? Math.round(listPrice * (1 - discountRate)) : 0
+}
+
+/**
+ * 행 데이터의 매입가(금액)를 안전하게 계산
+ * - 저장값(totalPrice)이 있으면 그대로 사용
+ * - 없으면 매입가(단가) × 수량으로 계산
+ */
+function getPurchaseTotalPrice(item: PurchaseReportItem): number {
+  if (item.totalPrice && item.totalPrice > 0) return item.totalPrice
+  return getPurchaseUnitPrice(item) * (item.quantity || 0)
+}
 
 /** 연속된 같은 setModel을 가진 행들을 그룹으로 묶어 색상 할당 */
 function computeSetModelGroups(items: PurchaseReportItem[]): (string | undefined)[] {
@@ -129,11 +228,26 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
       const items = order.equipmentItems || []
       items.forEach(item => {
         const qty = item.quantity || 1
+        const discountRate = DEFAULT_DISCOUNT_RATE
+
+        // 반출가 우선순위:
+        // 1) 단가표의 구성품 출하가
+        // 2) 기존 입력된 매입가를 DC율로 역산한 값(보정값)
+        const mappedListPrice = item.componentModel ? componentPriceMap[item.componentModel] : 0
+        const listPrice = mappedListPrice > 0
+          ? mappedListPrice
+          : (item.unitPrice && item.unitPrice > 0
+            ? Math.round(item.unitPrice / (1 - discountRate))
+            : 0)
+
+        // 매입가(단가) 우선순위:
+        // 1) 기존 입력값(unitPrice)
+        // 2) 반출가 × (1-DC율) 자동계산
         let unitPrice = 0
         if (item.unitPrice && item.unitPrice > 0) {
           unitPrice = item.unitPrice
-        } else if (item.componentModel && componentPriceMap[item.componentModel]) {
-          unitPrice = Math.round(componentPriceMap[item.componentModel] * 0.55)
+        } else if (listPrice > 0) {
+          unitPrice = Math.round(listPrice * (1 - discountRate))
         }
         const totalPrice = unitPrice * qty
         const deliveryStatus = computeItemDeliveryStatus(item)
@@ -155,6 +269,8 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
           componentModel: item.componentModel || '',
           componentName: item.componentName || '',
           setModel: item.setModel || '',
+          listPrice,
+          discountRate,
           quantity: qty,
           unitPrice,
           totalPrice,
@@ -208,11 +324,40 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     setEditItems([])
   }
 
-  /** 편집 필드 변경 → 매입금액 자동 재계산 */
+  /**
+   * 편집 필드 변경 → 매입금액 자동 재계산
+   *
+   * 반출가(listPrice) 수정 규칙:
+   * - 반출가를 수정하면 "반출가 × (1-DC율)"로 매입가(단가)를 즉시 재계산합니다.
+   * - 이렇게 계산된 매입가(단가)가 저장되기 때문에,
+   *   반출가 DB 컬럼이 없는 환경에서도 동일한 결과를 재현할 수 있습니다.
+   */
   const handleFieldChange = (index: number, field: string, value: string | number) => {
     setEditItems(prev => {
       const next = [...prev]
       const item = { ...next[index], [field]: value }
+
+      // 반출가를 수정한 경우: DC율 기준으로 단가를 다시 계산해 저장
+      if (field === 'listPrice') {
+        const discountRate = getDiscountRate(item)
+        const listPrice = typeof value === 'number' ? value : Number(value) || 0
+        item.listPrice = listPrice
+        item.unitPrice = listPrice > 0 ? Math.round(listPrice * (1 - discountRate)) : 0
+      }
+
+      // DC율 수정도 허용한 경우를 대비해 단가를 즉시 재계산하도록 유지
+      if (field === 'discountRate') {
+        // DC율 입력값은 0%~99% 범위로 고정해서 오입력(100% 이상)으로
+        // 단가가 0/음수가 되는 문제를 예방합니다.
+        const rawDiscountRate = typeof value === 'number' ? value : Number(value)
+        const discountRate = Number.isFinite(rawDiscountRate)
+          ? Math.min(Math.max(rawDiscountRate, 0), 0.99)
+          : 0
+        item.discountRate = discountRate
+        const listPrice = getListPrice(item)
+        item.unitPrice = listPrice > 0 ? Math.round(listPrice * (1 - discountRate)) : item.unitPrice
+      }
+
       item.totalPrice = item.unitPrice * item.quantity
       next[index] = item
       return next
@@ -286,7 +431,10 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
     return groups
   }, [displayItems])
 
-  const totalPurchase = useMemo(() => displayItems.reduce((sum, r) => sum + r.totalPrice, 0), [displayItems])
+  const totalPurchase = useMemo(
+    () => displayItems.reduce((sum, r) => sum + getPurchaseTotalPrice(r), 0),
+    [displayItems]
+  )
 
   // ─── 로딩/생성 중/다이얼로그 ───
   if (isLoading) {
@@ -422,7 +570,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
         {orderGroups.map(group => {
           const isExpanded = expandedIds.has(group.orderId)
           const groupColors = computeSetModelGroups(group.items)
-          const orderTotal = group.items.reduce((sum, item) => sum + item.totalPrice, 0)
+          const orderTotal = group.items.reduce((sum, item) => sum + getPurchaseTotalPrice(item), 0)
 
           return (
             <div key={group.orderId} className="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
@@ -462,7 +610,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
               {isExpanded && (
                 <div className="border-t border-slate-200 bg-slate-50/50">
                   <div className="hidden md:block overflow-x-auto px-3 py-3">
-                    <table className="w-full text-sm border-collapse" style={{ minWidth: '1400px' }}>
+                    <table className="w-full text-sm border-collapse" style={{ minWidth: '1750px' }}>
                       <thead>
                         <tr className="bg-slate-100/80 text-[11px] text-slate-500 tracking-wide">
                           <th className="text-center px-2 py-2 font-medium" style={{ width: '36px' }}>No.</th>
@@ -473,9 +621,11 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '85px' }}>배송예정일</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '85px' }}>배송확정일</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '160px' }}>모델명</th>
-                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '85px' }}>매입단가</th>
+                          <th className="text-right px-2 py-2 font-medium bg-slate-50" style={{ width: '95px' }}>반출가</th>
+                          <th className="text-center px-2 py-2 font-medium bg-slate-50" style={{ width: '65px' }}>DC율</th>
+                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '95px' }}>매입가(단가)</th>
                           <th className="text-center px-2 py-2 font-medium" style={{ width: '40px' }}>수량</th>
-                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '95px' }}>매입금액</th>
+                          <th className="text-right px-2 py-2 font-medium bg-teal-50/50" style={{ width: '105px' }}>매입가(금액)</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '65px' }}>구성품</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '120px' }}>창고명</th>
                           <th className="text-left px-2 py-2 font-medium" style={{ width: '180px' }}>창고주소</th>
@@ -485,6 +635,10 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                         {group.items.map((item, idx) => {
                           const barColor = groupColors[idx]
                           const editIndex = isEditing ? editItems.findIndex(e => e.sortOrder === item.sortOrder) : -1
+                          const displayDiscountRate = getDiscountRate(item)
+                          const displayListPrice = getListPrice(item)
+                          const displayUnitPrice = getPurchaseUnitPrice(item)
+                          const displayTotalPrice = getPurchaseTotalPrice(item)
 
                           return (
                             <tr key={item.id || idx} className={`transition-colors ${isEditing ? 'bg-yellow-50/20' : 'hover:bg-teal-50/20'}`}>
@@ -515,6 +669,36 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                               <td className="px-2 py-2 text-xs text-slate-800 truncate" style={barColor ? { borderLeft: `4px solid ${barColor}`, paddingLeft: '8px' } : undefined}>
                                 {item.componentModel || '-'}
                               </td>
+                              <td className="px-2 py-2 text-right text-xs tabular-nums text-slate-700">
+                                {isEditing && editIndex >= 0 ? (
+                                  <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    className="w-full max-w-[90px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-right focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                    value={formatNumericInput(editItems[editIndex].listPrice ?? getListPrice(editItems[editIndex]))}
+                                    onChange={e => handleFieldChange(editIndex, 'listPrice', parseNumericInput(e.target.value))}
+                                  />
+                                ) : (
+                                  displayListPrice > 0 ? displayListPrice.toLocaleString('ko-KR') : '-'
+                                )}
+                              </td>
+                              <td className="px-2 py-2 text-center text-xs tabular-nums text-slate-600">
+                                {isEditing && editIndex >= 0 ? (
+                                  <input
+                                    type="text"
+                                    inputMode="decimal"
+                                    className="w-full max-w-[56px] bg-yellow-50 border border-yellow-300 rounded px-1 py-0.5 text-[10px] text-center focus:outline-none focus:ring-1 focus:ring-yellow-400"
+                                    value={formatPercentInput(editItems[editIndex].discountRate ?? getDiscountRate(editItems[editIndex]))}
+                                    onChange={e => handleFieldChange(
+                                      editIndex,
+                                      'discountRate',
+                                      Math.min(Math.max(parseNumericInput(e.target.value) / 100, 0), 0.99)
+                                    )}
+                                  />
+                                ) : (
+                                  `${(displayDiscountRate * 100).toFixed(0)}%`
+                                )}
+                              </td>
                               <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-600">
                                 {isEditing && editIndex >= 0 ? (
                                   <input
@@ -523,7 +707,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                     value={editItems[editIndex].unitPrice}
                                     onChange={e => handleFieldChange(editIndex, 'unitPrice', Number(e.target.value) || 0)}
                                   />
-                                ) : item.unitPrice.toLocaleString('ko-KR')}
+                                ) : displayUnitPrice.toLocaleString('ko-KR')}
                               </td>
                               <td className="px-2 py-2 text-center text-xs text-slate-700 tabular-nums">
                                 {isEditing && editIndex >= 0 ? (
@@ -536,7 +720,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                                 ) : item.quantity}
                               </td>
                               <td className="px-2 py-2 text-right text-xs tabular-nums text-teal-700 font-semibold">
-                                {item.totalPrice.toLocaleString('ko-KR')}
+                                {displayTotalPrice.toLocaleString('ko-KR')}
                               </td>
                               <td className="px-2 py-2 text-xs text-slate-600">{item.componentName || '-'}</td>
                               <td className="px-2 py-2 text-xs text-slate-700 truncate">{item.warehouseName || '미지정'}</td>
@@ -547,7 +731,7 @@ export function SamsungPurchaseTab({ orders, selectedYear, selectedMonth }: Sams
                       </tbody>
                       <tfoot>
                         <tr className="bg-teal-50 border-t-2 border-teal-200">
-                          <td colSpan={10} className="px-3 py-2 text-right text-xs font-bold text-teal-800">매입 소계</td>
+                          <td colSpan={12} className="px-3 py-2 text-right text-xs font-bold text-teal-800">매입 소계</td>
                           <td className="px-3 py-2 text-right text-xs font-bold text-teal-800 tabular-nums">{orderTotal.toLocaleString('ko-KR')}원</td>
                           <td colSpan={3}></td>
                         </tr>

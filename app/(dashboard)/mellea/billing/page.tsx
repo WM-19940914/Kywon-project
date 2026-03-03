@@ -1,12 +1,14 @@
 /**
  * 멜레아 정산 페이지
  *
- * 멜레아 입장에서 한 달의 전체 돈 흐름을 정리합니다.
- * - 탭1: 지출결의서 (발주건별 매출/매입/설치비/마진 상세)
- * - 탭2: 삼성매입 (삼성에서 구매한 구성품 상세)
- * - 탭3: 정산관리 (월별 매출/매입/설치비/순이익 요약 카드)
+ * 이 페이지의 역할:
+ * - 멜레아 정산 업무 화면에서 월 단위 데이터를 확인하는 메인 진입점입니다.
+ * - 현재는 사용자 요청으로 "지출결의서 탭"을 제거한 상태이며,
+ *   "배송 및 매입내역", "정산관리" 2개 탭만 제공합니다.
  *
- * 데이터 기준: 에스원 정산 '진행중' 이상 + 설치완료일/정산월 기준 필터
+ * 왜 이렇게 구성했는지:
+ * - 지출결의서는 자동 생성보다 수동 작성/검토 방식이 더 적합하다는 운영 결정이 있었기 때문입니다.
+ * - 따라서 이 화면에서는 지출결의서 기능 진입 자체를 막아 혼선이 없도록 합니다.
  */
 
 'use client'
@@ -15,84 +17,30 @@ import React, { useState, useEffect, useMemo } from 'react'
 import { fetchOrders } from '@/lib/supabase/dal'
 import type { Order } from '@/types/order'
 import { Skeleton } from '@/components/ui/skeleton'
-import { CreditCard, FileText, ShoppingCart, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
-// CreditCard는 페이지 헤더 아이콘에 사용
-import { DetailedExpenseReportTab } from '@/components/billing/detailed-expense-report-tab'
+import { CreditCard, ShoppingCart, BarChart3, ChevronLeft, ChevronRight } from 'lucide-react'
 import { SamsungPurchaseTab } from '@/components/billing/samsung-purchase-tab'
 import { MonthlySummaryTab } from '@/components/billing/monthly-summary-tab'
 
-/** 탭 정의 */
-type BillingTab = 'expense-report' | 'samsung-purchase' | 'monthly-summary'
+/**
+ * 페이지에서 허용하는 탭 타입
+ * - 지출결의서는 제거했기 때문에 타입에서도 제외합니다.
+ * - 타입에서 막아두면 실수로 탭 분기 코드를 다시 넣을 때 컴파일 단계에서 감지할 수 있습니다.
+ */
+type BillingTab = 'samsung-purchase' | 'monthly-summary'
 
+/**
+ * 상단 탭 설정
+ * - key: 탭 상태값
+ * - label: 버튼 텍스트
+ * - icon: 표시 아이콘
+ */
 const TAB_CONFIG: { key: BillingTab; label: string; icon: React.ReactNode }[] = [
-  { key: 'expense-report', label: '지출결의서', icon: <FileText className="h-4 w-4" /> },
   { key: 'samsung-purchase', label: '배송 및 매입내역', icon: <ShoppingCart className="h-4 w-4" /> },
   { key: 'monthly-summary', label: '정산관리', icon: <BarChart3 className="h-4 w-4" /> },
 ]
 
-/**
- * 발주 1건의 멜레아 정산 금액 계산
- *
- * - 매출(sales): 교원이 멜레아에 지불하는 금액 (VAT 포함 최종금액)
- * - 삼성매입비(samsungPurchase): 멜레아가 삼성에 지불하는 구성품 매입비
- * - 에스원설치비(installCost): 멜레아가 에스원에 지불하는 설치비 (견적서 기준)
- * - 마진(margin): 매출 - 삼성매입비 - 에스원설치비
- */
-function calcBillingAmounts(order: Order) {
-  // ─── 매출 계산 (교원→멜레아, settlements 페이지의 calcOrderAmounts 로직 복사) ───
-  const quote = order.customerQuote
-  const equipItems = quote?.items?.filter(i => i.category === 'equipment') || []
-  const installItems = quote?.items?.filter(i => i.category === 'installation') || []
-  const notesStr = quote?.notes || ''
-  const equipRoundMatch = notesStr.match(/장비비절사:\s*([\d,]+)/)
-  const installRoundMatch = notesStr.match(/설치비절사:\s*([\d,]+)/)
-  const equipRounding = equipRoundMatch ? parseInt(equipRoundMatch[1].replace(/,/g, '')) : 0
-  const installRounding = installRoundMatch ? parseInt(installRoundMatch[1].replace(/,/g, '')) : 0
-  const equipSubtotal = equipItems.reduce((s, i) => s + i.totalPrice, 0) - equipRounding
-  const installSubtotal = installItems.reduce((s, i) => s + i.totalPrice, 0) - installRounding
-  const supplyAmount = equipSubtotal + installSubtotal
-  const rawInstallTotal = installItems.reduce((s, i) => s + i.totalPrice, 0)
-  const rawProfit = Math.round(rawInstallTotal * 0.03)
-  const rawSubtotal = supplyAmount + rawProfit
-  const subtotalWithProfit = Math.floor(rawSubtotal / 1000) * 1000
-  const adjustedProfit = subtotalWithProfit - supplyAmount
-  const vat = Math.round(subtotalWithProfit * 0.1)
-  const grandTotal = subtotalWithProfit + vat
-
-  // ─── 삼성 매입비 (멜레아→삼성: equipmentItems의 totalPrice 합산) ───
-  const eqItems = order.equipmentItems || []
-  const samsungPurchase = eqItems.reduce((sum, item) => sum + (item.totalPrice || 0), 0)
-  const hasSamsungData = eqItems.some(item => item.totalPrice != null && item.totalPrice > 0)
-
-  // ─── 에스원 설치비 (멜레아→에스원: 견적서 설치비 - 설치비절사) ───
-  const installCost = installSubtotal
-
-  // ─── 마진 (매출 - 삼성매입 - 에스원설치비) ───
-  const margin = grandTotal - samsungPurchase - installCost
-
-  return {
-    // 매출 관련
-    sales: grandTotal,
-    equipSubtotal,
-    installSubtotal,
-    supplyAmount,
-    adjustedProfit,
-    subtotalWithProfit,
-    vat,
-    // 매입/설치비
-    samsungPurchase,
-    hasSamsungData,
-    installCost,
-    // 마진
-    margin,
-    // 절사 정보
-    equipRounding,
-    installRounding,
-  }
-}
-
 export default function MelleaBillingPage() {
-  // 데이터 로딩
+  // 페이지 데이터 로딩 상태
   const [orders, setOrders] = useState<Order[]>([])
   const [isLoading, setIsLoading] = useState(true)
 
@@ -103,15 +51,18 @@ export default function MelleaBillingPage() {
     })
   }, [])
 
-  // 현재 탭
-  const [activeTab, setActiveTab] = useState<BillingTab>('expense-report')
+  // 기본 진입 탭: 배송/매입내역
+  const [activeTab, setActiveTab] = useState<BillingTab>('samsung-purchase')
 
-  // 월 선택기 상태
+  // 월 선택 상태 (현재 월 기준)
   const now = new Date()
   const [selectedYear, setSelectedYear] = useState(now.getFullYear())
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth() + 1)
 
-  /** 월 이동 */
+  /**
+   * 이전 달 이동
+   * - 1월이면 전년도 12월로 이동합니다.
+   */
   const handlePrevMonth = () => {
     if (selectedMonth === 1) {
       setSelectedYear(y => y - 1)
@@ -121,6 +72,10 @@ export default function MelleaBillingPage() {
     }
   }
 
+  /**
+   * 다음 달 이동
+   * - 12월이면 다음년도 1월로 이동합니다.
+   */
   const handleNextMonth = () => {
     if (selectedMonth === 12) {
       setSelectedYear(y => y + 1)
@@ -131,22 +86,29 @@ export default function MelleaBillingPage() {
   }
 
   /**
-   * 정산 대상 필터링
-   * - 취소 건 제외
-   * - 에스원 정산 '진행중' 이상만 (unsettled 제외)
-   * - 선택한 월과 매칭 (정산월 또는 설치완료일 기준)
+   * 선택 월 기준 정산 대상 발주 필터
+   *
+   * 필터 조건:
+   * 1) 취소 건 제외
+   * 2) S1 정산상태가 unsettled(미정산)인 건 제외
+   * 3) 선택한 년/월과 정산 월이 일치하는 건만 포함
+   *
+   * 날짜 기준 우선순위:
+   * - order.s1SettlementMonth가 있으면 그 값을 우선 사용
+   * - 없으면 installCompleteDate(설치완료일)의 YYYY-MM을 사용
    */
   const filteredOrders = useMemo(() => {
     const monthKey = `${selectedYear}-${String(selectedMonth).padStart(2, '0')}`
 
     return orders.filter(order => {
       if (order.status === 'cancelled') return false
-      // 에스원 정산 진행중 이상만
+
       const s1Status = order.s1SettlementStatus || 'unsettled'
       if (s1Status === 'unsettled') return false
-      // 월 매칭
+
       const orderMonth = order.s1SettlementMonth
         || (order.installCompleteDate ? order.installCompleteDate.substring(0, 7) : null)
+
       return orderMonth === monthKey
     })
   }, [orders, selectedYear, selectedMonth])
@@ -160,7 +122,7 @@ export default function MelleaBillingPage() {
         </div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">멜레아 정산</h1>
-          <p className="text-muted-foreground mt-0.5">매출 · 삼성매입 · 에스원설치비 · 마진을 한 곳에서 확인합니다.</p>
+          <p className="text-muted-foreground mt-0.5">배송 및 매입내역과 정산관리 데이터를 월별로 확인합니다.</p>
         </div>
       </div>
 
@@ -186,7 +148,7 @@ export default function MelleaBillingPage() {
         </div>
       </div>
 
-      {/* 탭 (border-b 스타일) */}
+      {/* 탭 */}
       <div className="border-b border-slate-200 mb-6">
         <div className="flex items-center gap-1 -mb-px">
           {TAB_CONFIG.map(tab => {
@@ -195,19 +157,13 @@ export default function MelleaBillingPage() {
               <button
                 key={tab.key}
                 className={active
-                  ? "border-b-2 border-carrot-500 text-carrot-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2"
-                  : "text-slate-500 hover:text-slate-700 pb-3 px-4 text-sm flex items-center gap-2"
+                  ? 'border-b-2 border-carrot-500 text-carrot-600 font-semibold pb-3 px-4 text-sm flex items-center gap-2'
+                  : 'text-slate-500 hover:text-slate-700 pb-3 px-4 text-sm flex items-center gap-2'
                 }
                 onClick={() => setActiveTab(tab.key)}
               >
                 {tab.icon}
                 {tab.label}
-                {/* 지출결의서 탭에만 건수 표시 */}
-                {tab.key === 'expense-report' && (
-                  <span className={`ml-1 px-2 py-0.5 rounded-full text-xs ${active ? 'bg-carrot-100 text-carrot-600' : 'bg-slate-100 text-slate-500'}`}>
-                    {filteredOrders.length}
-                  </span>
-                )}
               </button>
             )
           })}
@@ -243,14 +199,6 @@ export default function MelleaBillingPage() {
       {/* 탭 콘텐츠 */}
       {!isLoading && (
         <>
-          {activeTab === 'expense-report' && (
-            <DetailedExpenseReportTab
-              orders={filteredOrders}
-              calcAmounts={calcBillingAmounts}
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-            />
-          )}
           {activeTab === 'samsung-purchase' && (
             <SamsungPurchaseTab orders={filteredOrders} selectedYear={selectedYear} selectedMonth={selectedMonth} />
           )}
