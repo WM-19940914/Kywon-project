@@ -65,7 +65,27 @@ const routeRules: RouteRule[] = [
  */
 export function isRouteAllowed(pathname: string, role: UserRole): boolean {
   for (const rule of routeRules) {
-    // 패턴이 '/'로 끝나면 접두사 매칭 (와일드카드)
+    /**
+     * 매우 중요한 예외 처리:
+     * pattern이 '/'(루트)인 규칙은 "홈 화면(/)만" 검사해야 합니다.
+     *
+     * 왜 필요할까요?
+     * - 기존에는 '/'도 endsWith('/') 조건에 걸려서
+     *   '/admin/server', '/mellea/billing' 같은 모든 경로가 먼저 '/'로 매칭되었습니다.
+     * - 그러면 뒤에 있는 세부 권한 규칙('/admin/', '/mellea/*')이 검사되지 않아
+     *   권한 제한이 사실상 무력화될 수 있습니다.
+     *
+     * 따라서 '/' 규칙은 pathname이 정확히 '/'일 때만 허용 여부를 반환하고,
+     * 다른 경로면 다음 규칙으로 넘어가도록 continue 처리합니다.
+     */
+    if (rule.pattern === '/') {
+      if (pathname === '/') {
+        return rule.roles.includes(role)
+      }
+      continue
+    }
+
+    // 패턴이 '/'로 끝나면 접두사 매칭 (와일드카드: 예 '/admin/' → '/admin/*')
     if (rule.pattern.endsWith('/') && pathname.startsWith(rule.pattern)) {
       return rule.roles.includes(role)
     }
