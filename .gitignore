@@ -43,3 +43,14 @@ nul
 
 # 스크립트 민감 데이터 (비밀번호 등)
 scripts/data/
+
+# local editor/agent files
+.cursor/
+.agents/
+dev-server.log
+
+# local screenshot files
+Capture_*.png
+
+# accidental environment path folder
+%AppData%/
