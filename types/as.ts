@@ -48,8 +48,9 @@ export interface ASRequest {
   businessName: string              // 사업자명 (현장명)
   address: string                   // 현장주소 (카카오 주소검색 결과, 도로명)
   detailAddress?: string            // 상세주소 (층/호수 등 수동입력)
-  contactName?: string              // 담당자 성함
-  contactPhone?: string             // 담당자 연락처
+  officePhone?: string              // 사무실 번호
+  contactName?: string              // 담당자 성함 (현장 접수자)
+  contactPhone?: string             // 담당자 연락처 (접수자 휴대폰)
   asReason?: string                 // AS 사유
   modelName?: string                // 모델명
   outdoorUnitLocation?: string      // 실외기 위치

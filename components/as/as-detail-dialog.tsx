@@ -218,6 +218,14 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                 <DataField label="접수자 연락처" value={formData.contactPhone} isEditing={isEditing}
                   input={<Input value={formData.contactPhone} onChange={e => setFormData({...formData, contactPhone: e.target.value})} className="h-10 border-zinc-200" />}
                 />
+                <DataField label="사무실 번호" value={formData.officePhone} isEditing={isEditing}
+                  input={<Input value={formData.officePhone} onChange={e => setFormData({...formData, officePhone: e.target.value})} placeholder="02-0000-0000" className="h-10 border-zinc-200" />}
+                />
+              </div>
+              <div className="grid grid-cols-2 divide-x divide-zinc-100 border-b border-zinc-100">
+                <DataField label="실외기 위치" value={formData.outdoorUnitLocation} isEditing={isEditing}
+                  input={<Input value={formData.outdoorUnitLocation} onChange={e => setFormData({...formData, outdoorUnitLocation: e.target.value})} placeholder="예: 1층 바닥 / 5층 옥상" className="h-10 border-zinc-200" />}
+                />
                 <DataField label="모델명" value={formData.modelName} isEditing={isEditing}
                   input={<Input value={formData.modelName} onChange={e => setFormData({...formData, modelName: e.target.value})} className="h-10 border-zinc-200 font-bold" />}
                 />

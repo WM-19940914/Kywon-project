@@ -27,11 +27,13 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
     businessName: '',
     address: '',
     detailAddress: '',
+    officePhone: '',
     contactName: '',
     contactPhone: '',
+    outdoorUnitLocation: '',
     modelName: '',
     asReason: '',
-    notes: '', // visitDate 대신 notes 사용
+    notes: '',
     status: 'received' as const,
   })
 
@@ -79,8 +81,10 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
       businessName: '',
       address: '',
       detailAddress: '',
+      officePhone: '',
       contactName: '',
       contactPhone: '',
+      outdoorUnitLocation: '',
       modelName: '',
       asReason: '',
       notes: '',
@@ -189,9 +193,9 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-[13px] font-bold text-slate-500">현장 접수자</Label>
-                <Input 
-                  required 
-                  placeholder="성함 입력" 
+                <Input
+                  required
+                  placeholder="성함 입력"
                   className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
                   value={formData.contactName}
                   onChange={e => setFormData({ ...formData, contactName: e.target.value })}
@@ -201,14 +205,27 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
                 <Label className="text-[13px] font-bold text-slate-500">접수자 연락처</Label>
                 <div className="relative">
                   <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                  <Input 
-                    required 
-                    placeholder="010-0000-0000" 
+                  <Input
+                    required
+                    placeholder="010-0000-0000"
                     className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
                     value={formData.contactPhone}
                     onChange={e => setFormData({ ...formData, contactPhone: e.target.value })}
                   />
                 </div>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500">사무실 번호</Label>
+              <div className="relative">
+                <Phone className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Input
+                  placeholder="02-0000-0000"
+                  className="pl-10 h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                  value={formData.officePhone}
+                  onChange={e => setFormData({ ...formData, officePhone: e.target.value })}
+                />
               </div>
             </div>
           </div>
@@ -221,9 +238,19 @@ export function ASFormDialog({ open, onOpenChange, onSubmit }: ASFormDialogProps
             </div>
 
             <div className="space-y-2">
+              <Label className="text-[13px] font-bold text-slate-500">실외기 위치</Label>
+              <Input
+                placeholder="예: 1층 바닥 / 5층 옥상 / 실외기 위치를 알려주세요"
+                className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
+                value={formData.outdoorUnitLocation}
+                onChange={e => setFormData({ ...formData, outdoorUnitLocation: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label className="text-[13px] font-bold text-slate-500">모델명</Label>
-              <Input 
-                placeholder="예: AP083BNPPBH1" 
+              <Input
+                placeholder="예: AP083BNPPBH1"
                 className="h-11 bg-slate-50/50 border-slate-200 rounded-xl focus:bg-white transition-all"
                 value={formData.modelName}
                 onChange={e => setFormData({ ...formData, modelName: e.target.value })}

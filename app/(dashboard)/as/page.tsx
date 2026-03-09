@@ -40,16 +40,17 @@ import {
 } from '@/components/ui/select'
 import { useAlert } from '@/components/ui/custom-alert'
 import { useUserProfile } from '@/lib/auth/user-context'
-import { 
-  Wrench, 
-  Plus, 
-  CheckCircle2, 
-  Search, 
+import {
+  Wrench,
+  Plus,
+  CheckCircle2,
+  Search,
   ArrowRight,
   ClipboardCheck,
   PlayCircle,
   Banknote,
-  LucideIcon
+  LucideIcon,
+  AlertTriangle
 } from 'lucide-react'
 import { ExcelExportButton } from '@/components/ui/excel-export-button'
 import { exportToExcel, buildExcelFileName, type ExcelColumn } from '@/lib/excel-export'
@@ -97,11 +98,13 @@ export default function ASPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<ASRequest | null>(null)
   const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
+  /* 차단기 리셋 안내 다이얼로그 상태 */
+  const [resetGuideOpen, setResetGuideOpen] = useState(false)
 
   // URL 파라미터 처리
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
-    if (params.get('action') === 'new') setFormDialogOpen(true)
+    if (params.get('action') === 'new') setResetGuideOpen(true)
   }, [])
 
   const handleTabChange = useCallback((tab: ASRequestStatus) => {
@@ -272,7 +275,7 @@ export default function ASPage() {
         </div>
         <div className="flex items-center gap-2">
           <ExcelExportButton onClick={handleExcelExport} disabled={filteredRequests.length === 0} />
-          <Button onClick={() => setFormDialogOpen(true)} className="bg-[#E09520] hover:bg-[#c87d1a] text-white font-black rounded-xl px-4 h-9.5 shadow-md shadow-orange-100 transition-all active:scale-95 text-[13px]">
+          <Button onClick={() => setResetGuideOpen(true)} className="bg-[#E09520] hover:bg-[#c87d1a] text-white font-black rounded-xl px-4 h-9.5 shadow-md shadow-orange-100 transition-all active:scale-95 text-[13px]">
             <Plus className="h-4 w-4 mr-1.5" strokeWidth={3} />
             AS 접수
           </Button>
@@ -610,6 +613,48 @@ export default function ASPage() {
         onUpdate={handleUpdate}
         onDelete={handleDelete}
       />
+
+      {/* ── 차단기 리셋 안내 다이얼로그 ── */}
+      <AlertDialog open={resetGuideOpen} onOpenChange={setResetGuideOpen}>
+        <AlertDialogContent className="rounded-2xl border border-slate-200 shadow-2xl max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-lg font-black text-red-600">
+              <AlertTriangle className="h-5 w-5 text-red-500" strokeWidth={2.5} />
+              AS 접수 전 확인사항
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 pt-3 text-[14px] leading-relaxed text-slate-600">
+                <p>
+                  AS 접수 전에 반드시 에어컨 <strong className="text-red-600 text-[16px] bg-red-50 px-1.5 py-0.5 rounded">차단기 리셋</strong>을 먼저 진행해 주세요.
+                </p>
+                <p>
+                  차단기 전원을 내린 후 <strong className="text-red-600">3~5분 뒤</strong> 다시 올려 정상 작동 여부를 확인해 주시기 바랍니다.
+                </p>
+                <p>
+                  해당 조치 후에도 문제가 지속될 경우에만 AS 접수를 부탁드립니다.
+                </p>
+                <p className="text-[13px] font-bold text-slate-500 pt-1 border-t border-slate-100">
+                  대부분의 에어컨 고장은 차단기 리셋으로 해결됩니다.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel className="rounded-xl font-bold border-slate-200 h-11">
+              취소
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setResetGuideOpen(false)
+                setFormDialogOpen(true)
+              }}
+              className="rounded-xl font-black bg-slate-900 hover:bg-slate-800 h-11 px-6"
+            >
+              확인, AS 접수 진행
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={batchConfirmOpen} onOpenChange={setBatchConfirmOpen}>
         <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
