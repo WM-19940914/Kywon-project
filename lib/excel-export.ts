@@ -383,14 +383,20 @@ export async function exportDeliveryPurchaseExcel(options: {
     { header: '주문일', width: 14 }, 
     { header: '배송예정일', width: 14 }, 
     { header: '배송확정일', width: 14 }, 
-    { header: '모델명', width: 22 }, 
-    { header: '수량', width: 8 }, 
+    { header: '모델명', width: 22 },
   ]
   
   const pricingColumns = [
-    { header: '매입단가', width: 15 }, 
-    { header: '매입금액', width: 18 }, 
-    { header: '매입금액(VAT포함)', width: 18 }, 
+    { header: '반출가', width: 15 },
+    { header: 'DC율', width: 10 },
+    { header: '매입가(단가)', width: 15 },
+    { header: '수량', width: 8 },
+    { header: '매입가(금액)', width: 18 },
+  ]
+
+  // 가격을 숨기는 화면(배송관리)에서도 수량은 업무상 꼭 필요하므로 별도 유지합니다.
+  const quantityOnlyColumns = [
+    { header: '수량', width: 8 },
   ]
   
   const warehouseColumns = [
@@ -400,7 +406,7 @@ export async function exportDeliveryPurchaseExcel(options: {
 
   // hidePricing 옵션에 따라 컬럼 구성
   ws.columns = hidePricing 
-    ? [...baseColumns, ...warehouseColumns] 
+    ? [...baseColumns, ...quantityOnlyColumns, ...warehouseColumns]
     : [...baseColumns, ...pricingColumns, ...warehouseColumns]
   
   applySectionTitle(ws, 1, monthLabel ? `${monthLabel} 정산 내역` : '배송 및 매입 내역 상세', ws.columns.length); ws.addRow([])
@@ -452,11 +458,29 @@ export async function exportDeliveryPurchaseExcel(options: {
         scheduledDate,  // 배송예정일
         confirmedDate,  // 배송확정일
         item.componentModel || '-',
-        Number(item.quantity) || 0,
       ]
 
       if (!hidePricing) {
-        rowValues.push(Number(item.unitPrice) || 0, 0, 0) // 매입단가, 매입금액, VAT포함
+        // 반출가/DC율이 저장돼 있지 않은 과거 데이터도 깨지지 않도록 안전하게 역산합니다.
+        const quantity = Number(item.quantity) || 0
+        const discountRate = (typeof item.discountRate === 'number' && item.discountRate > 0 && item.discountRate < 1)
+          ? item.discountRate
+          : 0.45
+        const purchaseUnitPrice = Number(item.unitPrice) || 0
+        const listPrice = (Number(item.listPrice) > 0)
+          ? Number(item.listPrice)
+          : (purchaseUnitPrice > 0 ? Math.round(purchaseUnitPrice / (1 - discountRate)) : 0)
+        const dcPercent = Math.round(discountRate * 100)
+
+        rowValues.push(
+          listPrice,         // 반출가
+          `${dcPercent}%`,   // DC율
+          purchaseUnitPrice, // 매입가(단가)
+          quantity,          // 수량
+          0                  // 매입가(금액) - 아래에서 수식 입력
+        )
+      } else {
+        rowValues.push(Number(item.quantity) || 0)
       }
 
       rowValues.push(
@@ -470,29 +494,33 @@ export async function exportDeliveryPurchaseExcel(options: {
       if (!hidePricing) {
         const itemQty = Number(item.quantity) || 0
         const itemPrice = Number(item.unitPrice) || 0
-        row.getCell(12).value = { formula: `J${ri}*K${ri}`, result: itemQty * itemPrice }
-        row.getCell(13).value = { formula: `L${ri}*1.1`, result: Math.round(itemQty * itemPrice * 1.1) }
+        // L열(매입가 단가) × M열(수량) = N열(매입가 금액)
+        row.getCell(14).value = { formula: `L${ri}*M${ri}`, result: itemQty * itemPrice }
       }
       
       row.eachCell({ includeEmpty: true }, (cell, colNum) => { 
         const colNumVal = colNumberNum(colNum)
-        if (colNumVal >= 10 && colNumVal <= (hidePricing ? 10 : 13)) {
+        const isNumericCol = hidePricing
+          ? colNumVal === 10
+          : (colNumVal === 10 || colNumVal === 12 || colNumVal === 13 || colNumVal === 14)
+        if (isNumericCol) {
           applyDataCellStyle(cell, '#,##0')
         } else {
           applyDataCellStyle(cell)
         }
         if (colNumVal === 5) { cell.alignment = { horizontal: 'center' }; cell.numFmt = '@' } 
+        if (!hidePricing && colNumVal === 11) { cell.alignment = { horizontal: 'center', vertical: 'middle' } } // DC율
       })
       currentIdx++
     })
     
     const endR = currentIdx - 1
     if (endR > startR) {
-      const mergeCols = hidePricing ? [1, 2, 3, 5, 11, 12] : [1, 2, 3, 5, 14, 15]
+      const mergeCols = hidePricing ? [1, 2, 3, 5, 11, 12] : [1, 2, 3, 5, 15, 16]
       mergeCols.forEach(col => {
         ws.mergeCells(startR, col, endR, col)
         const cell = ws.getCell(startR, col)
-        cell.alignment = { vertical: 'middle', horizontal: (col === 3 || col === (hidePricing ? 12 : 15)) ? 'left' : 'center', wrapText: true }
+        cell.alignment = { vertical: 'middle', horizontal: (col === 3 || col === (hidePricing ? 12 : 16)) ? 'left' : 'center', wrapText: true }
       })
     }
     ws.getRow(endR).eachCell(cell => { 

@@ -16,21 +16,24 @@ import { WAREHOUSE_STOCK_STATUS_LABELS, WAREHOUSE_STOCK_STATUS_COLORS } from '@/
 import type { Warehouse } from '@/types/warehouse'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent } from '@/components/ui/card'
-import { 
-  Package, 
-  CheckCircle2, 
-  Box, 
-  ChevronDown, 
-  Ban, 
+import {
+  Package,
+  CheckCircle2,
+  Box,
+  ChevronDown,
+  Ban,
   ArrowRight,
   MoreVertical,
   Pencil,
   Trash2,
-  AlertTriangle
+  AlertTriangle,
+  ArrowRightLeft
 } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { useAlert } from '@/components/ui/custom-alert'
-import { deleteInventoryEvent } from '@/lib/supabase/dal'
+import { deleteInventoryEvent, createInventoryEvent } from '@/lib/supabase/dal'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -127,6 +130,11 @@ export function InventoryWarehouseView({
   // 수정 관련 상태
   const [editTarget, setEditTarget] = useState<WarehouseStockItem | null>(null)
 
+  // 유휴전환 관련 상태
+  const [idleConvertTarget, setIdleConvertTarget] = useState<WarehouseStockItem | null>(null)
+  const [idleConvertReason, setIdleConvertReason] = useState('')
+  const [isConverting, setIsConverting] = useState(false)
+
   /** 삭제 처리 */
   const handleDelete = async () => {
     if (!deleteTarget?.id) return
@@ -146,6 +154,57 @@ export function InventoryWarehouseView({
     } finally {
       setIsDeleting(false)
       setDeleteTarget(null)
+    }
+  }
+
+  /** 유휴재고 전환 처리 — 입고내역/설치완료 → 유휴재고로 이동 */
+  const handleConvertToIdle = async () => {
+    if (!idleConvertTarget) return
+
+    // 이미 유휴재고 이벤트가 있는지 중복 체크
+    const existingEvent = idleConvertTarget.equipmentItemId
+      ? events.find(e =>
+          (e.eventType === 'idle' || e.eventType === 'cancelled') &&
+          e.equipmentItemId === idleConvertTarget.equipmentItemId
+        )
+      : null
+
+    if (existingEvent) {
+      showAlert('이미 유휴재고로 등록된 장비입니다.', 'warning')
+      setIdleConvertTarget(null)
+      setIdleConvertReason('')
+      return
+    }
+
+    setIsConverting(true)
+    try {
+      const result = await createInventoryEvent({
+        eventType: 'idle',
+        equipmentItemId: idleConvertTarget.equipmentItemId,
+        sourceOrderId: idleConvertTarget.orderId,
+        sourceWarehouseId: idleConvertTarget.warehouseId,
+        modelName: idleConvertTarget.componentModel,
+        siteName: idleConvertTarget.businessName,
+        category: idleConvertTarget.componentName,
+        quantity: idleConvertTarget.quantity,
+        notes: idleConvertReason || undefined,
+        eventDate: new Date().toISOString().split('T')[0],
+        status: 'active',
+      })
+
+      if (result) {
+        showAlert('유휴재고로 전환되었습니다.', 'success')
+        onRefresh?.()
+      } else {
+        showAlert('전환에 실패했습니다.', 'error')
+      }
+    } catch (error) {
+      console.error('유휴전환 오류:', error)
+      showAlert('오류가 발생했습니다.', 'error')
+    } finally {
+      setIsConverting(false)
+      setIdleConvertTarget(null)
+      setIdleConvertReason('')
     }
   }
 
@@ -714,6 +773,55 @@ export function InventoryWarehouseView({
         />
       )}
 
+      {/* ===== 유휴재고 전환 확인 다이얼로그 ===== */}
+      <AlertDialog open={!!idleConvertTarget} onOpenChange={(open) => { if (!open) { setIdleConvertTarget(null); setIdleConvertReason('') } }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="h-12 w-12 rounded-full bg-brick-100 flex items-center justify-center mb-4">
+              <ArrowRightLeft className="h-6 w-6 text-brick-600" />
+            </div>
+            <AlertDialogTitle>유휴재고로 전환</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <p className="mb-3">
+                  이 장비를 유휴재고로 전환합니다.
+                </p>
+                {idleConvertTarget && (
+                  <div className="bg-gray-50 rounded-lg p-3 space-y-1 text-sm mb-3">
+                    <p><span className="text-gray-500">현장:</span> <span className="font-medium text-gray-900">{idleConvertTarget.businessName}</span></p>
+                    <p><span className="text-gray-500">구성품:</span> <span className="text-gray-900">{idleConvertTarget.componentName}</span></p>
+                    {idleConvertTarget.componentModel && (
+                      <p><span className="text-gray-500">모델:</span> <span className="text-gray-900 font-mono text-xs">{idleConvertTarget.componentModel}</span></p>
+                    )}
+                    <p><span className="text-gray-500">수량:</span> <span className="text-gray-900">{idleConvertTarget.quantity}</span></p>
+                  </div>
+                )}
+                <div className="space-y-2">
+                  <Label htmlFor="idle-reason" className="text-sm font-medium text-gray-700">전환 사유 (선택)</Label>
+                  <Textarea
+                    id="idle-reason"
+                    placeholder="예: 현장 사정으로 설치 불가, 고객 취소 등"
+                    value={idleConvertReason}
+                    onChange={(e) => setIdleConvertReason(e.target.value)}
+                    className="h-20"
+                  />
+                </div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isConverting}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleConvertToIdle() }}
+              className="bg-brick-600 hover:bg-brick-700"
+              disabled={isConverting}
+            >
+              {isConverting ? '전환 중...' : '유휴재고로 전환'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       {/* ===== 입고내역 / 설치완료 기존 테이블 (유휴재고가 아닐 때) ===== */}
       {statusFilter !== 'idle' && (
         <>
@@ -734,6 +842,7 @@ export function InventoryWarehouseView({
                     <th className="text-left p-3 text-sm font-medium">구성품 (모델명)</th>
                     <th className="text-center p-3 text-sm font-medium" style={{ width: '60px' }}>수량</th>
                     <th className="text-center p-3 text-sm font-medium" style={{ width: '130px' }}>상태</th>
+                    <th className="text-center p-3 text-sm font-medium" style={{ width: '80px' }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -761,6 +870,17 @@ export function InventoryWarehouseView({
                         <Badge className={`${WAREHOUSE_STOCK_STATUS_COLORS[item.stockStatus]} text-[10px] border`}>
                           {WAREHOUSE_STOCK_STATUS_LABELS[item.stockStatus]}
                         </Badge>
+                      </td>
+                      {/* 유휴전환 버튼 */}
+                      <td className="p-3 text-center">
+                        <button
+                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-brick-600 hover:bg-brick-50 rounded-md transition-colors border border-brick-200"
+                          onClick={() => setIdleConvertTarget(item)}
+                          title="유휴재고로 전환"
+                        >
+                          <ArrowRightLeft className="h-3 w-3" />
+                          유휴전환
+                        </button>
                       </td>
                     </tr>
                   ))}
@@ -801,6 +921,17 @@ export function InventoryWarehouseView({
                       <p className="text-xs text-gray-500">{getWarehouseLabel(item.warehouseId)}</p>
                       <p className="text-xs text-gray-400">수량: {item.quantity}</p>
                     </div>
+                  </div>
+                  {/* 모바일 유휴전환 버튼 */}
+                  <div className="pt-2 border-t border-gray-100">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full h-8 text-xs gap-1.5 text-brick-600 hover:text-brick-700 hover:bg-brick-50"
+                      onClick={() => setIdleConvertTarget(item)}
+                    >
+                      <ArrowRightLeft className="h-3 w-3" /> 유휴재고로 전환
+                    </Button>
                   </div>
                 </div>
               ))

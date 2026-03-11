@@ -27,5 +27,6 @@
   "enabledMcpjsonServers": [
     "supabase",
     "context7"
-  ]
+  ],
+  "enableAllProjectMcpServers": true
 }

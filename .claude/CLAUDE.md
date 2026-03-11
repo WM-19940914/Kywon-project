@@ -15,12 +15,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## 개발 명령어
 
 ```bash
-npm run dev              # 개발 서버 시작 (포트 3002 사용 — 카카오 API 등록 포트)
-npx next dev -p 3002     # 포트 명시적 지정
+npx next dev -p 3002     # 개발 서버 시작 (⚠️ 반드시 포트 3002 — 카카오 API 등록 포트)
+                         # npm run dev는 포트 미지정(3000)이므로 사용 금지
 npm run build            # 프로덕션 빌드 (TypeScript 에러 시 실패)
 npm run start            # 프로덕션 서버 실행
 npm run lint             # ESLint 검사
 ```
+
+- **테스트**: 테스트 프레임워크 미도입 — 테스트 명령어 없음
 
 ### 환경 변수 (`.env.local` 필요)
 - `NEXT_PUBLIC_SUPABASE_URL` — Supabase 프로젝트 URL
@@ -35,6 +37,11 @@ npm run lint             # ESLint 검사
 - **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS** + **shadcn/ui** (new-york 스타일)
 - **Supabase** (PostgreSQL + Auth + Storage) — 서울 리전(ap-northeast-2)
 - **Vercel** 배포
+- **주요 라이브러리**: exceljs(엑셀 내보내기), jspdf+jspdf-autotable(견적서 PDF), html2canvas(화면 캡처), sonner(토스트 알림), lucide-react(아이콘)
+
+### Windows 환경 특이사항
+- `next.config.mjs`에서 dev 모드 시 webpack 캐시를 memory로 강제 설정 (Windows 파일 캐시 깨짐 방지)
+- bash에서 괄호 포함 경로는 반드시 큰따옴표: `"app/(dashboard)/..."`
 
 ### 핵심 구조
 ```

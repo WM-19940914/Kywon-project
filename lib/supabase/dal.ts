@@ -474,24 +474,42 @@ export async function cancelOrder(id: string, reason: string): Promise<boolean> 
     .not('confirmed_delivery_date', 'is', null)
 
   // 3. 입고된 구성품이 있으면 각각에 대해 유휴재고 이벤트 생성
+  //    단, 이미 유휴재고(idle) 이벤트가 있는 구성품은 중복 생성 방지
   if (deliveredItems && deliveredItems.length > 0) {
-    const events = deliveredItems.map(item => ({
-      event_type: 'cancelled',
-      equipment_item_id: item.id,
-      source_order_id: id,
-      source_warehouse_id: item.warehouse_id,
-      status: 'active',
-      event_date: now.split('T')[0],
-      notes: `발주취소 — ${reason}`,
-    }))
-
-    const { error: eventError } = await supabase
+    // 이미 idle/cancelled 이벤트가 있는 구성품 ID 조회
+    const itemIds = deliveredItems.map(item => item.id)
+    const { data: existingEvents } = await supabase
       .from('inventory_events')
-      .insert(events)
+      .select('equipment_item_id')
+      .in('equipment_item_id', itemIds)
+      .in('event_type', ['idle', 'cancelled'])
 
-    if (eventError) {
-      console.error('유휴재고 이벤트 생성 실패:', eventError.message)
-      // 발주 취소 자체는 성공했으므로 true 반환 (이벤트는 나중에 수동 처리 가능)
+    const alreadyIdleSet = new Set(
+      (existingEvents || []).map(e => e.equipment_item_id)
+    )
+
+    // 이미 유휴재고인 구성품은 건너뛰기
+    const newItems = deliveredItems.filter(item => !alreadyIdleSet.has(item.id))
+
+    if (newItems.length > 0) {
+      const events = newItems.map(item => ({
+        event_type: 'cancelled',
+        equipment_item_id: item.id,
+        source_order_id: id,
+        source_warehouse_id: item.warehouse_id,
+        status: 'active',
+        event_date: now.split('T')[0],
+        notes: `발주취소 — ${reason}`,
+      }))
+
+      const { error: eventError } = await supabase
+        .from('inventory_events')
+        .insert(events)
+
+      if (eventError) {
+        console.error('유휴재고 이벤트 생성 실패:', eventError.message)
+        // 발주 취소 자체는 성공했으므로 true 반환 (이벤트는 나중에 수동 처리 가능)
+      }
     }
   }
 
