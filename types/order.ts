@@ -191,6 +191,9 @@ export interface Order {
   optiName?: string                        // 옵티명
   optiNumber?: string                      // 옵티번호
   contractNumber?: string                  // 계약번호
+
+  // 📏 실내기~실외기 거리 (발주 등록 시 입력, 텍스트)
+  pipeDistance?: string                    // 실내기(스탠드,벽걸이)에서 실외기까지 거리
 }
 
 /**

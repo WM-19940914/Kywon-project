@@ -63,6 +63,7 @@ export interface OrderFormData {
   items: OrderItem[]
   notes?: string                // 설치기사님 전달사항
   isPreliminaryQuote?: boolean  // 사전견적 요청 여부
+  pipeDistance?: string         // 실내기~실외기 거리
 }
 
 /**
@@ -157,6 +158,7 @@ export function OrderForm({
   const [orderDate, setOrderDate] = useState(initialData?.orderDate || new Date().toISOString().split('T')[0]) // 발주일 (기본값: 오늘)
   const [requestedInstallDate, setRequestedInstallDate] = useState('') // 설치 희망일 (선택)
   const [notes, setNotes] = useState(initialData?.notes || '') // 설치기사님 전달사항
+  const [pipeDistance, setPipeDistance] = useState(initialData?.pipeDistance || '') // 실내기~실외기 거리
 
   // 사전견적 접힘/펼침 상태
   const [showPreliminaryQuote, setShowPreliminaryQuote] = useState(
@@ -264,6 +266,7 @@ export function OrderForm({
       setOrderDate(initialData.orderDate || new Date().toISOString().split('T')[0])
       setRequestedInstallDate(initialData.requestedInstallDate || '')
       setNotes(initialData.notes || '')
+      setPipeDistance(initialData.pipeDistance || '')
 
       // 주소 파싱 (OrderForm이 생성한 주소를 다시 개별 필드로 분리)
       if (initialData.address) {
@@ -536,7 +539,8 @@ export function OrderForm({
       requestedInstallDate,
       items,  // 사전견적일 때는 빈 배열
       notes,
-      isPreliminaryQuote
+      isPreliminaryQuote,
+      pipeDistance: pipeDistance || undefined
     }
 
     onSubmit(formData)
@@ -842,6 +846,21 @@ export function OrderForm({
                 </Button>
               )}
             </div>
+          </div>
+
+          <div className="border-t border-border/50" />
+
+          {/* ── 실내기~실외기 거리 ── */}
+          <div className="space-y-2">
+            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+              📏 실내기 ~ 실외기 거리
+            </p>
+            <Input
+              value={pipeDistance}
+              onChange={(e) => setPipeDistance(e.target.value)}
+              placeholder="예: 스탠드 5m, 벽걸이 3m"
+              className="text-sm"
+            />
           </div>
 
           <div className="border-t border-border/50" />
@@ -1170,6 +1189,16 @@ export function OrderForm({
                   </div>
                 )}
               </div>
+
+              <Separator />
+
+              {/* 실내기~실외기 거리 */}
+              {pipeDistance && (
+                <div className="py-3">
+                  <p className="text-xs text-gray-500 mb-1">실내기 ~ 실외기 거리</p>
+                  <p className="text-sm font-medium">{pipeDistance}</p>
+                </div>
+              )}
 
               <Separator />
 

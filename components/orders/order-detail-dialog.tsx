@@ -270,6 +270,14 @@ export function OrderDetailDialog({
             </div>
           )}
 
+          {/* ─── 실내기~실외기 거리 ─── */}
+          {order.pipeDistance && (
+            <div className="border-t border-border/50 pt-3 pb-3">
+              <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-1">실내기 ~ 실외기 거리</div>
+              <p className="text-sm font-medium">{order.pipeDistance}</p>
+            </div>
+          )}
+
           {/* ─── 발주내역: 작업종류별 좌측 컬러보더 ─── */}
           <div className="border-t border-border/50 pt-4 pb-4">
             <div className="text-[11px] font-medium uppercase tracking-wide text-slate-400 mb-2">발주내역</div>

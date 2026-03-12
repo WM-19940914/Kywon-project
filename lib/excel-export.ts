@@ -222,6 +222,9 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
   const { affiliateData, asAffiliateData, asColumns, monthLabel, fileName } = options
   
   const wb = new ExcelJS.Workbook()
+  // 구버전 엑셀에서도 수식이 자동 재계산되도록 강제 설정
+  // (이 설정이 없으면 캐시된 result 값(0)이 그대로 표시됨)
+  wb.calcProperties = { fullCalcOnLoad: true }
   const installSheetTotalCells: Record<string, string> = {}
   const asSheetTotalCells: Record<string, string> = {}
   const detailBusinessRows: { sheetKey: string; bizName: string; cellRef: string; isAs: boolean }[] = []
@@ -269,12 +272,14 @@ export async function exportSettlementExcel(options: ExportSettlementOptions) {
       }
       const iStart = ws.rowCount + 1
       ins.forEach(q => { const r = ws.addRow(['', q.category, q.productName, q.modelName, q.quantity, q.unitPrice, { formula: `E${ws.rowCount+1}*F${ws.rowCount+1}`, result: q.totalPrice }]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) })
+      const iItemEnd = ws.rowCount // 절사 행 제외, 순수 설치비 항목의 마지막 행
       if (o.installRounding > 0) { const r = ws.addRow(['', '', '', '', '', '설치비 절사', -o.installRounding]); r.eachCell(c => applyDataCellStyle(c, '#,##0')) }
       const iSub = ws.addRow(['', '', '', '', '', '설치비 소계', { formula: `SUM(G${iStart}:G${ws.rowCount})`, result: 0 }]); iSub.eachCell((cell, colNum) => { if (colNumberNum(colNum) >= 6) { cell.font = TOTAL_FONT; cell.border = THIN_BORDER; cell.numFmt = '#,##0'; cell.alignment = { horizontal: 'right' } } })
-      
+
       ws.addRow([])
       const rowS = ws.addRow(['', '', '', '', '', '공급가액', { formula: `${eqSub ? `G${eqSub.number}` : '0'}+G${iSub.number}`, result: o.supplyAmount }])
-      const rowP = ws.addRow(['', '', '', '', '', '기업이윤(3%)', { formula: `FLOOR(G${rowS.number}+ROUND(SUM(G${iStart}:G${iSub.number-1})*0.03, 0), 1000)-G${rowS.number}`, result: o.adjustedProfit }])
+      // 기업이윤 3%는 절사 전 설치비 합계(iStart~iItemEnd)에 적용 (웹 로직과 동일)
+      const rowP = ws.addRow(['', '', '', '', '', '기업이윤(3%)', { formula: `FLOOR(G${rowS.number}+ROUND(SUM(G${iStart}:G${iItemEnd})*0.03, 0), 1000)-G${rowS.number}`, result: o.adjustedProfit }])
       const rowSt = ws.addRow(['', '', '', '', '', '소계(부가세별도)', { formula: `G${rowS.number}+G${rowP.number}`, result: o.subtotalWithProfit }])
       const rowV = ws.addRow(['', '', '', '', '', '부가세(10%)', { formula: `ROUND(G${rowSt.number}*0.1, 0)`, result: o.vat }])
       const rowG = ws.addRow(['', '', '', '', '', '합계(VAT포함)', { formula: `G${rowSt.number}+G${rowV.number}`, result: o.grandTotal }])
