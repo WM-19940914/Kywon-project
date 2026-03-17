@@ -652,6 +652,45 @@ export async function saveEquipmentItems(orderId: string, items: EquipmentItem[]
   return true
 }
 
+/**
+ * 구성품 개별 수정
+ * 재고 관리에서 입고일, 창고, 수량 등을 수정할 때 사용
+ */
+export async function updateEquipmentItem(
+  id: string,
+  updates: Partial<EquipmentItem>
+): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('equipment_items')
+    .update(toSnakeCase(updates))
+    .eq('id', id)
+
+  if (error) {
+    console.error('구성품 수정 실패:', error.message)
+    return false
+  }
+  return true
+}
+
+/**
+ * 구성품 개별 삭제
+ * 재고 관리에서 특정 구성품 하나를 삭제할 때 사용
+ */
+export async function deleteEquipmentItem(id: string): Promise<boolean> {
+  const supabase = createClient()
+  const { error } = await supabase
+    .from('equipment_items')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    console.error('구성품 삭제 실패:', error.message)
+    return false
+  }
+  return true
+}
+
 // ============================================================
 // 💰 설치비 (Installation Cost Items)
 // ============================================================

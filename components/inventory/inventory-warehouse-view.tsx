@@ -31,9 +31,24 @@ import {
 } from 'lucide-react'
 import { formatShortDate } from '@/lib/delivery-utils'
 import { useAlert } from '@/components/ui/custom-alert'
-import { deleteInventoryEvent, createInventoryEvent } from '@/lib/supabase/dal'
+import { deleteInventoryEvent, createInventoryEvent, updateInventoryEvent, updateEquipmentItem, deleteEquipmentItem } from '@/lib/supabase/dal'
 import { Textarea } from '@/components/ui/textarea'
+import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -130,6 +145,24 @@ export function InventoryWarehouseView({
   // 수정 관련 상태
   const [editTarget, setEditTarget] = useState<WarehouseStockItem | null>(null)
 
+  // 입고내역 수정 관련 상태 (장비 아이템 직접 수정)
+  const [stockEditTarget, setStockEditTarget] = useState<WarehouseStockItem | null>(null)
+  const [stockEditForm, setStockEditForm] = useState({
+    confirmedDeliveryDate: '',
+    warehouseId: '',
+    componentName: '',
+    componentModel: '',
+    quantity: 1,
+  })
+  const [isSavingStockEdit, setIsSavingStockEdit] = useState(false)
+
+  // 입고내역 삭제 관련 상태
+  const [stockDeleteTarget, setStockDeleteTarget] = useState<WarehouseStockItem | null>(null)
+  const [isDeletingStock, setIsDeletingStock] = useState(false)
+
+  // 유휴재고 취소사유 (수정 다이얼로그에서 공용으로 사용)
+  const [idleReasonForm, setIdleReasonForm] = useState('')
+
   // 유휴전환 관련 상태
   const [idleConvertTarget, setIdleConvertTarget] = useState<WarehouseStockItem | null>(null)
   const [idleConvertReason, setIdleConvertReason] = useState('')
@@ -154,6 +187,82 @@ export function InventoryWarehouseView({
     } finally {
       setIsDeleting(false)
       setDeleteTarget(null)
+    }
+  }
+
+  /** 수정 다이얼로그 열기 — 유휴재고/입고내역 공용 */
+  const openStockEdit = (item: WarehouseStockItem) => {
+    setStockEditTarget(item)
+    setIdleReasonForm(item.cancelReason || '')
+    setStockEditForm({
+      confirmedDeliveryDate: item.confirmedDeliveryDate || '',
+      warehouseId: item.warehouseId || '',
+      componentName: item.componentName || '',
+      componentModel: item.componentModel || '',
+      quantity: item.quantity || 1,
+    })
+  }
+
+  /** 수정 저장 — 장비 정보 + 유휴재고일 때 취소사유도 함께 저장 */
+  const handleStockEditSave = async () => {
+    if (!stockEditTarget?.equipmentItemId) return
+
+    setIsSavingStockEdit(true)
+    try {
+      // 1. 장비 정보 수정
+      const success = await updateEquipmentItem(stockEditTarget.equipmentItemId, {
+        confirmedDeliveryDate: stockEditForm.confirmedDeliveryDate || undefined,
+        warehouseId: stockEditForm.warehouseId || undefined,
+        componentName: stockEditForm.componentName,
+        componentModel: stockEditForm.componentModel || undefined,
+        quantity: stockEditForm.quantity,
+      })
+
+      // 2. 유휴재고인 경우 취소사유도 저장
+      if (success && stockEditTarget.stockStatus === 'idle') {
+        const event = events.find(e =>
+          (e.eventType === 'idle' || e.eventType === 'cancelled') &&
+          e.equipmentItemId === stockEditTarget.equipmentItemId
+        )
+        if (event) {
+          await updateInventoryEvent(event.id, { notes: idleReasonForm || undefined })
+        }
+      }
+
+      if (success) {
+        showAlert('수정되었습니다.', 'success')
+        onRefresh?.()
+      } else {
+        showAlert('수정에 실패했습니다.', 'error')
+      }
+    } catch (error) {
+      console.error('수정 오류:', error)
+      showAlert('오류가 발생했습니다.', 'error')
+    } finally {
+      setIsSavingStockEdit(false)
+      setStockEditTarget(null)
+    }
+  }
+
+  /** 입고내역 삭제 처리 */
+  const handleStockDelete = async () => {
+    if (!stockDeleteTarget?.equipmentItemId) return
+
+    setIsDeletingStock(true)
+    try {
+      const success = await deleteEquipmentItem(stockDeleteTarget.equipmentItemId)
+      if (success) {
+        showAlert('삭제되었습니다.', 'success')
+        onRefresh?.()
+      } else {
+        showAlert('삭제에 실패했습니다.', 'error')
+      }
+    } catch (error) {
+      console.error('삭제 오류:', error)
+      showAlert('오류가 발생했습니다.', 'error')
+    } finally {
+      setIsDeletingStock(false)
+      setStockDeleteTarget(null)
     }
   }
 
@@ -327,15 +436,33 @@ export function InventoryWarehouseView({
         })
       })
 
-    // 정렬: 유휴재고는 active 먼저 → resolved 나중, 그 안에서 입고일 최신순
-    items.sort((a, b) => {
-      // 유휴재고끼리는 active가 먼저
-      if (a.stockStatus === 'idle' && b.stockStatus === 'idle') {
-        if (a.idleEventStatus !== b.idleEventStatus) {
-          return a.idleEventStatus === 'active' ? -1 : 1
-        }
+    // 정렬:
+    // 1) 같은 현장명끼리 무조건 묶기 (최우선)
+    // 2) 현장 그룹 순서는 그룹 내 최신 입고일 기준 내림차순
+    // 3) 같은 현장 내에서 입고일 최신순
+
+    // 현장별 최신 입고일 계산 (그룹 순서 결정용)
+    const groupLatestDate: Record<string, string> = {}
+    items.forEach(item => {
+      const name = item.businessName
+      const date = item.confirmedDeliveryDate || ''
+      if (!groupLatestDate[name] || date > groupLatestDate[name]) {
+        groupLatestDate[name] = date
       }
-      // 나머지는 입고일 최신순
+    })
+
+    items.sort((a, b) => {
+      // 1) 현장명이 다르면 → 그룹 최신 입고일 기준 내림차순
+      if (a.businessName !== b.businessName) {
+        const groupDateA = groupLatestDate[a.businessName] || ''
+        const groupDateB = groupLatestDate[b.businessName] || ''
+        return groupDateB.localeCompare(groupDateA)
+      }
+      // 2) 같은 현장 내: active 먼저, resolved 나중
+      if (a.idleEventStatus !== b.idleEventStatus) {
+        return a.idleEventStatus === 'active' ? -1 : 1
+      }
+      // 3) 같은 현장 + 같은 상태: 입고일 최신순
       const dateA = a.confirmedDeliveryDate || ''
       const dateB = b.confirmedDeliveryDate || ''
       return dateB.localeCompare(dateA)
@@ -526,35 +653,43 @@ export function InventoryWarehouseView({
                 <p className="text-gray-500">유휴재고가 없습니다.</p>
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead className="bg-muted/80">
                   <tr>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '120px' }}>상태</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '130px' }}>입고일</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '150px' }}>창고</th>
-                    <th className="text-left p-3 text-sm font-medium">원래 현장</th>
-                    <th className="text-left p-3 text-sm font-medium">구성품 (모델명)</th>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '50px' }}>수량</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>취소 사유</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>사용 내역</th>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '60px' }}>관리</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '70px' }}>상태</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>입고일</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '110px' }}>창고</th>
+                    <th className="text-left p-3 text-sm font-medium" style={{ width: '15%' }}>원래 현장</th>
+                    <th className="text-left p-3 text-sm font-medium" style={{ width: '14%' }}>구성품 (모델명)</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '40px' }}>수량</th>
+                    <th className="text-left p-3 text-sm font-medium">취소 사유</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>사용 내역</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '50px' }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredItems.map((item, idx) => {
                     const isResolved = item.idleEventStatus === 'resolved'
                     const rowKey = item.isManual ? `manual-${item.id}-${idx}` : `${item.orderId}-${idx}`
+                    // 같은 현장명 그룹핑: 이전 항목과 현장명이 같으면 숨김
+                    const prevItem = idx > 0 ? filteredItems[idx - 1] : null
+                    const isFirstInGroup = !prevItem || prevItem.businessName !== item.businessName
+                    // 다음 항목과 같은 그룹인지 (하단 테두리 결정용)
+                    const nextItem = idx < filteredItems.length - 1 ? filteredItems[idx + 1] : null
+                    const isLastInGroup = !nextItem || nextItem.businessName !== item.businessName
                     return (
                       <tr
                         key={rowKey}
-                        className={`border-b border-gray-100 transition-colors ${
+                        className={`transition-colors ${
+                          isLastInGroup ? 'border-b-2 border-gray-200' : 'border-b border-gray-100/60'
+                        } ${
                           isResolved
                             ? 'bg-gray-50/50 text-gray-400'
-                            : 'bg-brick-50/30 hover:bg-brick-50/50'
+                            : 'bg-brick-50/20 hover:bg-brick-50/50'
                         }`}
                       >
                         {/* 상태 뱃지 */}
-                        <td className="p-3 text-center">
+                        <td className="p-3 text-center whitespace-nowrap">
                           {isResolved ? (
                             <Badge className="bg-olive-50 text-olive-700 border-olive-200 text-[10px] border">
                               사용완료
@@ -565,66 +700,68 @@ export function InventoryWarehouseView({
                             </Badge>
                           )}
                         </td>
-                        <td className="p-3 text-sm">{formatStockDate(item.confirmedDeliveryDate)}</td>
-                        <td className="p-3 text-sm">
-                          <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
+                        <td className="p-3 text-sm whitespace-nowrap">{formatStockDate(item.confirmedDeliveryDate)}</td>
+                        <td className="p-3 text-sm overflow-hidden">
+                          <span className="font-medium block truncate" title={getWarehouseLabel(item.warehouseId)}>{getWarehouseLabel(item.warehouseId)}</span>
                         </td>
-                        <td className="p-3">
-                          <p className={`font-semibold text-sm truncate ${isResolved ? 'text-gray-400' : ''}`} title={item.businessName}>
-                            {item.businessName}
-                          </p>
+                        {/* 원래 현장 — 같은 현장이면 첫 행만 표시, 나머지는 〃 표시 */}
+                        <td className="p-3 overflow-hidden">
+                          {isFirstInGroup ? (
+                            <p className={`font-semibold text-sm truncate ${isResolved ? 'text-gray-400' : ''}`} title={item.businessName}>
+                              {item.businessName}
+                            </p>
+                          ) : (
+                            <p className="text-sm text-gray-300">〃</p>
+                          )}
                         </td>
-                        <td className="p-3">
-                          <p className="text-sm">{item.componentName}</p>
+                        <td className="p-3 overflow-hidden">
+                          <p className="text-sm truncate" title={item.componentName}>{item.componentName}</p>
                           {item.componentModel && (
-                            <p className="text-xs text-gray-400 font-mono">{item.componentModel}</p>
+                            <p className="text-xs text-gray-400 font-mono truncate" title={item.componentModel}>{item.componentModel}</p>
                           )}
                         </td>
                         <td className="p-3 text-center text-sm">{item.quantity}</td>
-                        {/* 취소 사유 */}
-                        <td className="p-3">
-                          <p className="text-xs text-gray-500 truncate" title={cleanCancelReason(item.cancelReason)}>
+                        {/* 취소 사유 — 마우스 올리면 전체 보임 */}
+                        <td className="p-3 overflow-hidden">
+                          <p className="text-sm text-gray-500 line-clamp-2 cursor-help" title={cleanCancelReason(item.cancelReason)}>
                             {cleanCancelReason(item.cancelReason)}
                           </p>
-                          {item.cancelledAt && (
-                            <p className="text-[10px] text-gray-400">{formatShortDate(item.cancelledAt)}</p>
-                          )}
                         </td>
                         {/* 사용 내역 */}
-                        <td className="p-3">
+                        <td className="p-3 overflow-hidden">
                           {isResolved && item.usedByBusinessName ? (
-                            <div className="flex items-center gap-1 text-xs">
+                            <div className="flex items-center gap-1 text-sm">
                               <ArrowRight className="h-3 w-3 text-olive-500 shrink-0" />
                               <span className="text-olive-700 font-medium truncate" title={item.usedByBusinessName}>
                                 {item.usedByBusinessName}
                               </span>
                             </div>
                           ) : isResolved ? (
-                            <span className="text-xs text-gray-400">처리완료</span>
+                            <span className="text-sm text-gray-400">처리완료</span>
                           ) : (
-                            <span className="text-xs text-brick-400">대기중</span>
+                            <span className="text-sm text-brick-400">대기중</span>
                           )}
                         </td>
-                        {/* 관리 버튼 (직접 입력 건만 노출) */}
+                        {/* 관리 버튼 */}
                         <td className="p-3 text-center">
-                          {item.isManual && !isResolved && (
+                          {!isResolved && (
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
                                 <button className="p-1 hover:bg-brick-100 rounded-md transition-colors text-brick-400 hover:text-brick-600">
                                   <MoreVertical className="h-4 w-4" />
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-32">
-                                <DropdownMenuItem 
+                              <DropdownMenuContent align="end" className="w-36">
+                                <DropdownMenuItem
                                   className="gap-2 cursor-pointer"
-                                  onClick={() => setEditTarget(item)}
+                                  onClick={() => item.isManual ? setEditTarget(item) : openStockEdit(item)}
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
                                   <span>수정</span>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem 
+                                <DropdownMenuItem
                                   className="gap-2 text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
-                                  onClick={() => setDeleteTarget(item)}
+                                  onClick={() => item.isManual ? setDeleteTarget(item) : setStockDeleteTarget(item)}
                                 >
                                   <Trash2 className="h-3.5 w-3.5" />
                                   <span>삭제</span>
@@ -707,21 +844,21 @@ export function InventoryWarehouseView({
                     )}
 
                     {/* 모바일 관리 버튼 */}
-                    {item.isManual && !isResolved && (
+                    {!isResolved && (
                       <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="flex-1 h-8 text-xs gap-1.5 text-gray-600"
-                          onClick={() => setEditTarget(item)}
+                          onClick={() => item.isManual ? setEditTarget(item) : openStockEdit(item)}
                         >
                           <Pencil className="h-3 w-3" /> 수정
                         </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="sm" 
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           className="flex-1 h-8 text-xs gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => setDeleteTarget(item)}
+                          onClick={() => item.isManual ? setDeleteTarget(item) : setStockDeleteTarget(item)}
                         >
                           <Trash2 className="h-3 w-3" /> 삭제
                         </Button>
@@ -833,16 +970,16 @@ export function InventoryWarehouseView({
                 <p className="text-gray-500">입고된 장비가 없습니다.</p>
               </div>
             ) : (
-              <table className="w-full">
+              <table className="w-full table-fixed">
                 <thead className="bg-muted/80">
                   <tr>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '130px' }}>입고일</th>
-                    <th className="text-left p-3 text-sm font-medium" style={{ width: '160px' }}>창고 (담당자)</th>
-                    <th className="text-left p-3 text-sm font-medium">현장명</th>
-                    <th className="text-left p-3 text-sm font-medium">구성품 (모델명)</th>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '60px' }}>수량</th>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '130px' }}>상태</th>
-                    <th className="text-center p-3 text-sm font-medium" style={{ width: '80px' }}>관리</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>입고일</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '120px' }}>창고</th>
+                    <th className="text-left p-3 text-sm font-medium" style={{ width: '25%' }}>현장명</th>
+                    <th className="text-left p-3 text-sm font-medium whitespace-nowrap" style={{ width: '160px' }}>구성품 (모델명)</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '50px' }}>수량</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>상태</th>
+                    <th className="text-center p-3 text-sm font-medium whitespace-nowrap" style={{ width: '80px' }}>관리</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -851,36 +988,58 @@ export function InventoryWarehouseView({
                       key={`${item.orderId}-${idx}`}
                       className="border-b border-gray-100 hover:bg-gray-50/50"
                     >
-                      <td className="p-3 text-sm">{formatStockDate(item.confirmedDeliveryDate)}</td>
+                      <td className="p-3 text-sm whitespace-nowrap">{formatStockDate(item.confirmedDeliveryDate)}</td>
                       <td className="p-3 text-sm">
-                        <span className="font-medium">{getWarehouseLabel(item.warehouseId)}</span>
+                        <span className="font-medium block truncate">{getWarehouseLabel(item.warehouseId)}</span>
                       </td>
-                      <td className="p-3">
+                      <td className="p-3 overflow-hidden">
                         <p className="font-semibold text-sm truncate" title={item.businessName}>{item.businessName}</p>
                         <p className="text-xs text-gray-500 truncate" title={item.address}>{item.address}</p>
                       </td>
-                      <td className="p-3">
-                        <p className="text-sm">{item.componentName}</p>
+                      <td className="p-3 overflow-hidden">
+                        <p className="text-sm truncate">{item.componentName}</p>
                         {item.componentModel && (
-                          <p className="text-xs text-gray-400">{item.componentModel}</p>
+                          <p className="text-xs text-gray-400 truncate">{item.componentModel}</p>
                         )}
                       </td>
                       <td className="p-3 text-center text-sm">{item.quantity}</td>
-                      <td className="p-3 text-center">
+                      <td className="p-3 text-center whitespace-nowrap">
                         <Badge className={`${WAREHOUSE_STOCK_STATUS_COLORS[item.stockStatus]} text-[10px] border`}>
                           {WAREHOUSE_STOCK_STATUS_LABELS[item.stockStatus]}
                         </Badge>
                       </td>
-                      {/* 유휴전환 버튼 */}
+                      {/* 관리 드롭다운 (수정/삭제/유휴전환) */}
                       <td className="p-3 text-center">
-                        <button
-                          className="inline-flex items-center gap-1 px-2 py-1 text-xs text-brick-600 hover:bg-brick-50 rounded-md transition-colors border border-brick-200"
-                          onClick={() => setIdleConvertTarget(item)}
-                          title="유휴재고로 전환"
-                        >
-                          <ArrowRightLeft className="h-3 w-3" />
-                          유휴전환
-                        </button>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button className="p-1 hover:bg-gray-100 rounded-md transition-colors text-gray-400 hover:text-gray-600">
+                              <MoreVertical className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="w-36">
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer"
+                              onClick={() => openStockEdit(item)}
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                              <span>수정</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 cursor-pointer text-brick-600 focus:text-brick-600 focus:bg-brick-50"
+                              onClick={() => setIdleConvertTarget(item)}
+                            >
+                              <ArrowRightLeft className="h-3.5 w-3.5" />
+                              <span>유휴전환</span>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              className="gap-2 text-red-600 cursor-pointer focus:text-red-600 focus:bg-red-50"
+                              onClick={() => setStockDeleteTarget(item)}
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                              <span>삭제</span>
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </td>
                     </tr>
                   ))}
@@ -922,15 +1081,31 @@ export function InventoryWarehouseView({
                       <p className="text-xs text-gray-400">수량: {item.quantity}</p>
                     </div>
                   </div>
-                  {/* 모바일 유휴전환 버튼 */}
-                  <div className="pt-2 border-t border-gray-100">
+                  {/* 모바일 관리 버튼 (수정/삭제/유휴전환) */}
+                  <div className="pt-2 border-t border-gray-100 flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="w-full h-8 text-xs gap-1.5 text-brick-600 hover:text-brick-700 hover:bg-brick-50"
+                      className="flex-1 h-8 text-xs gap-1.5 text-gray-600"
+                      onClick={() => openStockEdit(item)}
+                    >
+                      <Pencil className="h-3 w-3" /> 수정
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 h-8 text-xs gap-1.5 text-brick-600 hover:text-brick-700 hover:bg-brick-50"
                       onClick={() => setIdleConvertTarget(item)}
                     >
-                      <ArrowRightLeft className="h-3 w-3" /> 유휴재고로 전환
+                      <ArrowRightLeft className="h-3 w-3" /> 유휴전환
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="flex-1 h-8 text-xs gap-1.5 text-red-600 hover:text-red-700 hover:bg-red-50"
+                      onClick={() => setStockDeleteTarget(item)}
+                    >
+                      <Trash2 className="h-3 w-3" /> 삭제
                     </Button>
                   </div>
                 </div>
@@ -939,6 +1114,131 @@ export function InventoryWarehouseView({
           </div>
         </>
       )}
+
+      {/* ===== 입고내역 수정 다이얼로그 ===== */}
+      <Dialog open={!!stockEditTarget} onOpenChange={(open) => !open && setStockEditTarget(null)}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>장비 정보 수정</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            {/* 현장명 (읽기 전용) */}
+            <div>
+              <Label className="text-xs text-gray-500">현장명</Label>
+              <p className="text-sm font-medium mt-1">{stockEditTarget?.businessName}</p>
+            </div>
+            {/* 입고일 */}
+            <div className="space-y-1.5">
+              <Label htmlFor="stock-edit-date">입고일</Label>
+              <Input
+                id="stock-edit-date"
+                type="date"
+                value={stockEditForm.confirmedDeliveryDate}
+                onChange={(e) => setStockEditForm(prev => ({ ...prev, confirmedDeliveryDate: e.target.value }))}
+              />
+            </div>
+            {/* 창고 */}
+            <div className="space-y-1.5">
+              <Label>창고</Label>
+              <Select
+                value={stockEditForm.warehouseId}
+                onValueChange={(v) => setStockEditForm(prev => ({ ...prev, warehouseId: v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="창고 선택" />
+                </SelectTrigger>
+                <SelectContent>
+                  {warehouses.map(wh => (
+                    <SelectItem key={wh.id} value={wh.id}>
+                      {formatWarehouseLabel(wh)}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {/* 구성품명 */}
+            <div className="space-y-1.5">
+              <Label htmlFor="stock-edit-component">구성품명</Label>
+              <Input
+                id="stock-edit-component"
+                value={stockEditForm.componentName}
+                onChange={(e) => setStockEditForm(prev => ({ ...prev, componentName: e.target.value }))}
+              />
+            </div>
+            {/* 모델명 */}
+            <div className="space-y-1.5">
+              <Label htmlFor="stock-edit-model">모델명</Label>
+              <Input
+                id="stock-edit-model"
+                value={stockEditForm.componentModel}
+                onChange={(e) => setStockEditForm(prev => ({ ...prev, componentModel: e.target.value }))}
+              />
+            </div>
+            {/* 수량 */}
+            <div className="space-y-1.5">
+              <Label htmlFor="stock-edit-qty">수량</Label>
+              <Input
+                id="stock-edit-qty"
+                type="number"
+                min={1}
+                value={stockEditForm.quantity}
+                onChange={(e) => setStockEditForm(prev => ({ ...prev, quantity: parseInt(e.target.value) || 1 }))}
+              />
+            </div>
+            {/* 취소 사유 — 유휴재고일 때만 표시 */}
+            {stockEditTarget?.stockStatus === 'idle' && (
+              <div className="space-y-1.5">
+                <Label htmlFor="stock-edit-reason">취소 사유</Label>
+                <Textarea
+                  id="stock-edit-reason"
+                  placeholder="예: 고객 취소, 현장 사정, 모델 변경 등"
+                  value={idleReasonForm}
+                  onChange={(e) => setIdleReasonForm(e.target.value)}
+                  className="h-20"
+                />
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setStockEditTarget(null)} disabled={isSavingStockEdit}>
+              취소
+            </Button>
+            <Button onClick={handleStockEditSave} disabled={isSavingStockEdit}>
+              {isSavingStockEdit ? '저장 중...' : '저장'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ===== 입고내역 삭제 확인 다이얼로그 ===== */}
+      <AlertDialog open={!!stockDeleteTarget} onOpenChange={(open) => !open && setStockDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center mb-4">
+              <AlertTriangle className="h-6 w-6 text-red-600" />
+            </div>
+            <AlertDialogTitle>장비 삭제</AlertDialogTitle>
+            <AlertDialogDescription>
+              이 장비를 재고 목록에서 삭제합니다. 삭제 후 복구할 수 없습니다.<br />
+              <span className="font-semibold text-gray-900 mt-2 block">
+                현장: {stockDeleteTarget?.businessName}<br />
+                구성품: {stockDeleteTarget?.componentName} {stockDeleteTarget?.componentModel && `(${stockDeleteTarget.componentModel})`}<br />
+                수량: {stockDeleteTarget?.quantity}
+              </span>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingStock}>취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); handleStockDelete() }}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={isDeletingStock}
+            >
+              {isDeletingStock ? '삭제 중...' : '삭제'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
