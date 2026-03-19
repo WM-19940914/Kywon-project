@@ -427,8 +427,8 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
             )}
                           {status === 'completed' && (
                             <>
-                              <Button 
-                                variant="ghost" 
+                              <Button
+                                variant="ghost"
                                 onClick={() => {
                                   setConfirmConfig({
                                     open: true,
@@ -436,19 +436,35 @@ export function ASDetailDialog({ request, open, onOpenChange, onUpdate, onDelete
                                     description: '이 건을 다시 AS 처리중(2단계) 상태로 되돌리겠습니까?',
                                     action: () => onUpdate(request.id, { status: 'in-progress' })
                                   })
-                                }} 
+                                }}
                                 className="text-zinc-400 hover:text-teal-600 font-bold h-11 px-4"
                               >
                                 <RotateCcw className="h-4 w-4 mr-2" />AS 처리 단계로 이동
-                              </Button>                <Button 
+                              </Button>                <Button
                   variant="outline"
-                  onClick={handleSave} 
+                  onClick={handleSave}
                   disabled={isSaving}
                   className="border-zinc-200 text-zinc-900 font-black rounded-xl h-11 px-10 shadow-sm hover:bg-zinc-50 transition-all active:scale-95"
                 >
                   {isSaving ? '저장 중...' : '즉시저장'} <Save className="h-4 w-4 ml-2" />
                 </Button>
               </>
+            )}
+            {status === 'settled' && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setConfirmConfig({
+                    open: true,
+                    title: '정산완료 되돌리기',
+                    description: '이 건을 다시 정산대기(3단계) 상태로 되돌리겠습니까? 정산 데이터가 변경됩니다.',
+                    action: () => onUpdate(request.id, { status: 'completed' })
+                  })
+                }}
+                className="border-orange-300 text-orange-600 hover:bg-orange-50 font-black rounded-xl h-11 px-6 shadow-sm transition-all active:scale-95"
+              >
+                <RotateCcw className="h-4 w-4 mr-2" />정산대기로 되돌리기
+              </Button>
             )}
           </div>
         </DialogFooter>

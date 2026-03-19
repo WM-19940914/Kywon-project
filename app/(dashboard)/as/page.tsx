@@ -98,6 +98,8 @@ export default function ASPage() {
   const [detailDialogOpen, setDetailDialogOpen] = useState(false)
   const [selectedRequest, setSelectedRequest] = useState<ASRequest | null>(null)
   const [batchConfirmOpen, setBatchConfirmOpen] = useState(false)
+  /* 정산완료 → 정산대기 되돌리기 확인 다이얼로그 */
+  const [revertConfirm, setRevertConfirm] = useState<{ open: boolean; id: string; settlementMonth: string }>({ open: false, id: '', settlementMonth: '' })
   /* 차단기 리셋 안내 다이얼로그 상태 */
   const [resetGuideOpen, setResetGuideOpen] = useState(false)
 
@@ -560,7 +562,14 @@ export default function ASPage() {
                         requests={affiliateRequests}
                         activeTab={activeTab}
                         onRowClick={(req) => { setSelectedRequest(req); setDetailDialogOpen(true); }}
-                        onStatusChange={(id, newStatus) => handleUpdate(id, { status: newStatus })}
+                        onStatusChange={(id, newStatus) => {
+                          if (newStatus === 'completed' && activeTab === 'settled') {
+                            const req = requests.find(r => r.id === id)
+                            setRevertConfirm({ open: true, id, settlementMonth: req?.settlementMonth || '' })
+                          } else {
+                            handleUpdate(id, { status: newStatus })
+                          }
+                        }}
                         selectedIds={selectedIds}
                         onSelectToggle={(id) => {
                           const next = new Set(selectedIds);
@@ -662,13 +671,41 @@ export default function ASPage() {
             <AlertDialogTitle className="text-xl font-black text-slate-900">정산완료 일괄 처리</AlertDialogTitle>
             <AlertDialogDescription className="text-[14.5px] font-medium text-slate-500 leading-relaxed pt-2">
               선택하신 <span className="text-blue-600 font-bold">{selectedIds.size}건</span>의 AS 내역을 모두 <span className="text-slate-900 font-bold">정산완료</span> 상태로 변경하시겠습니까? <br />
-              이 작업은 되돌릴 수 없으므로 신중히 진행해 주세요.
+              필요 시 정산완료 탭에서 개별 되돌리기가 가능합니다.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-2">
             <AlertDialogCancel className="rounded-xl font-bold border-slate-200 h-11">취소</AlertDialogCancel>
             <AlertDialogAction onClick={confirmBatchSettle} className="rounded-xl font-bold bg-teal-600 hover:bg-teal-700 h-11 px-6">
               네, 일괄 처리합니다
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* 정산완료 → 정산대기 되돌리기 확인 다이얼로그 */}
+      <AlertDialog open={revertConfirm.open} onOpenChange={(open) => setRevertConfirm(prev => ({ ...prev, open }))}>
+        <AlertDialogContent className="rounded-3xl border-none shadow-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-black text-slate-900">정산완료 되돌리기</AlertDialogTitle>
+            <AlertDialogDescription className="text-[14.5px] font-medium text-slate-500 leading-relaxed pt-2">
+              {revertConfirm.settlementMonth && (() => {
+                const [y, m] = revertConfirm.settlementMonth.split('-')
+                return <><span className="text-orange-600 font-bold">{y}년 {parseInt(m)}월</span> </>
+              })()}
+              <span className="text-slate-900 font-bold">&quot;정산대기&quot;</span> 상태로 되돌리시겠습니까?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-2">
+            <AlertDialogCancel className="rounded-xl font-bold border-slate-200 h-11">취소</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                handleUpdate(revertConfirm.id, { status: 'completed' })
+                setRevertConfirm({ open: false, id: '', settlementMonth: '' })
+              }}
+              className="rounded-xl font-bold bg-orange-600 hover:bg-orange-700 h-11 px-6"
+            >
+              확인
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

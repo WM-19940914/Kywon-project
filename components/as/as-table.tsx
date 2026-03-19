@@ -98,7 +98,6 @@ export function ASTable({ requests, activeTab, onRowClick, onStatusChange, selec
             {activeTab === 'settled' && (
               <>
                 <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight w-28">모델명</th>
-                <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight w-44">AS 요청사유</th>
                 <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight w-32 text-center">처리완료일</th>
                 <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight text-right w-28">삼성 AS 비용</th>
                 <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight text-right w-28">멜레아 접수비</th>
@@ -106,10 +105,8 @@ export function ASTable({ requests, activeTab, onRowClick, onStatusChange, selec
               </>
             )}
 
-            {/* 관리 버튼 컬럼 (정산완료 제외) */}
-            {activeTab !== 'settled' && (
-              <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight text-center w-36">관리</th>
-            )}
+            {/* 관리 버튼 컬럼 */}
+            <th className="px-3 py-4 text-[12.5px] font-bold text-slate-500 uppercase tracking-tight text-center w-36">관리</th>
           </tr>
         </thead>
         
@@ -254,11 +251,6 @@ export function ASTable({ requests, activeTab, onRowClick, onStatusChange, selec
                   <td className="px-3 py-4 text-[12.5px] text-slate-600 font-bold truncate">
                     {req.modelName || '-'}
                   </td>
-                  <td className="px-3 py-4">
-                    <div className="text-[12px] text-slate-600 font-medium leading-tight line-clamp-2">
-                      {req.asReason || '-'}
-                    </div>
-                  </td>
                   <td className="px-3 py-4 text-center">
                     <span className="text-[12.5px] font-black text-slate-900">
                       {req.processedDate || '-'}
@@ -278,40 +270,48 @@ export function ASTable({ requests, activeTab, onRowClick, onStatusChange, selec
                 </>
               )}
 
-              {/* 관리 버튼 (정산완료 탭 제외) */}
-              {activeTab !== 'settled' && (
-                <td className="px-3 py-4 text-center" onClick={e => e.stopPropagation()}>
-                  <div className="flex items-center justify-center gap-1.5">
-                    {activeTab === 'received' && (
-                      <Button 
-                        size="sm" 
-                        className="h-7 px-2 rounded-md bg-[#E09520] hover:bg-[#c87d1a] text-white font-black text-[11px] min-w-[65px]"
-                        onClick={() => onStatusChange?.(req.id, 'in-progress')}
-                      >
-                        접수완료
-                      </Button>
-                    )}
-                    {activeTab === 'in-progress' && (
-                      <Button 
-                        size="sm" 
-                        className="h-7 px-2 rounded-md bg-[#E09520] hover:bg-[#c87d1a] text-white font-black text-[11px] min-w-[65px]"
-                        onClick={() => onStatusChange?.(req.id, 'completed')}
-                      >
-                        처리완료
-                      </Button>
-                    )}
-                    {activeTab === 'completed' && (
-                      <Button 
-                        size="sm" 
-                        className="h-7 px-2 rounded-md bg-slate-800 hover:bg-slate-900 text-white font-black text-[11px] min-w-[65px]"
-                        onClick={() => onStatusChange?.(req.id, 'settled')}
-                      >
-                        정산확정
-                      </Button>
-                    )}
-                  </div>
-                </td>
-              )}
+              {/* 관리 버튼 */}
+              <td className="px-3 py-4 text-center" onClick={e => e.stopPropagation()}>
+                <div className="flex items-center justify-center gap-1.5">
+                  {activeTab === 'received' && (
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 rounded-md bg-[#E09520] hover:bg-[#c87d1a] text-white font-black text-[11px] min-w-[65px]"
+                      onClick={() => onStatusChange?.(req.id, 'in-progress')}
+                    >
+                      접수완료
+                    </Button>
+                  )}
+                  {activeTab === 'in-progress' && (
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 rounded-md bg-[#E09520] hover:bg-[#c87d1a] text-white font-black text-[11px] min-w-[65px]"
+                      onClick={() => onStatusChange?.(req.id, 'completed')}
+                    >
+                      처리완료
+                    </Button>
+                  )}
+                  {activeTab === 'completed' && (
+                    <Button
+                      size="sm"
+                      className="h-7 px-2 rounded-md bg-slate-800 hover:bg-slate-900 text-white font-black text-[11px] min-w-[65px]"
+                      onClick={() => onStatusChange?.(req.id, 'settled')}
+                    >
+                      정산확정
+                    </Button>
+                  )}
+                  {activeTab === 'settled' && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 px-2 rounded-md border-slate-300 text-slate-500 hover:text-orange-600 hover:border-orange-300 font-black text-[11px] min-w-[65px]"
+                      onClick={() => onStatusChange?.(req.id, 'completed')}
+                    >
+                      되돌리기
+                    </Button>
+                  )}
+                </div>
+              </td>
             </tr>
           ))}
         </tbody>
