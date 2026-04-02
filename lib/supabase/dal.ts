@@ -469,7 +469,7 @@ export async function cancelOrder(id: string, reason: string): Promise<boolean> 
   // 2. 입고완료된 구성품 조회 (confirmed_delivery_date가 있는 것 = 이미 창고에 들어온 장비)
   const { data: deliveredItems } = await supabase
     .from('equipment_items')
-    .select('id, warehouse_id')
+    .select('id, warehouse_id, quantity, component_model, component_name')
     .eq('order_id', id)
     .not('confirmed_delivery_date', 'is', null)
 
@@ -497,6 +497,9 @@ export async function cancelOrder(id: string, reason: string): Promise<boolean> 
         equipment_item_id: item.id,
         source_order_id: id,
         source_warehouse_id: item.warehouse_id,
+        quantity: item.quantity || 1,
+        model_name: item.component_model,
+        category: item.component_name,
         status: 'active',
         event_date: now.split('T')[0],
         notes: `발주취소 — ${reason}`,
@@ -624,27 +627,48 @@ export async function saveOrderItems(orderId: string, items: OrderItem[]): Promi
 export async function saveEquipmentItems(orderId: string, items: EquipmentItem[]): Promise<boolean> {
   const supabase = createClient()
 
-  // 기존 삭제
-  const { error: deleteError } = await supabase
+  // 1. 기존 구성품 ID 목록 조회
+  const { data: existingItems } = await supabase
     .from('equipment_items')
-    .delete()
+    .select('id')
     .eq('order_id', orderId)
 
-  if (deleteError) {
-    console.error('구성품 삭제 실패:', deleteError.message)
-    return false
+  const existingIds = new Set((existingItems || []).map(e => e.id))
+
+  // 2. 새 항목에 ID 부여
+  const dbItems = items.map((item, idx) => ({
+    ...toSnakeCase(item),
+    order_id: orderId,
+    id: item.id || `eq-${orderId}-${idx + 1}`
+  }))
+
+  // 3. 없어진 항목만 삭제 (inventory_events에서 참조하지 않는 것만)
+  const newIds = new Set(dbItems.map(d => d.id))
+  const removedIds = Array.from(existingIds).filter(id => !newIds.has(id))
+
+  if (removedIds.length > 0) {
+    // 외래키 참조 확인 — inventory_events에서 참조하는 ID는 삭제 건너뛰기
+    const { data: referencedItems } = await supabase
+      .from('inventory_events')
+      .select('equipment_item_id')
+      .in('equipment_item_id', removedIds)
+
+    const referencedIds = new Set((referencedItems || []).map(e => e.equipment_item_id))
+    const safeToDelete = removedIds.filter(id => !referencedIds.has(id))
+
+    if (safeToDelete.length > 0) {
+      await supabase.from('equipment_items').delete().in('id', safeToDelete)
+    }
   }
 
-  // 새로 삽입
-  if (items.length > 0) {
-    const dbItems = items.map((item, idx) => ({
-      ...toSnakeCase(item),
-      order_id: orderId,
-      id: item.id || `eq-${orderId}-${idx + 1}`
-    }))
-    const { error: insertError } = await supabase.from('equipment_items').insert(dbItems)
-    if (insertError) {
-      console.error('구성품 저장 실패:', insertError.message)
+  // 4. upsert로 기존 항목 업데이트 + 새 항목 삽입
+  if (dbItems.length > 0) {
+    const { error: upsertError } = await supabase
+      .from('equipment_items')
+      .upsert(dbItems, { onConflict: 'id' })
+
+    if (upsertError) {
+      console.error('구성품 저장 실패:', upsertError.message)
       return false
     }
   }
@@ -1157,6 +1181,231 @@ export async function resolveInventoryEvent(id: string, targetOrderId?: string):
 
   if (error) {
     console.error('재고 이벤트 처리 실패:', error.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 유휴재고 사용 처리 (부분 사용 지원)
+ *
+ * 예: 유휴재고 4대 중 3대를 B현장에 사용
+ * → 원래 이벤트: 수량 4→1로 감소 (잔여)
+ * → 새 이벤트: 수량 3, resolved 상태, targetOrderId에 B현장 연결
+ *
+ * 전부 사용 시: 원래 이벤트를 resolved로 변경
+ */
+export async function useIdleInventory(
+  eventId: string,
+  usedQuantity: number,
+  targetOrderId: string,
+  notes?: string
+): Promise<boolean> {
+  const supabase = createClient()
+  const now = new Date().toISOString().split('T')[0]
+
+  // 1. 원래 이벤트 조회
+  const { data: event, error: fetchError } = await supabase
+    .from('inventory_events')
+    .select('*')
+    .eq('id', eventId)
+    .single()
+
+  if (fetchError || !event) {
+    console.error('유휴재고 이벤트 조회 실패:', fetchError?.message)
+    return false
+  }
+
+  const currentQty = event.quantity || 1
+  const remaining = currentQty - usedQuantity
+
+  if (remaining < 0) {
+    console.error('사용 수량이 보유 수량을 초과합니다')
+    return false
+  }
+
+  // 원래 이벤트 수량 감소 (0이면 resolved 처리)
+  const parentUpdate: Record<string, unknown> = { quantity: remaining }
+  if (remaining === 0) {
+    parentUpdate.status = 'resolved'
+    parentUpdate.resolved_date = now
+  }
+  const { error: updateError } = await supabase
+    .from('inventory_events')
+    .update(parentUpdate)
+    .eq('id', eventId)
+
+  if (updateError) {
+    console.error('유휴재고 수량 감소 실패:', updateError.message)
+    return false
+  }
+
+  // 사용 기록 이벤트 생성 (substitution 타입) — 항상 생성
+  const { error: insertError } = await supabase
+    .from('inventory_events')
+    .insert({
+      event_type: 'substitution',
+      equipment_item_id: event.equipment_item_id,
+      source_order_id: event.source_order_id,
+      target_order_id: targetOrderId,
+      source_warehouse_id: event.source_warehouse_id,
+      quantity: usedQuantity,
+      model_name: event.model_name,
+      category: event.category,
+      site_name: event.site_name,
+      status: 'resolved',
+      event_date: now,
+      resolved_date: now,
+      notes: notes || `유휴재고 ${usedQuantity}대 사용`,
+    })
+
+  if (insertError) {
+    console.error('사용 기록 이벤트 생성 실패:', insertError.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 유휴재고 사용 취소 (substitution 이벤트 삭제 + 원래 이벤트 수량 복구)
+ */
+export async function cancelIdleInventoryUsage(substitutionEventId: string): Promise<boolean> {
+  const supabase = createClient()
+
+  // 1. substitution 이벤트 조회
+  const { data: subEvent, error: fetchError } = await supabase
+    .from('inventory_events')
+    .select('*')
+    .eq('id', substitutionEventId)
+    .single()
+
+  if (fetchError || !subEvent) {
+    console.error('사용 기록 조회 실패:', fetchError?.message)
+    return false
+  }
+
+  const returnQty = subEvent.quantity || 0
+
+  // 2. 원래 유휴재고 이벤트 찾기 (같은 equipment_item_id + cancelled/idle 타입)
+  const parentQuery = supabase
+    .from('inventory_events')
+    .select('*')
+    .in('event_type', ['cancelled', 'idle'])
+
+  // equipment_item_id가 있으면 그걸로, 없으면 source_order_id로
+  if (subEvent.equipment_item_id) {
+    parentQuery.eq('equipment_item_id', subEvent.equipment_item_id)
+  } else if (subEvent.source_order_id) {
+    parentQuery.eq('source_order_id', subEvent.source_order_id)
+  } else {
+    console.error('원래 이벤트를 찾을 키가 없습니다')
+    return false
+  }
+
+  const { data: parentEvents } = await parentQuery
+
+  if (parentEvents && parentEvents.length > 0) {
+    const parent = parentEvents[0]
+    const newQty = (parent.quantity || 0) + returnQty
+
+    // 원래 이벤트 수량 복구 + active로 되돌리기
+    await supabase
+      .from('inventory_events')
+      .update({
+        quantity: newQty,
+        status: 'active',
+        resolved_date: null,
+      })
+      .eq('id', parent.id)
+  }
+
+  // 3. substitution 이벤트 삭제
+  const { error: deleteError } = await supabase
+    .from('inventory_events')
+    .delete()
+    .eq('id', substitutionEventId)
+
+  if (deleteError) {
+    console.error('사용 기록 삭제 실패:', deleteError.message)
+    return false
+  }
+
+  return true
+}
+
+/**
+ * 유휴재고 사용 수정 (수량/대상현장 변경)
+ */
+export async function updateIdleInventoryUsage(
+  substitutionEventId: string,
+  updates: { quantity?: number; targetOrderId?: string; notes?: string }
+): Promise<boolean> {
+  const supabase = createClient()
+
+  // 1. 기존 substitution 이벤트 조회
+  const { data: subEvent, error: fetchError } = await supabase
+    .from('inventory_events')
+    .select('*')
+    .eq('id', substitutionEventId)
+    .single()
+
+  if (fetchError || !subEvent) {
+    console.error('사용 기록 조회 실패:', fetchError?.message)
+    return false
+  }
+
+  const oldQty = subEvent.quantity || 0
+  const newQty = updates.quantity ?? oldQty
+  const qtyDiff = newQty - oldQty  // 양수면 더 사용, 음수면 반납
+
+  // 2. 수량이 변경됐으면 원래 유휴재고 이벤트 수량도 조정
+  if (qtyDiff !== 0) {
+    const parentQuery = supabase
+      .from('inventory_events')
+      .select('*')
+      .in('event_type', ['cancelled', 'idle'])
+
+    if (subEvent.equipment_item_id) {
+      parentQuery.eq('equipment_item_id', subEvent.equipment_item_id)
+    } else if (subEvent.source_order_id) {
+      parentQuery.eq('source_order_id', subEvent.source_order_id)
+    }
+
+    const { data: parentEvents } = await parentQuery
+    if (parentEvents && parentEvents.length > 0) {
+      const parent = parentEvents[0]
+      const parentNewQty = (parent.quantity || 0) - qtyDiff
+      if (parentNewQty < 0) {
+        console.error('수정 후 잔여 수량이 음수가 됩니다')
+        return false
+      }
+      const parentUpdate: Record<string, unknown> = { quantity: parentNewQty }
+      if (parentNewQty === 0) {
+        parentUpdate.status = 'resolved'
+        parentUpdate.resolved_date = new Date().toISOString().split('T')[0]
+      } else {
+        parentUpdate.status = 'active'
+        parentUpdate.resolved_date = null
+      }
+      await supabase.from('inventory_events').update(parentUpdate).eq('id', parent.id)
+    }
+  }
+
+  // 3. substitution 이벤트 업데이트
+  const dbUpdates: Record<string, unknown> = {}
+  if (updates.quantity !== undefined) dbUpdates.quantity = updates.quantity
+  if (updates.targetOrderId !== undefined) dbUpdates.target_order_id = updates.targetOrderId
+  if (updates.notes !== undefined) dbUpdates.notes = updates.notes
+
+  const { error } = await supabase
+    .from('inventory_events')
+    .update(dbUpdates)
+    .eq('id', substitutionEventId)
+
+  if (error) {
+    console.error('사용 기록 수정 실패:', error.message)
     return false
   }
 
