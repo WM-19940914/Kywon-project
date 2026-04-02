@@ -591,12 +591,10 @@ export function InventoryWarehouseView({
     const items: WarehouseStockItem[] = []
 
     // 1. 발주 기반 재고 수집
+    // 구성품 단위로 confirmedDeliveryDate��� 있으면 입고된 것으로 판단
+    // (발주 전체가 delivered가 아니어도, 일부 구성품이 먼저 입고될 수 있음)
     orders.forEach(order => {
       if (!order.equipmentItems || order.equipmentItems.length === 0) return
-
-      // 배송완료(delivered) 상태인 발주만 입고내역에 표시
-      // 단, 발주취소(cancelled)된 건은 유휴재고로 표시해야 하므로 포함
-      if (order.deliveryStatus !== 'delivered' && order.status !== 'cancelled') return
 
       // 배송확정일이 있는 구성품만 필터
       const confirmedItems = order.equipmentItems.filter(eq => eq.confirmedDeliveryDate)
